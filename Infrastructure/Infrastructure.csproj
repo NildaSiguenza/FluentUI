@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- 目标框架 -->
+    <TargetFramework>net48</TargetFramework>
+    <!-- 基本程序集信息 -->
+    <RootNamespace>Infrastructure</RootNamespace>
+    <AssemblyName>Infrastructure</AssemblyName>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- NuGet 包信息 -->
+    <PackageId>FluentUI.Infrastructure</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Nilda Siguenza</Authors>
+    <Description>Infrastructure shared utilities</Description>
+    <PackageProjectUrl>https://github.com/NildaSiguenza/FluentUI</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NildaSiguenza/FluentUI</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <!-- 自动生成 nupkg -->
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <!-- 生成 XML 文档 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageIcon />
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <Name />
+    <PackageIconUrl />
+    <PackageLicenseUrl />
+    <PackageReleaseNotes>Infrastructure shared utilities</PackageReleaseNotes>
+    <PackageTags />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Infrastructure.csproj.bak" />
+  </ItemGroup>
+</Project>
