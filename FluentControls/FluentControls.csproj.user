@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectView>ProjectFiles</ProjectView>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Update="Controls\FluentButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentCheckBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentCheckBoxList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentColorComboBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentColorPicker.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentComboBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentContainerBase.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentControlBase.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentDateTimePicker.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentLabel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentLayoutContainer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentListBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentMenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentProgess.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentRadio.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentRadioList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentShape.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentSlider.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentStatusStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentTabControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentToolStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>

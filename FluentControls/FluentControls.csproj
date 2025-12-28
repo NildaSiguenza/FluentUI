@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- 目标框架 -->
+    <TargetFramework>net48</TargetFramework>
+    <!-- 这是 WinForms 控件库，必须显式声明 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- 程序集信息 -->
+    <RootNamespace>FluentControls</RootNamespace>
+    <AssemblyName>FluentControls</AssemblyName>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- NuGet 包信息 -->
+    <PackageId>FluentControls</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Nilda Siguenza</Authors>
+    <Description>A Fluent-style WinForms control library based on .NET Framework 4.8.</Description>
+    <PackageProjectUrl>https://github.com/NildaSiguenza/FluentUI</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NildaSiguenza/FluentUI</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <!-- 自动生成 nupkg -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!-- 生成 XML 文档 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <!-- 项目引用 -->
+  <ItemGroup Condition="'$(UseProjectReferences)' == 'true'">
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+  </ItemGroup>
+  <!-- 包引用 -->
+  <ItemGroup Condition="'$(UseProjectReferences)' != 'true'">
+    <PackageReference Include="FluentUI.Infrastructure" Version="0.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Design" />
+    <Reference Include="System.Drawing.Design" />
+  </ItemGroup>
+</Project>
