@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version>0.1.1</Version>
+    <Version Condition="'$(Version)' == ''">0.1.1-dev</Version>
     <Authors>Nilda Siguenza</Authors>
     <Company>Nilda Siguenza</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -8,4 +8,19 @@
   <PropertyGroup Condition="'$(Configuration)' == 'UseProjectReferences'">
     <UseProjectReferences>true</UseProjectReferences>
   </PropertyGroup>
+  <PropertyGroup>
+    <!--把 GitHub 仓库地址写进包元数据-->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <!--生成 SourceLink 映射表-->
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
 </Project>

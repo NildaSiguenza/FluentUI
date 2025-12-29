@@ -5,16 +5,27 @@ VisualStudioVersion = 17.13.36105.23
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentControls", "FluentControls\FluentControls.csproj", "{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
+		UseProjectReferences|Any CPU = UseProjectReferences|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}.UseProjectReferences|Any CPU.ActiveCfg = UseProjectReferences|Any CPU
+		{78730E85-0FFB-4EC0-BFDD-A0DFC2C709AF}.UseProjectReferences|Any CPU.Build.0 = UseProjectReferences|Any CPU
+		{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}.UseProjectReferences|Any CPU.ActiveCfg = Release|Any CPU
+		{5872AEB3-BAA3-FE31-B0EB-0FB6DBEDCF83}.UseProjectReferences|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

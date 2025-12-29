@@ -10,21 +10,19 @@
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<!-- NuGet 包信息 -->
 		<PackageId>FluentControls</PackageId>
-		<Authors>Nilda Siguenza</Authors>
 		<Description>A Fluent-style WinForms control library based on .NET Framework 4.8.</Description>
 		<PackageProjectUrl>https://github.com/NildaSiguenza/FluentUI</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/NildaSiguenza/FluentUI</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<!-- 自动生成 nupkg -->
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<!-- <GeneratePackageOnBuild>true</GeneratePackageOnBuild> -->
 		<!-- 生成 XML 文档 -->
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<!-- Readme 文档 -->
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<!-- 调试符号 -->
-		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<!-- <IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat> -->
 		<DebugType>portable</DebugType>
 		<Configurations>Debug;Release;UseProjectReferences</Configurations>
 	</PropertyGroup>
@@ -38,7 +36,7 @@
 	</ItemGroup>
 	<!-- 包引用 -->
 	<ItemGroup Condition="'$(UseProjectReferences)' != 'true'">
-		<PackageReference Include="FluentUI.Infrastructure" />
+		<PackageReference Include="FluentUI.Infrastructure"  Version="$(Version)"  />
 	</ItemGroup>
 	<ItemGroup>
 		<Reference Include="System.Design" />

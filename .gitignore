@@ -10,3 +10,4 @@
 /Infrastructure/obj
 /Infrastructure/bin
 publish-nuget.cmd
+/.cr

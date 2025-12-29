@@ -20,7 +20,7 @@ namespace FluentControls.Controls
     [Designer(typeof(FluentToolStripDesigner))]
     [DefaultEvent("ItemClick")]
     [DefaultProperty("Items")]
-    public class FluentToolStrip : FluentContainerBase
+    public class FluentToolStrip : FluentContainerBase, IFluentItemContainer
     {
         private FluentToolStripItemCollection items;
         private FluentToolStripLayoutManager layoutManager;
@@ -262,7 +262,7 @@ namespace FluentControls.Controls
             Invalidate();
         }
 
-        internal void ItemStateChanged(FluentToolStripItem item)
+        public void ItemStateChanged(FluentToolStripItem item)
         {
             Invalidate(item.Bounds);
         }
@@ -701,7 +701,7 @@ namespace FluentControls.Controls
     [ToolboxItem(false)]
     public abstract class FluentToolStripItem : IComponent
     {
-        private FluentToolStrip owner;
+        private IFluentItemContainer owner;
         private string name = "";
         private string text = "";
         private string toolTipText = "";
@@ -770,7 +770,7 @@ namespace FluentControls.Controls
         }
 
         [Browsable(false)]
-        public FluentToolStrip Owner
+        public IFluentItemContainer Owner
         {
             get => owner;
             internal set
@@ -1008,7 +1008,7 @@ namespace FluentControls.Controls
 
         protected abstract void DrawItem(Graphics g);
 
-        protected virtual Size GetPreferredSize()
+        internal virtual Size GetPreferredSize()
         {
             return new Size(100, 28);
         }
@@ -1748,7 +1748,7 @@ namespace FluentControls.Controls
 
         }
 
-        protected override Size GetPreferredSize()
+        internal override Size GetPreferredSize()
         {
             if (control != null)
             {
@@ -1842,12 +1842,12 @@ namespace FluentControls.Controls
             }
 
             Color color = Owner?.UseTheme == true && Owner.Theme != null
-                ? Owner.GetThemeColor(c => c.Border, lineColor)
+                ? (Owner as FluentToolStrip).GetThemeColor(c => c.Border, lineColor)
                 : lineColor;
 
             using (var pen = new Pen(color, thickness))
             {
-                if (Owner?.Orientation == Orientation.Horizontal)
+                if ((Owner as FluentToolStrip)?.Orientation == Orientation.Horizontal)
                 {
                     // 垂直线
                     int x = bounds.X + bounds.Width / 2;
@@ -1862,9 +1862,9 @@ namespace FluentControls.Controls
             }
         }
 
-        protected override Size GetPreferredSize()
+        internal override Size GetPreferredSize()
         {
-            if (Owner?.Orientation == Orientation.Horizontal)
+            if ((Owner as FluentToolStrip)?.Orientation == Orientation.Horizontal)
             {
                 return new Size(thickness + Padding.Horizontal + 4, 28);
             }
