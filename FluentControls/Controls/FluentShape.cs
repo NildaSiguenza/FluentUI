@@ -250,26 +250,6 @@ namespace FluentControls.Controls
         [DefaultValue(0.6f)]
         public float TrapezoidTopWidthRatio { get; set; } = 0.6f;
 
-        [Category("Arrow")]
-        [Description("箭头方向")]
-        [DefaultValue(ArrowDirection.Right)]
-        public ArrowDirection ArrowDirection { get; set; } = ArrowDirection.Right;
-
-        [Category("Arrow")]
-        [Description("箭头头部宽度比例（0-1）")]
-        [DefaultValue(0.4f)]
-        public float ArrowHeadWidthRatio { get; set; } = 0.4f;
-
-        [Category("Arrow")]
-        [Description("箭头尾部宽度比例（0-1）")]
-        [DefaultValue(0.6f)]
-        public float ArrowTailWidthRatio { get; set; } = 0.6f;
-
-        [Category("Arrow")]
-        [Description("箭头尾部缺口深度比例（0-1）")]
-        [DefaultValue(0.2f)]
-        public float TailNotchDepthRatio { get; set; } = 0.2f;
-
         /// <summary>
         /// 顶点集合
         /// </summary>
@@ -335,7 +315,7 @@ namespace FluentControls.Controls
         }
 
         [Category("3D")]
-        [Description("水平视角角度(圆柱体：-1到1, 立方体：-90到90, 球体：0-360)")]
+        [Description("水平视角角度（圆柱体：-1到1，立方体：-90到90，球体：0-360）")]
         [DefaultValue(30f)]
         public float HorizontalViewAngle
         {
@@ -348,7 +328,7 @@ namespace FluentControls.Controls
         }
 
         [Category("3D")]
-        [Description("垂直视角角度(圆柱体/立方体：-90到90, 球体：0-90)")]
+        [Description("垂直视角角度（圆柱体/立方体：-90到90，球体：0-90）")]
         [DefaultValue(30f)]
         public float VerticalViewAngle
         {
@@ -476,15 +456,6 @@ namespace FluentControls.Controls
                         Points = StarPoints,
                         InnerRadiusRatio = StarInnerRadiusRatio,
                         StartAngle = StarStartAngle
-                    };
-                    break;
-                case ShapeType.Arrow:
-                    shapeRenderer = new ArrowRenderer
-                    {
-                        Direction = ArrowDirection,
-                        ArrowHeadWidthRatio = ArrowHeadWidthRatio,
-                        ArrowTailWidthRatio = ArrowTailWidthRatio,
-                        TailNotchDepthRatio = TailNotchDepthRatio
                     };
                     break;
                 case ShapeType.Cylinder:
@@ -713,7 +684,7 @@ namespace FluentControls.Controls
 
         protected override void DrawBorder(Graphics g)
         {
-            // 边框由形状渲染器处理, 这里不需要额外绘制
+            // 边框由形状渲染器处理，这里不需要额外绘制
         }
 
         private void UpdateRendererProperties()
@@ -741,13 +712,6 @@ namespace FluentControls.Controls
             else if (shapeRenderer is TrapezoidRenderer trapezoid)
             {
                 trapezoid.TopWidthRatio = TrapezoidTopWidthRatio;
-            }
-            else if (shapeRenderer is ArrowRenderer arrow)
-            {
-                arrow.Direction = ArrowDirection;
-                arrow.ArrowHeadWidthRatio = ArrowHeadWidthRatio;
-                arrow.ArrowTailWidthRatio = ArrowTailWidthRatio;
-                arrow.TailNotchDepthRatio = TailNotchDepthRatio;
             }
             else if (shapeRenderer is CylinderRenderer cylinder)
             {
@@ -949,17 +913,17 @@ namespace FluentControls.Controls
         public LineMode Mode { get; set; } = LineMode.DiagonalDown;
 
         /// <summary>
-        /// 自定义起点(相对坐标 0-1)
+        /// 自定义起点（相对坐标 0-1）
         /// </summary>
         public PointF StartPoint { get; set; } = new PointF(0, 0);
 
         /// <summary>
-        /// 自定义终点(相对坐标 0-1)
+        /// 自定义终点（相对坐标 0-1）
         /// </summary>
         public PointF EndPoint { get; set; } = new PointF(1, 1);
 
         /// <summary>
-        /// 线段边距(像素)
+        /// 线段边距（像素）
         /// </summary>
         public int Margin { get; set; } = 5;
 
@@ -1090,7 +1054,7 @@ namespace FluentControls.Controls
         public override GraphicsPath GetPath(Rectangle bounds)
         {
             var path = new GraphicsPath();
-            // 使用最小边作为直径, 保持圆形
+            // 使用最小边作为直径，保持圆形
             int size = Math.Min(bounds.Width, bounds.Height);
             int offsetX = (bounds.Width - size) / 2;
             int offsetY = (bounds.Height - size) / 2;
@@ -1112,7 +1076,7 @@ namespace FluentControls.Controls
         public override ShapeType ShapeType => ShapeType.Triangle;
 
         /// <summary>
-        /// 自定义顶点(如果为空则使用默认位置)
+        /// 自定义顶点（如果为空则使用默认位置）
         /// </summary>
         public VertexCollection CustomVertices { get; set; }
 
@@ -1136,13 +1100,13 @@ namespace FluentControls.Controls
 
         private PointF[] GetTrianglePoints(Rectangle bounds)
         {
-            // 如果有自定义顶点且数量为3, 使用自定义顶点
+            // 如果有自定义顶点且数量为3，使用自定义顶点
             if (CustomVertices != null && CustomVertices.Count == 3)
             {
                 return CustomVertices.ToArray();
             }
 
-            // 否则使用默认三角形(顶点在上, 底边在下)
+            // 否则使用默认三角形（顶点在上，底边在下）
             return new PointF[]
             {
                 new PointF(bounds.X + bounds.Width / 2f, bounds.Y), // 顶点
@@ -1152,7 +1116,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 获取当前顶点位置(用于属性显示)
+        /// 获取当前顶点位置（用于属性显示）
         /// </summary>
         public PointF[] GetCurrentVertices(Rectangle bounds)
         {
@@ -1205,7 +1169,7 @@ namespace FluentControls.Controls
 
         private PointF[] GetTrapezoidPoints(Rectangle bounds)
         {
-            // 如果有自定义顶点且数量为4, 使用自定义顶点
+            // 如果有自定义顶点且数量为4，使用自定义顶点
             if (CustomVertices != null && CustomVertices.Count == 4)
             {
                 return CustomVertices.ToArray();
@@ -1244,7 +1208,7 @@ namespace FluentControls.Controls
 
     #endregion
 
-    #region 多边形/箭头/星形
+    #region 多边形和星形
 
     /// <summary>
     /// 多边形渲染器
@@ -1277,7 +1241,7 @@ namespace FluentControls.Controls
 
         private PointF[] GetPolygonPoints(Rectangle bounds)
         {
-            // 如果有自定义顶点且数量>=3, 使用自定义顶点
+            // 如果有自定义顶点且数量>=3，使用自定义顶点
             if (CustomVertices != null && CustomVertices.Count >= 3)
             {
                 return CustomVertices.ToArray();
@@ -1387,215 +1351,6 @@ namespace FluentControls.Controls
         }
     }
 
-    /// <summary>
-    /// 箭头渲染器
-    /// </summary>
-    public class ArrowRenderer : ShapeRendererBase
-    {
-        public override ShapeType ShapeType => ShapeType.Arrow;
-
-        /// <summary>
-        /// 箭头方向
-        /// </summary>
-        public ArrowDirection Direction { get; set; } = ArrowDirection.Right;
-
-        /// <summary>
-        /// 箭头头部宽度比例（0-1, 相对于整体宽度）
-        /// </summary>
-        public float ArrowHeadWidthRatio { get; set; } = 0.4f;
-
-        /// <summary>
-        /// 箭头尾部宽度比例（0-1, 相对于整体高度/宽度）
-        /// </summary>
-        public float ArrowTailWidthRatio { get; set; } = 0.6f;
-
-        /// <summary>
-        /// 箭头尾部缺口深度比例（0-1, 相对于整体宽度）
-        /// </summary>
-        public float TailNotchDepthRatio { get; set; } = 0.2f;
-
-        public override GraphicsPath GetPath(Rectangle bounds)
-        {
-            var path = new GraphicsPath();
-
-            if (bounds.Width <= 0 || bounds.Height <= 0)
-            {
-                return path;
-            }
-
-            // 确保比例在有效范围内
-            float headRatio = Math.Max(0.1f, Math.Min(0.9f, ArrowHeadWidthRatio));
-            float tailRatio = Math.Max(0.1f, Math.Min(0.9f, ArrowTailWidthRatio));
-            float notchRatio = Math.Max(0f, Math.Min(0.5f, TailNotchDepthRatio));
-
-            PointF[] points = null;
-
-            switch (Direction)
-            {
-                case ArrowDirection.Left:
-                    points = GetLeftArrowPoints(bounds, headRatio, tailRatio, notchRatio);
-                    break;
-                case ArrowDirection.Right:
-                    points = GetRightArrowPoints(bounds, headRatio, tailRatio, notchRatio);
-                    break;
-                case ArrowDirection.Up:
-                    points = GetUpArrowPoints(bounds, headRatio, tailRatio, notchRatio);
-                    break;
-                case ArrowDirection.Down:
-                    points = GetDownArrowPoints(bounds, headRatio, tailRatio, notchRatio);
-                    break;
-            }
-
-            if (points != null && points.Length > 0)
-            {
-                path.AddPolygon(points);
-                path.CloseFigure();
-            }
-
-            return path;
-        }
-
-        /// <summary>
-        /// 获取向左箭头的点
-        /// </summary>
-        private PointF[] GetLeftArrowPoints(Rectangle bounds, float headRatio, float tailRatio, float notchRatio)
-        {
-            float width = bounds.Width;
-            float height = bounds.Height;
-            float x = bounds.X;
-            float y = bounds.Y;
-
-            // 计算关键尺寸
-            float headWidth = width * headRatio;        // 箭头头部宽度
-            float bodyWidth = width - headWidth;        // 箭头身体宽度
-            float tailHeight = height * tailRatio;      // 箭头尾部高度
-            float notchDepth = bodyWidth * notchRatio;  // 尾部缺口深度
-
-            float centerY = y + height / 2;
-            float tailTop = centerY - tailHeight / 2;
-            float tailBottom = centerY + tailHeight / 2;
-
-            return new PointF[]
-            {
-                new PointF(x, centerY),                              // 箭头尖端（左侧中心）
-                new PointF(x + headWidth, y),                        // 箭头头部右上角
-                new PointF(x + headWidth, tailTop),                  // 箭头身体右上角
-                new PointF(x + width, tailTop),                      // 箭头尾部右上角
-                new PointF(x + width - notchDepth, centerY),         // 箭头尾部缺口
-                new PointF(x + width, tailBottom),                   // 箭头尾部右下角
-                new PointF(x + headWidth, tailBottom),               // 箭头身体右下角
-                new PointF(x + headWidth, y + height)                // 箭头头部右下角
-            };
-        }
-
-        /// <summary>
-        /// 获取向右箭头的点
-        /// </summary>
-        private PointF[] GetRightArrowPoints(Rectangle bounds, float headRatio, float tailRatio, float notchRatio)
-        {
-            float width = bounds.Width;
-            float height = bounds.Height;
-            float x = bounds.X;
-            float y = bounds.Y;
-
-            float headWidth = width * headRatio;
-            float bodyWidth = width - headWidth;
-            float tailHeight = height * tailRatio;
-            float notchDepth = bodyWidth * notchRatio;
-
-            float centerY = y + height / 2;
-            float tailTop = centerY - tailHeight / 2;
-            float tailBottom = centerY + tailHeight / 2;
-
-            return new PointF[]
-            {
-                new PointF(x + width, centerY),                      // 箭头尖端（右侧中心）
-                new PointF(x + bodyWidth, y + height),               // 箭头头部左下角
-                new PointF(x + bodyWidth, tailBottom),               // 箭头身体左下角
-                new PointF(x, tailBottom),                           // 箭头尾部左下角
-                new PointF(x + notchDepth, centerY),                 // 箭头尾部缺口
-                new PointF(x, tailTop),                              // 箭头尾部左上角
-                new PointF(x + bodyWidth, tailTop),                  // 箭头身体左上角
-                new PointF(x + bodyWidth, y)                         // 箭头头部左上角
-            };
-        }
-
-        /// <summary>
-        /// 获取向上箭头的点
-        /// </summary>
-        private PointF[] GetUpArrowPoints(Rectangle bounds, float headRatio, float tailRatio, float notchRatio)
-        {
-            float width = bounds.Width;
-            float height = bounds.Height;
-            float x = bounds.X;
-            float y = bounds.Y;
-
-            float headHeight = height * headRatio;
-            float bodyHeight = height - headHeight;
-            float tailWidth = width * tailRatio;
-            float notchDepth = bodyHeight * notchRatio;
-
-            float centerX = x + width / 2;
-            float tailLeft = centerX - tailWidth / 2;
-            float tailRight = centerX + tailWidth / 2;
-
-            return new PointF[]
-            {
-                new PointF(centerX, y),                              // 箭头尖端（顶部中心）
-                new PointF(x + width, y + headHeight),               // 箭头头部右下角
-                new PointF(tailRight, y + headHeight),               // 箭头身体右下角
-                new PointF(tailRight, y + height),                   // 箭头尾部右下角
-                new PointF(centerX, y + height - notchDepth),        // 箭头尾部缺口
-                new PointF(tailLeft, y + height),                    // 箭头尾部左下角
-                new PointF(tailLeft, y + headHeight),                // 箭头身体左下角
-                new PointF(x, y + headHeight)                        // 箭头头部左下角
-            };
-        }
-
-        /// <summary>
-        /// 获取向下箭头的点
-        /// </summary>
-        private PointF[] GetDownArrowPoints(Rectangle bounds, float headRatio, float tailRatio, float notchRatio)
-        {
-            float width = bounds.Width;
-            float height = bounds.Height;
-            float x = bounds.X;
-            float y = bounds.Y;
-
-            float headHeight = height * headRatio;
-            float bodyHeight = height - headHeight;
-            float tailWidth = width * tailRatio;
-            float notchDepth = bodyHeight * notchRatio;
-
-            float centerX = x + width / 2;
-            float tailLeft = centerX - tailWidth / 2;
-            float tailRight = centerX + tailWidth / 2;
-
-            return new PointF[]
-            {
-                new PointF(centerX, y + height),                     // 箭头尖端（底部中心）
-                new PointF(x, y + bodyHeight),                       // 箭头头部左上角
-                new PointF(tailLeft, y + bodyHeight),                // 箭头身体左上角
-                new PointF(tailLeft, y),                             // 箭头尾部左上角
-                new PointF(centerX, y + notchDepth),                 // 箭头尾部缺口
-                new PointF(tailRight, y),                            // 箭头尾部右上角
-                new PointF(tailRight, y + bodyHeight),               // 箭头身体右上角
-                new PointF(x + width, y + bodyHeight)                // 箭头头部右上角
-            };
-        }
-
-        public override IShapeRenderer Clone()
-        {
-            return new ArrowRenderer
-            {
-                Direction = this.Direction,
-                ArrowHeadWidthRatio = this.ArrowHeadWidthRatio,
-                ArrowTailWidthRatio = this.ArrowTailWidthRatio,
-                TailNotchDepthRatio = this.TailNotchDepthRatio
-            };
-        }
-    }
-
     #endregion
 
     #region 3D形状
@@ -1645,7 +1400,7 @@ namespace FluentControls.Controls
             var frontColor = style.FrontFaceColor.A > 0 ? style.FrontFaceColor : style.FillColor;
             var topColor = style.TopFaceColor.A > 0 ? style.TopFaceColor : LightenColor(frontColor, 0.3f);
 
-            // 计算实际绘制位置(考虑水平偏移方向)
+            // 计算实际绘制位置（考虑水平偏移方向）
             float actualX = drawBounds.X;
             if (horizontalOffset < 0)
             {
@@ -1828,12 +1583,12 @@ namespace FluentControls.Controls
         public ShapeType ShapeType => ShapeType.Sphere;
 
         /// <summary>
-        /// 光源水平角度(0-360)
+        /// 光源水平角度（0-360）
         /// </summary>
         public float LightHorizontalAngle { get; set; } = 135f;
 
         /// <summary>
-        /// 光源垂直角度(0-90)
+        /// 光源垂直角度（0-90）
         /// </summary>
         public float LightVerticalAngle { get; set; } = 45f;
 
@@ -1968,29 +1723,29 @@ namespace FluentControls.Controls
             float frontLeft, frontTop, offsetX, offsetY;
             bool showLeftSide, showTopSide;
 
-            if (hAngle > 0) // 向右倾斜, 看到左侧面
+            if (hAngle > 0) // 向右倾斜，看到左侧面
             {
                 frontLeft = bounds.X + depthX + totalPadding;
-                offsetX = -depthX; // 从前面到左侧面, 向左(负方向)
+                offsetX = -depthX; // 从前面到左侧面，向左（负方向）
                 showLeftSide = true;
             }
-            else // 向左倾斜或垂直, 看到右侧面
+            else // 向左倾斜或垂直，看到右侧面
             {
                 frontLeft = bounds.X + totalPadding;
-                offsetX = depthX; // 从前面到右侧面, 向右(正方向)
+                offsetX = depthX; // 从前面到右侧面，向右（正方向）
                 showLeftSide = false;
             }
 
-            if (vAngle > 0) // 向上倾斜, 看到顶面
+            if (vAngle > 0) // 向上倾斜，看到顶面
             {
                 frontTop = bounds.Y + depthY + totalPadding;
-                offsetY = -depthY; // 从前面到顶面, 向上(负方向)
+                offsetY = -depthY; // 从前面到顶面，向上（负方向）
                 showTopSide = true;
             }
-            else // 向下倾斜或水平, 看到底面
+            else // 向下倾斜或水平，看到底面
             {
                 frontTop = bounds.Y + totalPadding;
-                offsetY = depthY; // 从前面到底面, 向下(正方向)
+                offsetY = depthY; // 从前面到底面，向下（正方向）
                 showTopSide = false;
             }
 
@@ -2008,7 +1763,7 @@ namespace FluentControls.Controls
                 DrawCuboidShadow(g, frontRect, offsetX, offsetY, showTopSide, showLeftSide, style);
             }
 
-            // 绘制可见的面(从后到前)
+            // 绘制可见的面（从后到前）
             // 1. 顶面或底面
             if (showTopSide)
             {
@@ -2458,7 +2213,6 @@ namespace FluentControls.Controls
         Trapezoid,         // 梯形
         Polygon,           // 多边形
         Star,              // 星形
-        Arrow,             // 箭头
         Cylinder,          // 圆柱体
         Sphere,            // 椭球体
         Cuboid,            // 六面体
@@ -2470,22 +2224,11 @@ namespace FluentControls.Controls
     /// </summary>
     public enum LineMode
     {
-        Custom,         // 自定义(使用起点和终点)
-        Horizontal,     // 水平线(从左到右)
-        Vertical,       // 垂直线(从上到下)
-        DiagonalDown,   // 对角线(左上到右下)
-        DiagonalUp      // 对角线(右上到左下)
-    }
-
-    /// <summary>
-    /// 箭头方向
-    /// </summary>
-    public enum ArrowDirection
-    {
-        Left,   // 向左
-        Right,  // 向右
-        Up,     // 向上
-        Down    // 向下
+        Custom,         // 自定义（使用起点和终点）
+        Horizontal,     // 水平线（从左到右）
+        Vertical,       // 垂直线（从上到下）
+        DiagonalDown,   // 对角线（左上到右下）
+        DiagonalUp      // 对角线（右上到左下）
     }
 
     /// <summary>
@@ -2687,7 +2430,7 @@ namespace FluentControls.Controls
         }
 
         [Category("内容")]
-        [Description("文本位置(相对于控件的坐标)")]
+        [Description("文本位置（相对于控件的坐标）")]
         [TypeConverter(typeof(PointFConverter))]
         public PointF Position { get; set; }
 
@@ -3096,7 +2839,7 @@ namespace FluentControls.Controls
 
         public VertexCollectionEditorForm(VertexCollection collection, Rectangle bounds, ShapeType type)
         {
-            // 直接克隆现有集合, 不做任何修改
+            // 直接克隆现有集合，不做任何修改
             workingCollection = collection.Clone();
             EditedCollection = new VertexCollection();
             originalBounds = bounds;
@@ -3286,7 +3029,7 @@ namespace FluentControls.Controls
             if (workingCollection.Count > 0)
             {
                 var result = MessageBox.Show(
-                    "当前已有顶点数据, 是否要清空并初始化为默认顶点？",
+                    "当前已有顶点数据，是否要清空并初始化为默认顶点？",
                     "确认",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);

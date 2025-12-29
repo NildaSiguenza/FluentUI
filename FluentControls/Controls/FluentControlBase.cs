@@ -718,54 +718,29 @@ namespace FluentControls
         {
             var path = new GraphicsPath();
 
-            // 验证矩形有效性
-            if (rect.Width <= 0 || rect.Height <= 0)
-            {
-                return path;
-            }
-
             if (radius <= 0)
             {
                 path.AddRectangle(rect);
                 return path;
             }
 
-            // 确保半径不超过矩形的一半
             radius = Math.Min(radius, Math.Min(rect.Width, rect.Height) / 2);
-
-            // 如果半径太小, 直接绘制矩形
-            if (radius < 1)
-            {
-                path.AddRectangle(rect);
-                return path;
-            }
-
             int diameter = radius * 2;
             var arc = new Rectangle(rect.Location, new Size(diameter, diameter));
 
-            try
-            {
-                // 左上
-                path.AddArc(arc, 180, 90);
-                // 右上
-                arc.X = rect.Right - diameter;
-                path.AddArc(arc, 270, 90);
-                // 右下
-                arc.Y = rect.Bottom - diameter;
-                path.AddArc(arc, 0, 90);
-                // 左下
-                arc.X = rect.Left;
-                path.AddArc(arc, 90, 90);
+            // 左上
+            path.AddArc(arc, 180, 90);
+            // 右上
+            arc.X = rect.Right - diameter;
+            path.AddArc(arc, 270, 90);
+            // 右下
+            arc.Y = rect.Bottom - diameter;
+            path.AddArc(arc, 0, 90);
+            // 左下
+            arc.X = rect.Left;
+            path.AddArc(arc, 90, 90);
 
-                path.CloseFigure();
-            }
-            catch
-            {
-                // 如果出错, 返回普通矩形
-                path.Reset();
-                path.AddRectangle(rect);
-            }
-
+            path.CloseFigure();
             return path;
         }
 

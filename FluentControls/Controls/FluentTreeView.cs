@@ -179,7 +179,7 @@ namespace FluentControls.Controls
             set => base.Dock = value;
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(24)]
         [Description("节点高度")]
         public int NodeHeight
@@ -196,7 +196,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(20)]
         [Description("节点缩进")]
         public int NodeIndent
@@ -213,7 +213,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(true)]
         [Description("显示连接线")]
         public bool ShowLines
@@ -229,7 +229,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(true)]
         [Description("显示展开/折叠按钮")]
         public bool ShowPlusMinus
@@ -245,7 +245,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(false)]
         [Description("显示复选框")]
         public bool CheckBoxes
@@ -261,7 +261,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(true)]
         [Description("整行选择")]
         public bool FullRowSelect
@@ -277,7 +277,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(false)]
         [Description("显示搜索框")]
         public bool ShowSearchBox
@@ -294,7 +294,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("TreeView")]
+        [Category("Fluent TreeView")]
         [DefaultValue(false)]
         [Description("允许拖放")]
         public new bool AllowDrop
@@ -751,7 +751,7 @@ namespace FluentControls.Controls
                 int centerY = bounds.Y + bounds.Height / 2;
                 g.DrawLine(pen, bounds.X + 3, centerY, bounds.Right - 3, centerY);
 
-                // 绘制竖线(仅在折叠时)
+                // 绘制竖线（仅在折叠时）
                 if (!expanded)
                 {
                     int centerX = bounds.X + bounds.Width / 2;
@@ -2349,7 +2349,7 @@ namespace FluentControls.Controls
                         var editor = propertyDescriptor.GetEditor(typeof(UITypeEditor)) as UITypeEditor;
                         if (editor == null)
                         {
-                            // 如果没有找到编辑器, 创建一个新的
+                            // 如果没有找到编辑器，创建一个新的
                             editor = new FluentTreeNodeCollectionEditor(typeof(FluentTreeNodeCollection));
                         }
 

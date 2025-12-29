@@ -117,7 +117,7 @@ namespace FluentControls.Controls
 
         #region 属性
 
-        [Category("Dialog")]
+        [Category("Fluent Dialog")]
         [Description("对话框类型")]
         public DialogType DialogType
         {
@@ -129,7 +129,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Dialog")]
+        [Category("Fluent Dialog")]
         [Description("对话框按钮")]
         public DialogButtons DialogButtons
         {
@@ -141,7 +141,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Dialog")]
+        [Category("Fluent Dialog")]
         [Description("消息文本")]
         public string Message
         {
@@ -155,7 +155,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Dialog")]
+        [Category("Fluent Dialog")]
         [Description("输入框默认文本")]
         public string InputText
         {
@@ -169,7 +169,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Dialog")]
+        [Category("Fluent Dialog")]
         [Description("对话框圆角样式")]
         public DwmWindowCorner CornerStyle
         {

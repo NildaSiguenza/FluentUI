@@ -1,1 +1,12 @@
 /Infrastructure/.vs
+/.vs
+/FluentControls/.cr
+/FluentControls/.vs
+/FluentControls/bin
+/FluentControls/obj
+*.pdb
+*.nupkg
+*.bak
+/Infrastructure/obj
+/Infrastructure/bin
+publish-nuget.cmd

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.1</Version>
+    <Authors>Nilda Siguenza</Authors>
+    <Company>Nilda Siguenza</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'UseProjectReferences'">
+    <UseProjectReferences>true</UseProjectReferences>
+  </PropertyGroup>
+</Project>
