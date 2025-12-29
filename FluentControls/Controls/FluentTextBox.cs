@@ -280,7 +280,7 @@ namespace FluentControls.Controls
         }
 
         [Category("Border")]
-        [Description("获得焦点时的边框颜色（留空使用主题色）")]
+        [Description("获得焦点时的边框颜色(留空使用主题色)")]
         public Color BorderFocusedColor
         {
             get => borderFocusedColor;
@@ -487,7 +487,7 @@ namespace FluentControls.Controls
 
         // 重写 Padding 属性以触发布局更新
         [Category("Fluent")]
-        [Description("文本内边距（控制输入区域与控件边缘的距离）")]
+        [Description("文本内边距(控制输入区域与控件边缘的距离)")]
         public new Padding Padding
         {
             get => base.Padding;
@@ -1052,7 +1052,7 @@ namespace FluentControls.Controls
             Color currentBorderColor;
             if (isFocused)
             {
-                // 焦点状态：使用 BorderFocusedColor，如果为空则使用主题色或默认色
+                // 焦点状态：使用 BorderFocusedColor, 如果为空则使用主题色或默认色
                 if (!borderFocusedColor.IsEmpty)
                 {
                     currentBorderColor = borderFocusedColor;
@@ -1072,7 +1072,7 @@ namespace FluentControls.Controls
                 currentBorderColor = borderColor;
             }
 
-            // 根据边框宽度调整矩形（居中边框）
+            // 根据边框宽度调整矩形(居中边框)
             if (borderSize > 1)
             {
                 int offset = borderSize / 2;

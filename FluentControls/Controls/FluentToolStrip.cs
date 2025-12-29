@@ -33,6 +33,7 @@ namespace FluentControls.Controls
         private FluentToolStripItem selectedItem;
 
         // 外观
+        private Color toolStripBackColor = Color.Empty;
         private int itemSpacing = 2;
         private Padding itemPadding = new Padding(2, 0, 2, 0);
         private Color separatorColor = Color.LightGray;
@@ -83,6 +84,24 @@ namespace FluentControls.Controls
                 {
                     orientation = value;
                     PerformLayout();
+                    Invalidate();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 菜单背景色
+        /// </summary>
+        [Category("Appearance")]
+        [Description("工具栏背景颜色")]
+        public Color ToolStripBackColor
+        {
+            get => toolStripBackColor;
+            set
+            {
+                if (toolStripBackColor != value)
+                {
+                    toolStripBackColor = value;
                     Invalidate();
                 }
             }
@@ -262,7 +281,7 @@ namespace FluentControls.Controls
             Invalidate();
         }
 
-        public void ItemStateChanged(FluentToolStripItem item)
+        internal void ItemStateChanged(FluentToolStripItem item)
         {
             Invalidate(item.Bounds);
         }
@@ -481,10 +500,20 @@ namespace FluentControls.Controls
 
         #region 绘制
 
+        private bool ShouldSerializeToolStripBackColor()
+        {
+            return toolStripBackColor != Color.Empty;
+        }
+
+        private void ResetToolStripBackColor()
+        {
+            ToolStripBackColor = Color.Empty;
+        }
+
         protected override void DrawBackground(Graphics g)
         {
             var rect = ClientRectangle;
-            Color bgColor = BackColor;
+            Color bgColor = toolStripBackColor;
 
             if (UseTheme && Theme != null)
             {
@@ -622,6 +651,15 @@ namespace FluentControls.Controls
 
         #endregion
 
+        #region 接口实现
+
+        void IFluentItemContainer.ItemStateChanged(FluentToolStripItem item)
+        {
+            this.ItemStateChanged(item);
+        }
+
+        #endregion
+
         #region 主题
 
         protected override void OnThemeChanged()
@@ -673,7 +711,7 @@ namespace FluentControls.Controls
 
                     foreach (var item in itemsCopy)
                     {
-                        // 如果是控件宿主，移除控件
+                        // 如果是控件宿主, 移除控件
                         if (item is FluentToolStripControlHost controlHost)
                         {
                             if (Controls.Contains(controlHost.Control))
@@ -695,7 +733,7 @@ namespace FluentControls.Controls
     }
 
 
-    #region FluentToolStripItem
+    #region 工具栏项
 
     [TypeConverter(typeof(FluentToolStripItemTypeConverter))]
     [ToolboxItem(false)]
@@ -1121,7 +1159,7 @@ namespace FluentControls.Controls
 
     #endregion
 
-    #region FluentToolStripItemCollection
+    #region 工具栏项集合
 
     public class FluentToolStripItemCollection : IList<FluentToolStripItem>, IList
     {
@@ -1212,7 +1250,7 @@ namespace FluentControls.Controls
 
         public void Clear()
         {
-            // 从后往前删除，避免索引问题
+            // 从后往前删除, 避免索引问题
             for (int i = items.Count - 1; i >= 0; i--)
             {
                 RemoveInternal(items[i], i);
@@ -1236,7 +1274,7 @@ namespace FluentControls.Controls
             // 2. 设置Owner
             item.Owner = owner;
 
-            // 3. 如果是控件宿主，添加控件
+            // 3. 如果是控件宿主, 添加控件
             if (item is FluentToolStripControlHost controlHost && controlHost.Control != null)
             {
                 if (!owner.Controls.Contains(controlHost.Control))
@@ -1265,7 +1303,7 @@ namespace FluentControls.Controls
             // 1. 触发移除事件
             owner?.OnItemRemoved(new FluentToolStripItemEventArgs(item));
 
-            // 2. 如果是控件宿主，移除控件
+            // 2. 如果是控件宿主, 移除控件
             if (item is FluentToolStripControlHost controlHost && controlHost.Control != null)
             {
                 if (owner.Controls.Contains(controlHost.Control))
@@ -1354,7 +1392,7 @@ namespace FluentControls.Controls
     }
     #endregion
 
-    #region FluentToolStripLayoutManager
+    #region 布局管理器
 
     public class FluentToolStripLayoutManager
     {
@@ -1381,7 +1419,7 @@ namespace FluentControls.Controls
             int startX = clientRect.X;
             int startY = clientRect.Y;
 
-            // 如果显示拖动手柄，调整起始位置
+            // 如果显示拖动手柄, 调整起始位置
             if (owner.ShowGripHandle)
             {
                 if (owner.Orientation == Orientation.Horizontal)
@@ -1581,7 +1619,7 @@ namespace FluentControls.Controls
 
     #endregion
 
-    #region FluentToolStripControlHost (ToolStrip宿主基类)
+    #region 工具栏项宿主
 
     public class FluentToolStripControlHost : FluentToolStripItem
     {
@@ -1631,7 +1669,7 @@ namespace FluentControls.Controls
 
             if (Owner != null)
             {
-                // 延迟添加控件，确保Owner已经完全初始化
+                // 延迟添加控件, 确保Owner已经完全初始化
                 if (Owner.IsHandleCreated)
                 {
                     AddControlToOwner();
@@ -1675,7 +1713,7 @@ namespace FluentControls.Controls
             // 更新控件位置
             UpdateControlPosition();
 
-            // 如果控件不可见，绘制占位符
+            // 如果控件不可见, 绘制占位符
             if (!control.Visible && Owner != null)
             {
                 DrawPlaceholder(e.Graphics);
@@ -2264,7 +2302,7 @@ namespace FluentControls.Controls
                 // 添加到集合
                 ToolStrip.Items.Add(item);
 
-                // 如果是控件宿主，确保控件被正确初始化
+                // 如果是控件宿主, 确保控件被正确初始化
                 if (item is FluentToolStripControlHost controlHost)
                 {
                     // 强制更新布局
@@ -3446,7 +3484,7 @@ namespace FluentControls.Controls
             //    collection?.Remove(item);
             //    itemsListBox.Items.Remove(item);
 
-            //    // 如果使用设计器主机，销毁组件
+            //    // 如果使用设计器主机, 销毁组件
             //    IDesignerHost host = serviceProvider?.GetService(typeof(IDesignerHost)) as IDesignerHost;
             //    if (host != null && item.Site != null)
             //    {

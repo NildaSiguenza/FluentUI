@@ -1491,14 +1491,18 @@ namespace FluentControls.Controls
                     scrollBar.Height = Height - 2;
 
                     // 设置滚动条参数
-                    scrollBar.Maximum = totalHeight - visibleHeight;
+                    // VScrollBar 的实际最大滚动值 = Maximum - LargeChange + 1
+                    // 我们希望最大滚动值 = totalHeight - visibleHeight
+                    // 所以 Maximum = totalHeight - visibleHeight + LargeChange - 1
                     scrollBar.LargeChange = visibleHeight;
                     scrollBar.SmallChange = ItemHeight;
+                    scrollBar.Maximum = totalHeight - 1; // 实际最大滚动值 = totalHeight - visibleHeight
 
                     // 确保当前滚动位置有效
-                    if (scrollOffset > scrollBar.Maximum)
+                    var maxScroll = scrollBar.Maximum - scrollBar.LargeChange + 1;
+                    if (scrollOffset > maxScroll)
                     {
-                        scrollOffset = scrollBar.Maximum;
+                        scrollOffset = Math.Max(0, maxScroll);
                         scrollBar.Value = scrollOffset;
                     }
                 }

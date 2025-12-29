@@ -173,7 +173,7 @@ namespace FluentControls.Controls
 
         #region 状态颜色
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("正常状态背景色")]
         public Color? NormalBackColor
         {
@@ -185,7 +185,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("正常状态前景色")]
         public Color? NormalForeColor
         {
@@ -197,7 +197,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("悬停状态背景色")]
         public Color? HoverBackColor
         {
@@ -209,7 +209,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("悬停状态前景色")]
         public Color? HoverForeColor
         {
@@ -221,7 +221,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("按下状态背景色")]
         public Color? PressedBackColor
         {
@@ -233,7 +233,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("按下状态前景色")]
         public Color? PressedForeColor
         {
@@ -245,7 +245,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("禁用状态背景色")]
         public Color? DisabledBackColor
         {
@@ -257,7 +257,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Colors")]
+        [Category("Colors")]
         [Description("禁用状态前景色")]
         public Color? DisabledForeColor
         {
@@ -281,11 +281,11 @@ namespace FluentControls.Controls
 
         #region 事件
 
-        [Category("Fluent Events")]
+        [Category("Events")]
         [Description("按钮被按下时触发")]
         public event EventHandler ButtonPressed;
 
-        [Category("Fluent Events")]
+        [Category("Events")]
         [Description("按钮被释放时触发")]
         public event EventHandler ButtonReleased;
 

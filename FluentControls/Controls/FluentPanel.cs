@@ -10,6 +10,7 @@ using System.Windows.Forms.Design;
 using System.Windows.Forms;
 using FluentControls.Animation;
 using System.ComponentModel.Design;
+using System.Xml.Linq;
 
 namespace FluentControls.Controls
 {
@@ -780,7 +781,7 @@ namespace FluentControls.Controls
             //Todo: 应用主题后的额外处理
             //if (control is FluentControlBase fluentControl && UseTheme)
             //{
-                
+
             //}
         }
 
@@ -1081,8 +1082,13 @@ namespace FluentControls.Controls
         private void OnContentPanelControlAdded(object sender, ControlEventArgs e)
         {
             // 当控件添加到内容面板时, 应用主题
-            if (EnableChildThemeInheritance && UseTheme && e.Control != null)
+            if (EnableChildThemeInheritance && UseTheme && e.Control is Control c)
             {
+                // 进一步判断添加的控件是否启用了主题
+                if (c is FluentControlBase fc && !fc.UseTheme)
+                {
+                    return;
+                }
                 ApplyThemeToControl(e.Control, true);
             }
         }
@@ -1146,15 +1152,16 @@ namespace FluentControls.Controls
     public class FluentPanelActionList : DesignerActionList
     {
         private FluentPanel panel;
-        private DesignerActionUIService designerActionUIService;
+        private DesignerActionUIService designerService;
 
         public FluentPanelActionList(IComponent component) : base(component)
         {
             panel = component as FluentPanel;
-            designerActionUIService = GetService(typeof(DesignerActionUIService)) as DesignerActionUIService;
+            designerService = GetService(typeof(DesignerActionUIService)) as DesignerActionUIService;
         }
 
-        // 属性
+        #region 属性
+
         public bool UseTheme
         {
             get => panel.UseTheme;
@@ -1197,7 +1204,29 @@ namespace FluentControls.Controls
             set => SetProperty("EnableChildThemeInheritance", value);
         }
 
-        // 方法
+        #endregion
+
+        #region 方法
+
+        [DisplayName("在父容器中停靠")]
+        [Description("将控件停靠填充父容器")]
+        public void DockFill()
+        {
+            if (panel.Parent != null)
+            {
+                PropertyDescriptor prop = GetPropertyByName("Dock");
+                prop.SetValue(panel, DockStyle.Fill);
+            }
+        }
+
+        [DisplayName("取消停靠")]
+        [Description("取消控件的停靠")]
+        public void UndockControl()
+        {
+            PropertyDescriptor prop = GetPropertyByName("Dock");
+            prop.SetValue(panel, DockStyle.None);
+        }
+
         public void ApplyLightTheme()
         {
             panel.ThemeName = "FluentLight";
@@ -1232,7 +1261,21 @@ namespace FluentControls.Controls
             RefreshDesigner();
         }
 
-        // 辅助方法
+        #endregion
+
+        #region 辅助方法
+
+        private PropertyDescriptor GetPropertyByName(string propName)
+        {
+            PropertyDescriptor prop = TypeDescriptor.GetProperties(panel)[propName];
+            if (prop == null)
+            {
+                throw new ArgumentException("未找到属性", propName);
+            }
+
+            return prop;
+        }
+
         private void SetProperty(string propertyName, object value)
         {
             PropertyDescriptor property = TypeDescriptor.GetProperties(panel)[propertyName];
@@ -1241,13 +1284,26 @@ namespace FluentControls.Controls
 
         private void RefreshDesigner()
         {
-            designerActionUIService?.Refresh(Component);
+            designerService?.Refresh(Component);
         }
+
+        #endregion
 
         // 获取项目列表
         public override DesignerActionItemCollection GetSortedActionItems()
         {
             var items = new DesignerActionItemCollection();
+
+            items.Add(new DesignerActionHeaderItem("操作"));
+
+            if (panel.Dock == DockStyle.Fill)
+            {
+                items.Add(new DesignerActionMethodItem(this, "UndockControl", "取消停靠", "操作", true));
+            }
+            else
+            {
+                items.Add(new DesignerActionMethodItem(this, "DockFill", "在父容器中停靠", "操作", true));
+            }
 
             // 主题设置组
             items.Add(new DesignerActionHeaderItem("主题设置"));

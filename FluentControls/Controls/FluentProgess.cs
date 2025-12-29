@@ -8,15 +8,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.ComponentModel.Design;
-using System.Drawing.Design;
-using System.Windows.Forms.Design;
 
 namespace FluentControls.Controls
 {
+    [ToolboxItem(true)]
     [DefaultProperty("Progress")]
     [DefaultEvent("ProgressChanged")]
-    [Designer(typeof(FluentProgressDesigner))]
     public class FluentProgress : FluentControlBase
     {
         private ProgressMode mode = ProgressMode.Determinate;
@@ -33,7 +30,7 @@ namespace FluentControls.Controls
         // 循环模式动画
         private Timer indeterminateTimer;
         private float indeterminatePosition = 0;
-        private int indeterminateSpeed = 20;
+        private int indeterminateSpeed = 20; // 像素/秒
 
         // 文本显示
         private bool showProgressText = true;
@@ -50,11 +47,6 @@ namespace FluentControls.Controls
         private Color progressBarColor = Color.Empty;
         private Color progressBackColor = Color.Empty;
         private bool useGradient = true;
-
-        // 边框配置
-        private bool showBorder = false;
-        private Color borderColor = Color.Empty;
-        private int borderWidth = 1;
 
         // 分段模式
         private int segmentCount = 10;
@@ -75,18 +67,13 @@ namespace FluentControls.Controls
 
             InitializeIndeterminateTimer();
             progressFont = new Font(Font.FontFamily, Font.Size, FontStyle.Regular);
-
-            // 设置透明背景支持
-            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
         }
+
 
         #region 属性
 
-        /// <summary>
-        /// 进度条模式
-        /// </summary>
         [Category("Progress")]
-        [Description("进度条模式：Determinate(进度模式) 或 Indeterminate(循环模式)")]
+        [Description("进度条模式")]
         [DefaultValue(ProgressMode.Determinate)]
         public ProgressMode Mode
         {
@@ -102,9 +89,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 进度条样式
-        /// </summary>
         [Category("Progress")]
         [Description("进度条样式")]
         [DefaultValue(ProgressStyle.Linear)]
@@ -116,15 +100,11 @@ namespace FluentControls.Controls
                 if (style != value)
                 {
                     style = value;
-                    UpdateStyleAppearance();
                     Invalidate();
                 }
             }
         }
 
-        /// <summary>
-        /// 当前进度值
-        /// </summary>
         [Category("Progress")]
         [Description("当前进度值")]
         [DefaultValue(0.0)]
@@ -143,9 +123,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 最小值
-        /// </summary>
         [Category("Progress")]
         [Description("进度最小值")]
         [DefaultValue(0.0)]
@@ -167,9 +144,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 最大值
-        /// </summary>
         [Category("Progress")]
         [Description("进度最大值")]
         [DefaultValue(100.0)]
@@ -191,9 +165,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 单个任务
-        /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public IProgressTask SingleTask
@@ -219,18 +190,10 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 任务集合
-        /// </summary>
-        [Category("Progress")]
-        [Description("任务集合")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-        [Editor(typeof(ProgressTaskCollectionEditor), typeof(UITypeEditor))]
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ProgressTaskCollection Tasks => tasks;
 
-        /// <summary>
-        /// 是否自动从任务更新进度
-        /// </summary>
         [Category("Progress")]
         [Description("是否自动从挂接的任务更新进度")]
         [DefaultValue(true)]
@@ -250,81 +213,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 是否显示边框
-        /// </summary>
-        [Category("Border")]
-        [Description("是否显示边框")]
-        [DefaultValue(false)]
-        public bool ShowBorder
-        {
-            get => showBorder;
-            set
-            {
-                if (showBorder != value)
-                {
-                    showBorder = value;
-                    Invalidate();
-                }
-            }
-        }
-
-        /// <summary>
-        /// 边框颜色
-        /// </summary>
-        [Category("Border")]
-        [Description("边框颜色(空表示使用主题色)")]
-        public Color BorderColor
-        {
-            get => borderColor;
-            set
-            {
-                if (borderColor != value)
-                {
-                    borderColor = value;
-                    if (showBorder)
-                    {
-                        Invalidate();
-                    }
-                }
-            }
-        }
-
-        private bool ShouldSerializeBorderColor()
-        {
-            return borderColor != Color.Empty;
-        }
-
-        private void ResetBorderColor()
-        {
-            BorderColor = Color.Empty;
-        }
-
-        /// <summary>
-        /// 边框宽度
-        /// </summary>
-        [Category("Border")]
-        [Description("边框宽度")]
-        [DefaultValue(1)]
-        public int BorderWidth
-        {
-            get => borderWidth;
-            set
-            {
-                if (borderWidth != value && value > 0)
-                {
-                    borderWidth = value;
-                    if (showBorder)
-                    {
-                        Invalidate();
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 是否显示进度文本
-        /// </summary>
         [Category("Text")]
         [Description("是否显示进度文本")]
         [DefaultValue(true)]
@@ -341,9 +229,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 是否显示百分比
-        /// </summary>
         [Category("Text")]
         [Description("是否显示百分比")]
         [DefaultValue(true)]
@@ -360,9 +245,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 自定义文本
-        /// </summary>
         [Category("Text")]
         [Description("自定义显示文本")]
         [DefaultValue("")]
@@ -379,9 +261,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 前缀文本
-        /// </summary>
         [Category("Text")]
         [Description("进度文本前缀")]
         [DefaultValue("")]
@@ -398,9 +277,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 后缀文本
-        /// </summary>
         [Category("Text")]
         [Description("进度文本后缀")]
         [DefaultValue("")]
@@ -417,9 +293,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 进度文本字体
-        /// </summary>
         [Category("Text")]
         [Description("进度文本字体")]
         public Font ProgressFont
@@ -435,9 +308,6 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 进度文本颜色
-        /// </summary>
         [Category("Text")]
         [Description("进度文本颜色(空表示自动)")]
         public Color ProgressTextColor
@@ -463,10 +333,7 @@ namespace FluentControls.Controls
             ProgressTextColor = Color.Empty;
         }
 
-        /// <summary>
-        /// 文本位置
-        /// </summary>
-        [Category("Text")]
+        [Category("Progress")]
         [Description("进度文本显示位置")]
         [DefaultValue(ProgressTextPosition.Center)]
         public ProgressTextPosition TextPosition
@@ -485,7 +352,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 是否显示任务信息
         /// </summary>
-        [Category("Text")]
+        [Category("Progress")]
         [Description("是否显示当前任务信息")]
         [DefaultValue(false)]
         public bool ShowTaskInfo
@@ -504,7 +371,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 进度条颜色
         /// </summary>
-        [Category("Colors")]
+        [Category("Progress")]
         [Description("进度条颜色(空表示使用主题色)")]
         public Color ProgressBarColor
         {
@@ -532,7 +399,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 进度条背景色
         /// </summary>
-        [Category("Colors")]
+        [Category("Progress")]
         [Description("进度条背景色(空表示使用主题色)")]
         public Color ProgressBackColor
         {
@@ -784,12 +651,7 @@ namespace FluentControls.Controls
         /// </summary>
         public double GetPercentage()
         {
-            if (maximum <= minimum)
-            {
-                return 0;
-            }
-
-            return (progress - minimum) / (maximum - minimum) * 100;
+            return maximum <= minimum ? 0 : (progress - minimum) / (maximum - minimum) * 100;
         }
 
         #endregion
@@ -816,26 +678,9 @@ namespace FluentControls.Controls
             }
         }
 
-        private void UpdateStyleAppearance()
-        {
-            if (style == ProgressStyle.Circular)
-            {
-                // 圆形样式时设置透明背景
-                BackColor = Color.Transparent;
-            }
-            else
-            {
-                // 其他样式恢复默认背景色
-                if (BackColor == Color.Transparent)
-                {
-                    BackColor = SystemColors.Control;
-                }
-            }
-        }
-
         private void OnIndeterminateTick(object sender, EventArgs e)
         {
-            indeterminatePosition += (indeterminateSpeed * 16 / 1000f) / Math.Max(Width, Height);
+            indeterminatePosition += (indeterminateSpeed * 16 / 1000f) / Width;
             if (indeterminatePosition > 1.0f)
             {
                 indeterminatePosition = 0;
@@ -879,42 +724,17 @@ namespace FluentControls.Controls
 
         private Color GetActualProgressBarColor()
         {
-            if (progressBarColor != Color.Empty)
-            {
-                return progressBarColor;
-            }
-
-            return GetThemeColor(c => c.Primary, SystemColors.Highlight);
+            return progressBarColor != Color.Empty ? progressBarColor : GetThemeColor(c => c.Primary, SystemColors.Highlight);
         }
 
         private Color GetActualProgressBackColor()
         {
-            if (progressBackColor != Color.Empty)
-            {
-                return progressBackColor;
-            }
-
-            return GetThemeColor(c => c.BackgroundSecondary, SystemColors.ControlLight);
+            return progressBackColor != Color.Empty ? progressBackColor : GetThemeColor(c => c.BackgroundSecondary, SystemColors.ControlLight);
         }
 
         private Color GetActualTextColor()
         {
-            if (progressTextColor != Color.Empty)
-            {
-                return progressTextColor;
-            }
-
-            return GetThemeColor(c => c.TextPrimary, ForeColor);
-        }
-
-        private Color GetActualBorderColor()
-        {
-            if (borderColor != Color.Empty)
-            {
-                return borderColor;
-            }
-
-            return GetThemeColor(c => c.Border, SystemColors.ControlDark);
+            return progressTextColor != Color.Empty ? progressTextColor : GetThemeColor(c => c.TextPrimary, ForeColor);
         }
 
         private string GetProgressText()
@@ -971,31 +791,29 @@ namespace FluentControls.Controls
 
         protected override void DrawBackground(Graphics g)
         {
-            // 圆形样式时不绘制背景
-            if (style == ProgressStyle.Circular)
-            {
-                // 清除背景为透明
-                if (Parent != null)
-                {
-                    using (var brush = new SolidBrush(Parent.BackColor))
-                    {
-                        g.FillRectangle(brush, ClientRectangle);
-                    }
-                }
-                DrawCircularBackground(g, GetActualProgressBackColor());
-                return;
-            }
-
-            // 其他样式绘制背景
             var backColor = GetActualProgressBackColor();
             int cornerRadius = UseTheme && Theme?.Elevation != null
                 ? Theme.Elevation.CornerRadiusSmall
                 : 4;
 
-            using (var brush = new SolidBrush(backColor))
-            using (var path = GetRoundedRectangle(ClientRectangle, cornerRadius))
+            switch (style)
             {
-                g.FillPath(brush, path);
+                case ProgressStyle.Linear:
+                case ProgressStyle.Segmented:
+                    using (var brush = new SolidBrush(backColor))
+                    using (var path = GetRoundedRectangle(ClientRectangle, cornerRadius))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                    break;
+
+                case ProgressStyle.Circular:
+                    using (var brush = new SolidBrush(BackColor))
+                    {
+                        g.FillEllipse(brush, ClientRectangle);
+                    }
+                    DrawCircularBackground(g, backColor);
+                    break;
             }
         }
 
@@ -1040,7 +858,6 @@ namespace FluentControls.Controls
                     break;
             }
 
-            // 绘制进度文本
             if (showProgressText && mode == ProgressMode.Determinate)
             {
                 DrawProgressText(g);
@@ -1049,34 +866,21 @@ namespace FluentControls.Controls
 
         protected override void DrawBorder(Graphics g)
         {
-            if (!showBorder)
+            // 线性和分段样式不需要边框
+            if (style == ProgressStyle.Linear || style == ProgressStyle.Segmented)
             {
                 return;
             }
 
-            var borderCol = GetActualBorderColor();
-            int cornerRadius = UseTheme && Theme?.Elevation != null
-                ? Theme.Elevation.CornerRadiusSmall
-                : 4;
-
-            using (var pen = new Pen(borderCol, borderWidth))
+            // 圆形样式可以添加边框
+            if (style == ProgressStyle.Circular)
             {
-                if (style == ProgressStyle.Circular)
+                var borderColor = GetThemeColor(c => c.Border, SystemColors.ControlDark);
+                using (var pen = new Pen(borderColor, 1))
                 {
-                    // 圆形样式绘制圆形边框
                     var rect = ClientRectangle;
-                    rect.Inflate(-borderWidth / 2, -borderWidth / 2);
+                    rect.Inflate(-1, -1);
                     g.DrawEllipse(pen, rect);
-                }
-                else
-                {
-                    // 其他样式绘制圆角矩形边框
-                    var rect = ClientRectangle;
-                    rect.Inflate(-borderWidth / 2, -borderWidth / 2);
-                    using (var path = GetRoundedRectangle(rect, cornerRadius))
-                    {
-                        g.DrawPath(pen, path);
-                    }
                 }
             }
         }
@@ -1212,6 +1016,7 @@ namespace FluentControls.Controls
                 float x = i * (segmentWidth + segmentSpacing);
                 var segmentRect = new RectangleF(x, 0, segmentWidth, Height);
 
+                // 计算当前分段的亮度
                 int distance = Math.Abs(i - activeSegment);
                 float alpha = distance == 0 ? 1.0f : (distance == 1 ? 0.5f : 0.2f);
 
@@ -1279,7 +1084,7 @@ namespace FluentControls.Controls
 
         private Rectangle GetCircularRect()
         {
-            int size = Math.Min(Width, Height) - circularThickness - (showBorder ? borderWidth * 2 : 0);
+            int size = Math.Min(Width, Height) - circularThickness;
             int x = (Width - size) / 2;
             int y = (Height - size) / 2;
             return new Rectangle(x, y, size, size);
@@ -1301,38 +1106,26 @@ namespace FluentControls.Controls
             var textSize = g.MeasureString(text, progressFont);
 
             PointF location;
-
-            if (style == ProgressStyle.Circular)
+            switch (textPosition)
             {
-                // 圆形样式始终居中显示
-                location = new PointF(
-                    (Width - textSize.Width) / 2,
-                    (Height - textSize.Height) / 2);
-            }
-            else
-            {
-                // 其他样式根据位置属性
-                switch (textPosition)
-                {
-                    case ProgressTextPosition.Left:
-                        location = new PointF(
-                            4,
-                            (Height - textSize.Height) / 2);
-                        break;
+                case ProgressTextPosition.Left:
+                    location = new PointF(
+                        4,
+                        (Height - textSize.Height) / 2);
+                    break;
 
-                    case ProgressTextPosition.Right:
-                        location = new PointF(
-                            Width - textSize.Width - 4,
-                            (Height - textSize.Height) / 2);
-                        break;
+                case ProgressTextPosition.Right:
+                    location = new PointF(
+                        Width - textSize.Width - 4,
+                        (Height - textSize.Height) / 2);
+                    break;
 
-                    case ProgressTextPosition.Center:
-                    default:
-                        location = new PointF(
-                            (Width - textSize.Width) / 2,
-                            (Height - textSize.Height) / 2);
-                        break;
-                }
+                case ProgressTextPosition.Center:
+                default:
+                    location = new PointF(
+                        (Width - textSize.Width) / 2,
+                        (Height - textSize.Height) / 2);
+                    break;
             }
 
             // 绘制文本阴影(提高可读性)
@@ -1396,15 +1189,22 @@ namespace FluentControls.Controls
     }
 
 
-    #region 枚举和辅助类
+#region 枚举和辅助类
 
-    /// <summary>
-    /// 进度条模式
-    /// </summary>
-    public enum ProgressMode
+/// <summary>
+/// 进度条模式
+/// </summary>
+public enum ProgressMode
     {
-        Indeterminate,      // 循环模式(不确定进度)
-        Determinate         // 进度模式(确定进度)
+        /// <summary>
+        /// 循环模式(不确定进度)
+        /// </summary>
+        Indeterminate,
+
+        /// <summary>
+        /// 进度模式(确定进度)
+        /// </summary>
+        Determinate
     }
 
     /// <summary>
@@ -1412,9 +1212,20 @@ namespace FluentControls.Controls
     /// </summary>
     public enum ProgressStyle
     {
-        Linear,             // 线性进度条
-        Circular,           // 圆形进度条
-        Segmented           // 分段进度条
+        /// <summary>
+        /// 线性进度条
+        /// </summary>
+        Linear,
+
+        /// <summary>
+        /// 圆形进度条
+        /// </summary>
+        Circular,
+
+        /// <summary>
+        /// 分段进度条
+        /// </summary>
+        Segmented
     }
 
     /// <summary>
@@ -1461,7 +1272,6 @@ namespace FluentControls.Controls
     /// <summary>
     /// 进度任务实现
     /// </summary>
-    [TypeConverter(typeof(ProgressTaskConverter))]
     public class ProgressTask : IProgressTask
     {
         private string name = "";
@@ -1480,18 +1290,12 @@ namespace FluentControls.Controls
             this.weight = Math.Max(0, weight);
         }
 
-        [Category("任务")]
-        [Description("任务名称")]
-        [DefaultValue("")]
         public string Name
         {
             get => name;
             set => name = value ?? "";
         }
 
-        [Category("任务")]
-        [Description("任务进度(0-100)")]
-        [DefaultValue(0.0)]
         public double Progress
         {
             get => progress;
@@ -1506,9 +1310,6 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("任务")]
-        [Description("任务权重")]
-        [DefaultValue(1.0)]
         public double Weight
         {
             get => weight;
@@ -1523,6 +1324,7 @@ namespace FluentControls.Controls
             }
         }
 
+
         protected virtual void OnProgressChanged()
         {
             ProgressChanged?.Invoke(this, EventArgs.Empty);
@@ -1535,44 +1337,7 @@ namespace FluentControls.Controls
 
         public override string ToString()
         {
-            return string.IsNullOrEmpty(name)
-                ? $"Task (Progress: {progress:F1}%, Weight: {weight:F2})"
-                : $"{name} (Progress: {progress:F1}%, Weight: {weight:F2})";
-        }
-    }
-
-    public class ProgressTaskConverter : ExpandableObjectConverter
-    {
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
-        {
-            if (destinationType == typeof(string))
-            {
-                return true;
-            }
-
-            return base.CanConvertTo(context, destinationType);
-        }
-
-        public override object ConvertTo(ITypeDescriptorContext context,
-            System.Globalization.CultureInfo culture, object value, Type destinationType)
-        {
-            if (destinationType == typeof(string) && value is ProgressTask task)
-            {
-                return task.ToString();
-            }
-
-            return base.ConvertTo(context, culture, value, destinationType);
-        }
-
-        public override bool GetPropertiesSupported(ITypeDescriptorContext context)
-        {
-            return true;
-        }
-
-        public override PropertyDescriptorCollection GetProperties(
-            ITypeDescriptorContext context, object value, Attribute[] attributes)
-        {
-            return TypeDescriptor.GetProperties(typeof(ProgressTask), attributes);
+            return $"{Name} ({Progress:F1}%, Weight: {Weight:F2})";
         }
     }
 
@@ -1710,66 +1475,6 @@ namespace FluentControls.Controls
         {
             Add(task);
             NormalizeWeights();
-        }
-    }
-
-    #endregion
-
-    #region 设计时支持
-
-    /// <summary>
-    /// 任务集合编辑器
-    /// </summary>
-    public class ProgressTaskCollectionEditor : CollectionEditor
-    {
-        public ProgressTaskCollectionEditor(Type type) : base(type)
-        {
-        }
-
-        protected override Type CreateCollectionItemType()
-        {
-            return typeof(ProgressTask);
-        }
-
-        protected override object CreateInstance(Type itemType)
-        {
-            return new ProgressTask($"Task {DateTime.Now.Ticks % 1000}", 1.0);
-        }
-
-        protected override string GetDisplayText(object value)
-        {
-            if (value is ProgressTask task)
-            {
-                return task.ToString();
-            }
-            return base.GetDisplayText(value);
-        }
-
-        protected override Type[] CreateNewItemTypes()
-        {
-            return new Type[] { typeof(ProgressTask) };
-        }
-    }
-
-    public class FluentProgressDesigner : ControlDesigner
-    {
-        public override SelectionRules SelectionRules
-        {
-            get
-            {
-                var progress = Control as FluentProgress;
-                if (progress != null && progress.Style == ProgressStyle.Circular)
-                {
-                    // 圆形样式保持宽高比
-                    return SelectionRules.Moveable | SelectionRules.Visible;
-                }
-                return base.SelectionRules;
-            }
-        }
-
-        protected override void PreFilterProperties(System.Collections.IDictionary properties)
-        {
-            base.PreFilterProperties(properties);
         }
     }
 
