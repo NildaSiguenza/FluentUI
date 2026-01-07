@@ -23,6 +23,9 @@ namespace FluentControls.Controls
         private TextBox textBox;
         private Button dropButton;
         private FluentDropDownList dropDownList;
+        //使用 ToolStripDropDown 承载下拉列表
+        private ToolStripDropDown dropDownContainer;
+        private ToolStripControlHost dropDownHost;
 
         private ItemCollection items;
         private IList externalDataSource;
@@ -43,6 +46,7 @@ namespace FluentControls.Controls
         private string separator = ", ";
         private bool isSearching = false; // 是否正在搜索
         private string lastSearchText = ""; // 上次搜索文本
+        private bool isRefreshing = false;
 
         #region 事件
 
@@ -113,10 +117,37 @@ namespace FluentControls.Controls
             // 下拉列表
             dropDownList = new FluentDropDownList(this)
             {
-                Visible = false
+                Visible = true
             };
             dropDownList.ItemClick += OnDropDownItemClick;
             dropDownList.MultiSelectChanged += OnDropDownMultiSelectChanged;
+
+            dropDownContainer = new ToolStripDropDown
+            {
+                AutoSize = false,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+
+            dropDownHost = new ToolStripControlHost(dropDownList)
+            {
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                AutoSize = false
+            };
+
+            dropDownContainer.Items.Add(dropDownHost);
+
+            // 监听容器关闭事件
+            dropDownContainer.Closed += (s, e) =>
+            {
+                if (isDroppedDown)
+                {
+                    isDroppedDown = false;
+                    dropButton.Text = "▼";
+                    DropDownClosed?.Invoke(this, EventArgs.Empty);
+                }
+            };
 
             Controls.Add(textBox);
             Controls.Add(dropButton);
@@ -319,7 +350,9 @@ namespace FluentControls.Controls
         }
 
 
-        [Browsable(false)]
+        [Category("Behavior")]
+        [Description("选中项的索引")]
+        [DefaultValue(-1)]
         public int SelectedIndex
         {
             get
@@ -338,6 +371,8 @@ namespace FluentControls.Controls
                 {
                     SelectedItem = itemList[value];
                 }
+                CloseDropDown();
+                Invalidate();
             }
         }
 
@@ -584,6 +619,29 @@ namespace FluentControls.Controls
             Invalidate();
         }
 
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (dropDownContainer != null)
+                {
+                    dropDownContainer.Dispose();
+                    dropDownContainer = null;
+                }
+
+                if (dropDownList != null)
+                {
+                    dropDownList.Dispose();
+                    dropDownList = null;
+                }
+            }
+            base.Dispose(disposing);
+        }
+
         #endregion
 
         #region 重写Control方法
@@ -594,15 +652,15 @@ namespace FluentControls.Controls
             UpdateLayout();
         }
 
-        protected override void OnParentChanged(EventArgs e)
-        {
-            base.OnParentChanged(e);
+        //protected override void OnParentChanged(EventArgs e)
+        //{
+        //    base.OnParentChanged(e);
 
-            if (Parent != null && dropDownList.Parent == null)
-            {
-                Parent.Controls.Add(dropDownList);
-            }
-        }
+        //    if (Parent != null && dropDownList.Parent == null)
+        //    {
+        //        Parent.Controls.Add(dropDownList);
+        //    }
+        //}
 
         #endregion
 
@@ -616,8 +674,9 @@ namespace FluentControls.Controls
             textBox.Location = new Point(padding, (Height - textBox.Height) / 2);
             textBox.Width = Width - buttonWidth - padding * 2;
 
-            dropButton.Size = new Size(buttonWidth, Height - 2);
-            dropButton.Location = new Point(Width - buttonWidth - 1, 1);
+            var buttonHeight = Height - 4;
+            dropButton.Size = new Size(buttonWidth, buttonHeight);
+            dropButton.Location = new Point(Width - buttonWidth - 1, (Height - buttonHeight) / 2);
         }
 
         private void UpdateDropDownSize()
@@ -629,17 +688,31 @@ namespace FluentControls.Controls
 
             var width = dropDownWidth > 0 ? dropDownWidth : Width;
 
-            // 计算高度：显示dropDownItemCount个项, 但不超过实际项数
+            // 计算高度
             var visibleItems = Math.Min(dropDownItemCount, dropDownList.Items.Count);
             var height = visibleItems * itemHeight + 2;
 
-            // 确保至少显示一个项的高度
             if (height < itemHeight + 2)
             {
                 height = itemHeight + 2;
             }
 
             dropDownList.Size = new Size(width, height);
+
+            // 同时更新容器大小（如果已经显示）
+            if (isDroppedDown && dropDownHost != null)
+            {
+                dropDownHost.Size = dropDownList.Size;
+                if (!dropDownAnimationDuration.Equals(0))
+                {
+                    // 如果正在显示且有动画，不要突然改变大小
+                }
+                else
+                {
+                    dropDownContainer.Size = new Size(width, height);
+                }
+            }
+
             dropDownList.UpdateScrollBar();
         }
 
@@ -665,21 +738,36 @@ namespace FluentControls.Controls
 
         private void RefreshItems()
         {
-            dropDownList.Items.Clear();
-
-            var itemList = GetCurrentItemList();
-
-            foreach (var item in itemList)
+            // 防止重复刷新
+            if (isRefreshing)
             {
-                dropDownList.Items.Add(new DropDownItem
-                {
-                    Value = item,
-                    Text = GetItemText(item),
-                    IsSelected = selectedItems.Contains(item)
-                });
+                return;
             }
 
-            UpdateDropDownSize();
+            try
+            {
+                isRefreshing = true;
+
+                dropDownList.Items.Clear();
+
+                var itemList = GetCurrentItemList();
+
+                foreach (var item in itemList)
+                {
+                    dropDownList.Items.Add(new DropDownItem
+                    {
+                        Value = item,
+                        Text = GetItemText(item),
+                        IsSelected = selectedItems.Contains(item)
+                    });
+                }
+
+                UpdateDropDownSize();
+            }
+            finally
+            {
+                isRefreshing = false;
+            }
         }
 
         private string GetItemText(object item)
@@ -737,7 +825,6 @@ namespace FluentControls.Controls
                 RefreshItems();
                 isSearching = false;
 
-                // 找到并选中匹配项
                 var searchText = textBox.Text;
                 if (!string.IsNullOrEmpty(searchText))
                 {
@@ -753,31 +840,46 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 计算位置
-            var pt = Parent.PointToClient(PointToScreen(new Point(0, Height)));
-            dropDownList.Location = pt;
-
             dropDownList.LockScrollBar();
 
-            // 显示动画
-            dropDownList.Height = 0;
-            dropDownList.Visible = true;
-            dropDownList.BringToFront();
+            // 计算下拉列表的大小
+            var dropHeight = GetDropDownHeight();
+            var dropWidth = dropDownWidth > 0 ? dropDownWidth : Width;
 
+            dropDownList.Size = new Size(dropWidth, dropHeight);
+            dropDownHost.Size = dropDownList.Size;
+            dropDownContainer.Size = new Size(dropWidth, dropHeight);
+
+            // 计算显示位置
+            var screenPoint = PointToScreen(new Point(0, Height));
+
+            // 检查是否超出屏幕底部，如果超出则向上显示
+            var screen = Screen.FromControl(this);
+            if (screenPoint.Y + dropHeight > screen.WorkingArea.Bottom)
+            {
+                // 向上显示
+                screenPoint.Y = PointToScreen(new Point(0, 0)).Y - dropHeight;
+            }
+
+            // 显示下拉容器
             if (dropDownAnimationDuration > 0)
             {
-                AnimationManager.AnimateSize(dropDownList,
-                    new Size(dropDownList.Width, GetDropDownHeight()),
+                // 有动画效果
+                dropDownContainer.Height = 0;
+                dropDownContainer.Show(screenPoint);
+
+                AnimationManager.AnimateSize(dropDownContainer,
+                    new Size(dropWidth, dropHeight),
                     dropDownAnimationDuration, Easing.CubicOut, () =>
                     {
-                        // 修正动画显示时出现滚动条的问题
                         dropDownList.UnlockScrollBar();
                     });
             }
             else
             {
                 // 无动画直接显示
-                dropDownList.Size = new Size(dropDownList.Width, GetDropDownHeight());
+                dropDownContainer.Show(screenPoint);
+                dropDownList.UnlockScrollBar();
             }
 
             dropButton.Text = "▲";
@@ -792,24 +894,23 @@ namespace FluentControls.Controls
             }
 
             isDroppedDown = false;
-
             dropDownList.LockScrollBar();
 
             if (dropDownAnimationDuration > 0)
             {
-                AnimationManager.AnimateSize(dropDownList,
-                    new Size(dropDownList.Width, 0),
+                AnimationManager.AnimateSize(dropDownContainer,
+                    new Size(dropDownContainer.Width, 0),
                     dropDownAnimationDuration, Easing.CubicIn,
                     () =>
                     {
-                        dropDownList.Visible = false;
+                        dropDownContainer.Close();
                         dropDownList.UnlockScrollBar();
                     });
             }
             else
             {
-                // 无动画直接隐藏
-                dropDownList.Visible = false;
+                dropDownContainer.Close();
+                dropDownList.UnlockScrollBar();
             }
 
             dropButton.Text = "▼";

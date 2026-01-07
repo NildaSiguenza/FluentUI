@@ -2041,8 +2041,9 @@ namespace FluentControls.Controls
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         public FluentComboBox ComboBox => (FluentComboBox)Control;
 
+        //[Editor("System.Windows.Forms.Design.StringCollectionEditor, System.Design", typeof(UITypeEditor))]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-        [Editor("System.Windows.Forms.Design.StringCollectionEditor, System.Design", typeof(UITypeEditor))]
+        [Browsable(false)]
         public ItemCollection Items
         {
             get => ComboBox.Items;
