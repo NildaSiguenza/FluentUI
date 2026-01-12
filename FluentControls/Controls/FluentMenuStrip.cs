@@ -735,7 +735,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 自定义宽度（0为自动）
+        /// 自定义宽度(0为自动)
         /// </summary>
         [Category("Layout")]
         [DefaultValue(0)]

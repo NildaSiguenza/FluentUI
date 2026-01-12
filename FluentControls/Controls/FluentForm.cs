@@ -627,7 +627,7 @@ namespace FluentControls.Controls
             }
 
             // 恢复布局
-            ResumeLayout(false);
+            ResumeLayout();
             Invalidate();
         }
 

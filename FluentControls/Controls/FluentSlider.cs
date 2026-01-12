@@ -230,7 +230,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 步长（离散模式）
+        /// 步长(离散模式)
         /// </summary>
         [Category("Slider")]
         [DefaultValue(10.0)]

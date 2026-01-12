@@ -685,6 +685,14 @@ namespace FluentControls.Controls
 
         #region 方法
 
+        public void SelectAll()
+        {
+            if (innerTextBox != null)
+            {
+                innerTextBox.SelectAll();
+            }
+        }
+
         private void UpdateLayout()
         {
             if (innerTextBox == null)
@@ -970,8 +978,7 @@ namespace FluentControls.Controls
 
         private string GetPinyin(string chinese)
         {
-            // 简化的拼音转换, 实际使用时可以引入专门的拼音库
-            // 这里仅作示例
+            // Todo: 拼音转换
             return chinese;
         }
 

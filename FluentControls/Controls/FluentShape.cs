@@ -256,17 +256,17 @@ namespace FluentControls.Controls
         public ArrowDirection ArrowDirection { get; set; } = ArrowDirection.Right;
 
         [Category("Arrow")]
-        [Description("箭头头部宽度比例（0-1）")]
+        [Description("箭头头部宽度比例(0-1)")]
         [DefaultValue(0.4f)]
         public float ArrowHeadWidthRatio { get; set; } = 0.4f;
 
         [Category("Arrow")]
-        [Description("箭头尾部宽度比例（0-1）")]
+        [Description("箭头尾部宽度比例(0-1)")]
         [DefaultValue(0.6f)]
         public float ArrowTailWidthRatio { get; set; } = 0.6f;
 
         [Category("Arrow")]
-        [Description("箭头尾部缺口深度比例（0-1）")]
+        [Description("箭头尾部缺口深度比例(0-1)")]
         [DefaultValue(0.2f)]
         public float TailNotchDepthRatio { get; set; } = 0.2f;
 
@@ -1400,17 +1400,17 @@ namespace FluentControls.Controls
         public ArrowDirection Direction { get; set; } = ArrowDirection.Right;
 
         /// <summary>
-        /// 箭头头部宽度比例（0-1, 相对于整体宽度）
+        /// 箭头头部宽度比例(0-1, 相对于整体宽度)
         /// </summary>
         public float ArrowHeadWidthRatio { get; set; } = 0.4f;
 
         /// <summary>
-        /// 箭头尾部宽度比例（0-1, 相对于整体高度/宽度）
+        /// 箭头尾部宽度比例(0-1, 相对于整体高度/宽度)
         /// </summary>
         public float ArrowTailWidthRatio { get; set; } = 0.6f;
 
         /// <summary>
-        /// 箭头尾部缺口深度比例（0-1, 相对于整体宽度）
+        /// 箭头尾部缺口深度比例(0-1, 相对于整体宽度)
         /// </summary>
         public float TailNotchDepthRatio { get; set; } = 0.2f;
 
@@ -1477,7 +1477,7 @@ namespace FluentControls.Controls
 
             return new PointF[]
             {
-                new PointF(x, centerY),                              // 箭头尖端（左侧中心）
+                new PointF(x, centerY),                              // 箭头尖端(左侧中心)
                 new PointF(x + headWidth, y),                        // 箭头头部右上角
                 new PointF(x + headWidth, tailTop),                  // 箭头身体右上角
                 new PointF(x + width, tailTop),                      // 箭头尾部右上角
@@ -1509,7 +1509,7 @@ namespace FluentControls.Controls
 
             return new PointF[]
             {
-                new PointF(x + width, centerY),                      // 箭头尖端（右侧中心）
+                new PointF(x + width, centerY),                      // 箭头尖端(右侧中心)
                 new PointF(x + bodyWidth, y + height),               // 箭头头部左下角
                 new PointF(x + bodyWidth, tailBottom),               // 箭头身体左下角
                 new PointF(x, tailBottom),                           // 箭头尾部左下角
@@ -1541,7 +1541,7 @@ namespace FluentControls.Controls
 
             return new PointF[]
             {
-                new PointF(centerX, y),                              // 箭头尖端（顶部中心）
+                new PointF(centerX, y),                              // 箭头尖端(顶部中心)
                 new PointF(x + width, y + headHeight),               // 箭头头部右下角
                 new PointF(tailRight, y + headHeight),               // 箭头身体右下角
                 new PointF(tailRight, y + height),                   // 箭头尾部右下角
@@ -1573,7 +1573,7 @@ namespace FluentControls.Controls
 
             return new PointF[]
             {
-                new PointF(centerX, y + height),                     // 箭头尖端（底部中心）
+                new PointF(centerX, y + height),                     // 箭头尖端(底部中心)
                 new PointF(x, y + bodyHeight),                       // 箭头头部左上角
                 new PointF(tailLeft, y + bodyHeight),                // 箭头身体左上角
                 new PointF(tailLeft, y),                             // 箭头尾部左上角

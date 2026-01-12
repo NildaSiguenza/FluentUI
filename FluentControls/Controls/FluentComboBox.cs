@@ -699,7 +699,7 @@ namespace FluentControls.Controls
 
             dropDownList.Size = new Size(width, height);
 
-            // 同时更新容器大小（如果已经显示）
+            // 同时更新容器大小(如果已经显示)
             if (isDroppedDown && dropDownHost != null)
             {
                 dropDownHost.Size = dropDownList.Size;

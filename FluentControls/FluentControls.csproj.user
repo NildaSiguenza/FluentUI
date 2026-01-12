@@ -28,6 +28,9 @@
     <Compile Update="Controls\FluentControlBase.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Controls\FluentDataGridView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\FluentDateTimePicker.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -47,6 +50,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentMenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentPagination.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentPanel.cs">

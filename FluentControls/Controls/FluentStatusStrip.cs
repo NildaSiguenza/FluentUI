@@ -156,7 +156,9 @@ namespace FluentControls.Controls
             {
                 var size = item.Size;
                 if (size.IsEmpty)
+                {
                     size = item.GetPreferredSize();
+                }
 
                 int itemWidth = size.Width + item.Margin.Horizontal;
                 item.Bounds = new Rectangle(
@@ -175,7 +177,9 @@ namespace FluentControls.Controls
                 var item = rightItems[i];
                 var size = item.Size;
                 if (size.IsEmpty)
+                {
                     size = item.GetPreferredSize();
+                }
 
                 int itemWidth = size.Width + item.Margin.Horizontal;
                 rightX -= itemWidth;

@@ -968,9 +968,9 @@ namespace FluentControls.Controls
                 case FluentLayoutMode.BottomSpan:
                 case FluentLayoutMode.LeftSpan:
                 case FluentLayoutMode.RightSpan:
-                    // 横向分隔条（水平线, 控制Y方向）
+                    // 横向分隔条(水平线, 控制Y方向)
                     result.Add(new Rectangle(0, vSplit - splitterSize / 2, Width, splitterSize));
-                    // 竖向分隔条（垂直线, 控制X方向）
+                    // 竖向分隔条(垂直线, 控制X方向)
                     result.Add(new Rectangle(hSplit - splitterSize / 2, 0, splitterSize, Height));
                     break;
 
@@ -1082,7 +1082,7 @@ namespace FluentControls.Controls
                         g.FillRectangle(brush, rect);
                     }
 
-                    // 绘制拖动手柄（仅在允许拖动时）
+                    // 绘制拖动手柄(仅在允许拖动时)
                     if (allowSplitterDrag)
                     {
                         DrawSplitterGrip(g, rect);
@@ -1271,7 +1271,7 @@ namespace FluentControls.Controls
             }
 
             Rectangle splitterRect = splitters[activeSplitter];
-            bool isHorizontalBar = splitterRect.Width > splitterRect.Height; // 横向分隔条（水平线）
+            bool isHorizontalBar = splitterRect.Width > splitterRect.Height; // 横向分隔条(水平线)
             int borderOffset = showContainerBorder ? containerBorderSize : 0;
 
             switch (layoutMode)
@@ -1323,14 +1323,14 @@ namespace FluentControls.Controls
                         // Grid类布局：索引0是横向分隔条, 索引1是竖向分隔条
                         if (activeSplitter == 0)
                         {
-                            // 横向分隔条（水平线）, 调整Y方向
+                            // 横向分隔条(水平线), 调整Y方向
                             float newDistance = (float)(location.Y - borderOffset) / (Height - 2 * borderOffset);
                             newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
                             VerticalSplitterDistance = newDistance;
                         }
                         else if (activeSplitter == 1)
                         {
-                            // 竖向分隔条（垂直线）, 调整X方向
+                            // 竖向分隔条(垂直线), 调整X方向
                             float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
                             newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
                             HorizontalSplitterDistance = newDistance;
@@ -1481,7 +1481,7 @@ namespace FluentControls.Controls
         #region 属性
 
         /// <summary>
-        /// 获取网格索引（1-4）
+        /// 获取网格索引(1-4)
         /// </summary>
         [Browsable(false)]
         public int GridIndex => gridIndex;
@@ -1504,7 +1504,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 栅格定义（仅在GridCustom模式下使用）
+        /// 栅格定义(仅在GridCustom模式下使用)
         /// </summary>
         [Category("Grid Layout")]
         [Description("栅格布局定义")]
@@ -1957,7 +1957,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 如果添加的是普通控件（不是 FluentGridCell）
+            // 如果添加的是普通控件(不是 FluentGridCell)
             if (e.Component is Control control && !(e.Component is FluentGridCell))
             {
                 // 检查控件是否被添加到某个 Panel
@@ -2166,7 +2166,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 在设计时绘制分隔条（如果启用显示）
+            // 在设计时绘制分隔条(如果启用显示)
             if (Container.ShowSplitter)
             {
                 DrawSplitters(pe);

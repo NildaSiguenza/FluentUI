@@ -324,7 +324,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 获取颜色项集合（只读）
+        /// 获取颜色项集合(只读)
         /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
