@@ -2897,7 +2897,7 @@ namespace FluentControls.Controls
                     IDesignerHost host = GetService(typeof(IDesignerHost)) as IDesignerHost;
                     if (host != null)
                     {
-                        // 创建类型描述符上下文(使用您的实现)
+                        // 创建类型描述符上下文
                         TypeDescriptorContext context = new TypeDescriptorContext(tabControl, pd, host);
 
                         // 编辑值

@@ -81,12 +81,21 @@ namespace FluentControls.Controls
         private int paginationHeight = 45;
         private List<object> fullDataList; // 完整数据列表
 
+        // 数据筛选
+        private Dictionary<string, List<FilterCondition>> columnFilters = new Dictionary<string, List<FilterCondition>>();
+        private List<object> filteredDataList; // 筛选后的数据
+        private bool isFilterActive = false;
+
         // 右键菜单
         private ContextMenuStrip contextMenu;
         private ToolStripMenuItem menuItemCopy;
         private ToolStripMenuItem menuItemPaste;
         private ToolStripMenuItem menuItemExportCsv;
+        private ToolStripMenuItem menuItemFilter;
+        private ToolStripMenuItem menuItemClearFilter;
         private ToolStripSeparator menuSeparator;
+        private ToolStripSeparator menuSeparator2;
+
 
         // 事件
         public event EventHandler<DataGridViewCellEventArgs> CellClick;
@@ -111,6 +120,8 @@ namespace FluentControls.Controls
 
             // 初始化右键菜单
             InitializeContextMenu();
+
+            this.MouseDoubleClick += FluentDataGridView_MouseDoubleClick;
 
             SetStyle(ControlStyles.Selectable, true);
             TabStop = true;
@@ -263,7 +274,6 @@ namespace FluentControls.Controls
                     RefreshAlternatingColors();
                 }
             }
-
         }
 
         /// <summary>
@@ -524,6 +534,20 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
+        /// 是否启用筛选功能
+        /// </summary>
+        [Category("Behavior")]
+        [DefaultValue(true)]
+        [Description("是否启用数据筛选功能")]
+        public bool EnableFiltering { get; set; } = true;
+
+        /// <summary>
+        /// 是否有活动的筛选
+        /// </summary>
+        [Browsable(false)]
+        public bool IsFilterActive => isFilterActive;
+
+        /// <summary>
         /// 当前页(只读)
         /// </summary>
         [Browsable(false)]
@@ -738,6 +762,194 @@ namespace FluentControls.Controls
 
         #endregion
 
+        #region 数据筛选
+
+        /// <summary>
+        /// 显示筛选面板
+        /// </summary>
+        public void ShowFilterPanel()
+        {
+            if (!EnableFiltering || columns.Count == 0)
+            {
+                return;
+            }
+
+            using (var filterForm = new FluentDataFilterForm(this, columnFilters))
+            {
+                if (filterForm.ShowDialog() == DialogResult.OK)
+                {
+                    columnFilters = filterForm.GetFilters();
+                    ApplyFilters();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 应用筛选
+        /// </summary>
+        private void ApplyFilters()
+        {
+            if (fullDataList == null || fullDataList.Count == 0)
+            {
+                isFilterActive = false;
+                return;
+            }
+
+            // 如果没有筛选条件，显示全部数据
+            if (columnFilters.Count == 0 || columnFilters.All(kvp => kvp.Value.Count == 0))
+            {
+                filteredDataList = null;
+                isFilterActive = false;
+
+                if (enablePagination && pagination != null)
+                {
+                    pagination.DataSource = fullDataList;
+                    pagination.Refresh();
+                    LoadPageData();
+                }
+                else
+                {
+                    BindDataInternal(fullDataList, false);
+                }
+
+                Invalidate();
+                return;
+            }
+
+            // 应用筛选
+            filteredDataList = new List<object>();
+
+            foreach (var dataItem in fullDataList)
+            {
+                if (MatchesAllFilters(dataItem))
+                {
+                    filteredDataList.Add(dataItem);
+                }
+            }
+
+            isFilterActive = true;
+
+            // 重新绑定数据
+            if (enablePagination && pagination != null)
+            {
+                pagination.DataSource = filteredDataList;
+                pagination.Refresh();
+                LoadPageData();
+            }
+            else
+            {
+                BindDataInternal(filteredDataList, false);
+            }
+
+            Invalidate();
+        }
+
+        /// <summary>
+        /// 检查数据项是否匹配所有筛选条件
+        /// </summary>
+        private bool MatchesAllFilters(object dataItem)
+        {
+            if (dataItem == null)
+            {
+                return false;
+            }
+
+            // 遍历所有列的筛选条件
+            foreach (var kvp in columnFilters)
+            {
+                var columnName = kvp.Key;
+                var conditions = kvp.Value;
+
+                if (conditions == null || conditions.Count == 0)
+                {
+                    continue;
+                }
+
+                // 获取该列的值
+                var column = columns.Cast<FluentDataGridViewColumn>()
+                    .FirstOrDefault(c => c.DataPropertyName == columnName);
+
+                if (column == null)
+                {
+                    continue;
+                }
+
+                var cellValue = column.GetCellValue(dataItem);
+
+                // 该列的所有条件必须都满足（AND关系）
+                foreach (var condition in conditions)
+                {
+                    if (!condition.Match(cellValue))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 清除所有筛选
+        /// </summary>
+        public void ClearAllFilters()
+        {
+            columnFilters.Clear();
+            ApplyFilters();
+        }
+
+        /// <summary>
+        /// 获取列的数据类型
+        /// </summary>
+        internal FilterValueType GetColumnValueType(string columnName)
+        {
+            if (fullDataList == null || fullDataList.Count == 0)
+            {
+                return FilterValueType.String; // 默认为字符串
+            }
+
+            var column = columns.Cast<FluentDataGridViewColumn>()
+                .FirstOrDefault(c => c.DataPropertyName == columnName);
+
+            if (column == null)
+            {
+                return FilterValueType.String;
+            }
+
+            // 采样前几行数据判断类型
+            for (int i = 0; i < Math.Min(10, fullDataList.Count); i++)
+            {
+                var value = column.GetCellValue(fullDataList[i]);
+                if (value == null)
+                {
+                    continue;
+                }
+
+                var type = value.GetType();
+
+                if (type == typeof(bool))
+                {
+                    return FilterValueType.Boolean;
+                }
+
+                if (type == typeof(DateTime))
+                {
+                    return FilterValueType.DateTime;
+                }
+
+                if (type == typeof(int) || type == typeof(long) ||
+                    type == typeof(float) || type == typeof(double) ||
+                    type == typeof(decimal))
+                {
+                    return FilterValueType.Numeric;
+                }
+            }
+
+            return FilterValueType.String;
+        }
+
+        #endregion
+
         #region 右键菜单
 
         /// <summary>
@@ -775,6 +987,24 @@ namespace FluentControls.Controls
                 Image = null // 可以添加图标
             };
             menuItemExportCsv.Click += MenuItemExportCsv_Click;
+
+
+            menuSeparator2 = new ToolStripSeparator();
+
+            // 添加筛选菜单项
+            menuItemFilter = new ToolStripMenuItem
+            {
+                Text = "数据筛选...",
+                ShortcutKeys = Keys.Control | Keys.F
+            };
+            menuItemFilter.Click += (s, e) => ShowFilterPanel();
+
+            // 添加清除筛选
+            menuItemClearFilter = new ToolStripMenuItem
+            {
+                Text = "清除筛选"
+            };
+            menuItemClearFilter.Click += (s, e) => ClearAllFilters();
 
             // 添加到菜单
             UpdateContextMenuItems();
@@ -817,6 +1047,21 @@ namespace FluentControls.Controls
             {
                 contextMenu.Items.Add(menuItemExportCsv);
             }
+
+            if (ShowCopyMenuItem && menuSeparator2 != null)
+            {
+                contextMenu.Items.Add(menuSeparator2);
+            }
+
+            if (ShowCopyMenuItem && menuItemFilter != null)
+            {
+                contextMenu.Items.Add(menuItemFilter);
+            }
+
+            if (ShowCopyMenuItem && menuItemClearFilter != null)
+            {
+                contextMenu.Items.Add(menuItemClearFilter);
+            }
         }
 
         /// <summary>
@@ -846,6 +1091,12 @@ namespace FluentControls.Controls
             if (menuItemExportCsv != null)
             {
                 menuItemExportCsv.Enabled = rows.Count > 0;
+            }
+
+            // 更新清空筛选项
+            if (menuItemClearFilter != null)
+            {
+                menuItemClearFilter.Enabled = isFilterActive;
             }
         }
 
@@ -1184,324 +1435,6 @@ namespace FluentControls.Controls
 
 
         #endregion
-
-        //#region 数据筛选
-
-        ///// <summary>
-        ///// 显示列筛选
-        ///// </summary>
-        //public void ShowColumnFilter(FluentDataGridViewColumn column)
-        //{
-        //    if (column == null || !enableFiltering)
-        //    {
-        //        return;
-        //    }
-
-        //    // 检查列类型，决定使用文本筛选还是数值筛选
-        //    bool isNumeric = IsNumericColumn(column);
-
-        //    if (isNumeric)
-        //    {
-        //        ShowNumericFilter(column);
-        //    }
-        //    else
-        //    {
-        //        ShowTextFilter(column);
-        //    }
-        //}
-
-        //private bool IsNumericColumn(FluentDataGridViewColumn column)
-        //{
-        //    // 判断列是否为数值类型
-        //    if (column is FluentDataGridViewProgressColumn)
-        //    {
-        //        return true;
-        //    }
-
-        //    // 检查数据类型
-        //    if (fullDataList != null && fullDataList.Count > 0 && !string.IsNullOrEmpty(column.DataPropertyName))
-        //    {
-        //        try
-        //        {
-        //            var firstItem = fullDataList[0];
-        //            var property = firstItem.GetType().GetProperty(column.DataPropertyName);
-        //            if (property != null)
-        //            {
-        //                var type = property.PropertyType;
-        //                return type == typeof(int) || type == typeof(long) ||
-        //                       type == typeof(float) || type == typeof(double) ||
-        //                       type == typeof(decimal) || type == typeof(short) ||
-        //                       type == typeof(byte);
-        //            }
-        //        }
-        //        catch { }
-        //    }
-
-        //    return false;
-        //}
-
-        //private void ShowTextFilter(FluentDataGridViewColumn column)
-        //{
-        //    // 创建或获取筛选文本框
-        //    if (!filterTextBoxes.ContainsKey(column))
-        //    {
-        //        var textBox = new ColumnFilterTextBox
-        //        {
-        //            Column = column
-        //        };
-        //        textBox.KeyDown += FilterTextBox_KeyDown;
-        //        textBox.Leave += FilterTextBox_Leave;
-        //        filterTextBoxes[column] = textBox;
-        //        Controls.Add(textBox);
-        //    }
-
-        //    var filterBox = filterTextBoxes[column];
-
-        //    // 计算位置
-        //    var columnBounds = GetColumnHeaderBounds(column);
-        //    if (columnBounds != Rectangle.Empty)
-        //    {
-        //        filterBox.Location = new Point(columnBounds.X + 2, columnBounds.Bottom + 2);
-        //        filterBox.Width = columnBounds.Width - 4;
-        //        filterBox.Visible = true;
-        //        filterBox.BringToFront();
-        //        filterBox.Focus();
-        //    }
-        //}
-
-        //private void ShowNumericFilter(FluentDataGridViewColumn column)
-        //{
-        //    using (var dialog = new NumericFilterDialog(column.HeaderText ?? column.Name))
-        //    {
-        //        if (dialog.ShowDialog(this) == DialogResult.OK)
-        //        {
-        //            var filter = new ColumnFilter
-        //            {
-        //                Column = column,
-        //                Operator = dialog.SelectedOperator,
-        //                Value = dialog.Value1,
-        //                Value2 = dialog.Value2,
-        //                IsNumeric = true
-        //            };
-
-        //            ApplyFilter(filter);
-        //        }
-        //    }
-        //}
-
-        //private void FilterTextBox_KeyDown(object sender, KeyEventArgs e)
-        //{
-        //    if (e.KeyCode == Keys.Enter)
-        //    {
-        //        var textBox = sender as ColumnFilterTextBox;
-        //        if (textBox != null)
-        //        {
-        //            ApplyTextFilter(textBox);
-        //            e.Handled = true;
-        //            e.SuppressKeyPress = true;
-        //        }
-        //    }
-        //    else if (e.KeyCode == Keys.Escape)
-        //    {
-        //        var textBox = sender as ColumnFilterTextBox;
-        //        if (textBox != null)
-        //        {
-        //            textBox.Visible = false;
-        //            Focus();
-        //        }
-        //    }
-        //}
-
-        //private void FilterTextBox_Leave(object sender, EventArgs e)
-        //{
-        //    var textBox = sender as ColumnFilterTextBox;
-        //    if (textBox != null)
-        //    {
-        //        ApplyTextFilter(textBox);
-        //        textBox.Visible = false;
-        //    }
-        //}
-
-        //private void ApplyTextFilter(ColumnFilterTextBox textBox)
-        //{
-        //    if (string.IsNullOrWhiteSpace(textBox.Text))
-        //    {
-        //        // 清除该列的筛选
-        //        filterManager.RemoveFilter(textBox.Column);
-        //    }
-        //    else
-        //    {
-        //        // 应用筛选
-        //        var filter = new ColumnFilter
-        //        {
-        //            Column = textBox.Column,
-        //            Operator = FilterOperator.Contains,
-        //            Value = textBox.Text.Trim(),
-        //            IsNumeric = false
-        //        };
-
-        //        filterManager.AddFilter(filter);
-        //    }
-
-        //    ApplyAllFilters();
-        //}
-
-        //private void ApplyFilter(ColumnFilter filter)
-        //{
-        //    filterManager.AddFilter(filter);
-        //    ApplyAllFilters();
-        //}
-
-        //private void ApplyAllFilters()
-        //{
-        //    if (fullDataList == null)
-        //    {
-        //        return;
-        //    }
-
-        //    List<object> filteredData;
-
-        //    if (filterManager.HasFilters)
-        //    {
-        //        // 应用筛选
-        //        filteredData = new List<object>();
-
-        //        foreach (var dataItem in fullDataList)
-        //        {
-        //            // 创建临时行用于筛选
-        //            var tempRow = new FluentDataGridViewRow
-        //            {
-        //                DataBoundItem = dataItem
-        //            };
-        //            tempRow.CreateCells(this);
-
-        //            // 绑定数据到临时行
-        //            foreach (var cell in tempRow.Cells)
-        //            {
-        //                var column = cell.OwningColumn;
-        //                if (column != null)
-        //                {
-        //                    cell.Value = column.GetCellValue(dataItem);
-        //                }
-        //            }
-
-        //            // 检查是否匹配筛选条件
-        //            if (filterManager.MatchRow(tempRow))
-        //            {
-        //                filteredData.Add(dataItem);
-        //            }
-
-        //            // 清理临时行
-        //            tempRow.Dispose();
-        //        }
-        //    }
-        //    else
-        //    {
-        //        // 无筛选，使用全部数据
-        //        filteredData = new List<object>(fullDataList);
-        //    }
-
-        //    // 应用排序(如果有)
-        //    if (sortedColumn != null && currentSortOrder != SortOrder.None)
-        //    {
-        //        var propertyName = sortedColumn.DataPropertyName;
-        //        if (!string.IsNullOrEmpty(propertyName))
-        //        {
-        //            if (currentSortOrder == SortOrder.Ascending)
-        //            {
-        //                filteredData = filteredData.OrderBy(item =>
-        //                {
-        //                    var prop = item?.GetType().GetProperty(propertyName);
-        //                    return prop?.GetValue(item);
-        //                }).ToList();
-        //            }
-        //            else
-        //            {
-        //                filteredData = filteredData.OrderByDescending(item =>
-        //                {
-        //                    var prop = item?.GetType().GetProperty(propertyName);
-        //                    return prop?.GetValue(item);
-        //                }).ToList();
-        //            }
-        //        }
-        //    }
-
-        //    // 更新显示
-        //    if (enablePagination && pagination != null)
-        //    {
-        //        pagination.DataSource = filteredData;
-        //        LoadPageData();
-        //    }
-        //    else
-        //    {
-        //        BindDataInternal(filteredData, false);
-        //    }
-
-        //    Invalidate();
-        //}
-
-        ///// <summary>
-        ///// 清除所有筛选
-        ///// </summary>
-        //public void ClearAllFilters()
-        //{
-        //    filterManager.ClearFilters();
-
-        //    foreach (var textBox in filterTextBoxes.Values)
-        //    {
-        //        textBox.Text = "";
-        //        textBox.Visible = false;
-        //    }
-
-        //    ApplyAllFilters();
-        //}
-
-        ///// <summary>
-        ///// 清除指定列的筛选
-        ///// </summary>
-        //public void ClearColumnFilter(FluentDataGridViewColumn column)
-        //{
-        //    filterManager.RemoveFilter(column);
-
-        //    if (filterTextBoxes.ContainsKey(column))
-        //    {
-        //        filterTextBoxes[column].Text = "";
-        //        filterTextBoxes[column].Visible = false;
-        //    }
-
-        //    ApplyAllFilters();
-        //}
-
-        //private Rectangle GetColumnHeaderBounds(FluentDataGridViewColumn column)
-        //{
-        //    int x = ShowRowHeader ? rowHeaderWidth : 0;
-        //    x -= hScrollBar.Value;
-
-        //    int y = 0;
-        //    if (enablePagination && paginationPosition == PaginationPosition.Top && pagination != null)
-        //    {
-        //        y = paginationHeight;
-        //    }
-
-        //    foreach (var col in columns)
-        //    {
-        //        if (!col.Visible)
-        //        {
-        //            continue;
-        //        }
-
-        //        if (col == column)
-        //        {
-        //            return new Rectangle(x, y, col.Width, columnHeaderHeight);
-        //        }
-
-        //        x += col.Width;
-        //    }
-
-        //    return Rectangle.Empty;
-        //}
-
-        //#endregion
 
         #region 标记管理
 
@@ -3094,6 +3027,26 @@ namespace FluentControls.Controls
 
         #region 鼠标交互
 
+        private void FluentDataGridView_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (!EnableFiltering)
+            {
+                return;
+            }
+
+            // 检查是否双击了左上角单元格
+            int headerY = 0;
+            if (enablePagination && paginationPosition == PaginationPosition.Top && pagination != null)
+            {
+                headerY = paginationHeight;
+            }
+
+            if (ShowRowHeader && e.X >= 0 && e.X < rowHeaderWidth && e.Y >= headerY && e.Y < headerY + columnHeaderHeight)
+            {
+                ShowFilterPanel();
+            }
+        }
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
@@ -3666,6 +3619,14 @@ namespace FluentControls.Controls
             if (e.Control && e.KeyCode == Keys.V && !ReadOnly)
             {
                 PasteToSelectedCells();
+                e.Handled = true;
+                return;
+            }
+
+            // 筛选
+            if (e.Control && e.KeyCode == Keys.F && EnableFiltering)
+            {
+                ShowFilterPanel();
                 e.Handled = true;
                 return;
             }
@@ -8562,344 +8523,1184 @@ namespace FluentControls.Controls
 
     #region 数据筛选功能
 
-    ///// <summary>
-    ///// 列筛选条件
-    ///// </summary>
-    //public class ColumnFilter
-    //{
-    //    public FluentDataGridViewColumn Column { get; set; }
-    //    public FilterOperator Operator { get; set; }
-    //    public object Value { get; set; }
-    //    public object Value2 { get; set; } // 用于Between操作
-    //    public bool IsNumeric { get; set; }
+    /// <summary>
+    /// 筛选值类型
+    /// </summary>
+    public enum FilterValueType
+    {
+        Numeric,    // 数值型
+        String,     // 字符串型
+        Boolean,    // 布尔型
+        DateTime    // 日期型
+    }
 
-    //    public bool Match(object cellValue)
-    //    {
-    //        if (cellValue == null)
-    //        {
-    //            return false;
-    //        }
+    /// <summary>
+    /// 数值筛选操作符
+    /// </summary>
+    public enum NumericFilterOperator
+    {
+        Equals,              // 等于
+        NotEquals,           // 不等于
+        GreaterThan,         // 大于
+        LessThan,            // 小于
+        GreaterThanOrEquals, // 大于等于
+        LessThanOrEquals,    // 小于等于
+        Between              // 范围
+    }
 
-    //        try
-    //        {
-    //            if (IsNumeric)
-    //            {
-    //                return MatchNumeric(cellValue);
-    //            }
-    //            else
-    //            {
-    //                return MatchText(cellValue);
-    //            }
-    //        }
-    //        catch
-    //        {
-    //            return false;
-    //        }
-    //    }
+    /// <summary>
+    /// 日期筛选操作符
+    /// </summary>
+    public enum DateTimeFilterOperator
+    {
+        Before,    // 早于
+        After,     // 晚于
+        Between    // 范围
+    }
 
-    //    private bool MatchText(object cellValue)
-    //    {
-    //        string cellText = cellValue?.ToString() ?? "";
-    //        string filterText = Value?.ToString() ?? "";
+    /// <summary>
+    /// 筛选条件基类
+    /// </summary>
+    public abstract class FilterCondition
+    {
+        public string ColumnName { get; set; }
+        public FilterValueType ValueType { get; set; }
 
-    //        switch (Operator)
-    //        {
-    //            case FilterOperator.Contains:
-    //                return cellText.IndexOf(filterText, StringComparison.OrdinalIgnoreCase) >= 0;
-    //            case FilterOperator.Equals:
-    //                return cellText.Equals(filterText, StringComparison.OrdinalIgnoreCase);
-    //            case FilterOperator.NotEquals:
-    //                return !cellText.Equals(filterText, StringComparison.OrdinalIgnoreCase);
-    //            case FilterOperator.StartsWith:
-    //                return cellText.StartsWith(filterText, StringComparison.OrdinalIgnoreCase);
-    //            case FilterOperator.EndsWith:
-    //                return cellText.EndsWith(filterText, StringComparison.OrdinalIgnoreCase);
-    //            default:
-    //                return true;
-    //        }
-    //    }
+        public abstract bool Match(object value);
+        public abstract string GetDescription();
+    }
 
-    //    private bool MatchNumeric(object cellValue)
-    //    {
-    //        if (!TryConvertToDouble(cellValue, out double cellNumber))
-    //        {
-    //            return false;
-    //        }
+    /// <summary>
+    /// 数值筛选条件
+    /// </summary>
+    public class NumericFilterCondition : FilterCondition
+    {
+        public NumericFilterCondition()
+        {
+            ValueType = FilterValueType.Numeric;
+        }
 
-    //        if (!TryConvertToDouble(Value, out double filterNumber))
-    //        {
-    //            return false;
-    //        }
+        public NumericFilterOperator Operator { get; set; }
+        public double Value1 { get; set; }
+        public double Value2 { get; set; } // 用于 Between
 
-    //        switch (Operator)
-    //        {
-    //            case FilterOperator.Equals:
-    //                return Math.Abs(cellNumber - filterNumber) < 0.0001;
-    //            case FilterOperator.NotEquals:
-    //                return Math.Abs(cellNumber - filterNumber) >= 0.0001;
-    //            case FilterOperator.GreaterThan:
-    //                return cellNumber > filterNumber;
-    //            case FilterOperator.LessThan:
-    //                return cellNumber < filterNumber;
-    //            case FilterOperator.GreaterThanOrEqual:
-    //                return cellNumber >= filterNumber;
-    //            case FilterOperator.LessThanOrEqual:
-    //                return cellNumber <= filterNumber;
-    //            case FilterOperator.Between:
-    //                if (TryConvertToDouble(Value2, out double filterNumber2))
-    //                {
-    //                    double min = Math.Min(filterNumber, filterNumber2);
-    //                    double max = Math.Max(filterNumber, filterNumber2);
-    //                    return cellNumber >= min && cellNumber <= max;
-    //                }
-    //                return false;
-    //            default:
-    //                return true;
-    //        }
-    //    }
+        public override bool Match(object value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
 
-    //    private bool TryConvertToDouble(object value, out double result)
-    //    {
-    //        result = 0;
-    //        if (value == null)
-    //        {
-    //            return false;
-    //        }
+            double numValue;
+            if (value is double d)
+            {
+                numValue = d;
+            }
+            else if (value is float f)
+            {
+                numValue = f;
+            }
+            else if (value is int i)
+            {
+                numValue = i;
+            }
+            else if (value is long l)
+            {
+                numValue = l;
+            }
+            else if (value is decimal dec)
+            {
+                numValue = (double)dec;
+            }
+            else if (!double.TryParse(value.ToString(), out numValue))
+            {
+                return false;
+            }
 
-    //        if (value is double d)
-    //        {
-    //            result = d;
-    //            return true;
-    //        }
+            switch (Operator)
+            {
+                case NumericFilterOperator.Equals:
+                    return Math.Abs(numValue - Value1) < 0.0001;
+                case NumericFilterOperator.NotEquals:
+                    return Math.Abs(numValue - Value1) >= 0.0001;
+                case NumericFilterOperator.GreaterThan:
+                    return numValue > Value1;
+                case NumericFilterOperator.LessThan:
+                    return numValue < Value1;
+                case NumericFilterOperator.GreaterThanOrEquals:
+                    return numValue >= Value1;
+                case NumericFilterOperator.LessThanOrEquals:
+                    return numValue <= Value1;
+                case NumericFilterOperator.Between:
+                    return numValue >= Math.Min(Value1, Value2) && numValue <= Math.Max(Value1, Value2);
+                default:
+                    return false;
+            }
+        }
 
-    //        return double.TryParse(value.ToString(), out result);
-    //    }
-    //}
+        public override string GetDescription()
+        {
+            switch (Operator)
+            {
+                case NumericFilterOperator.Equals:
+                    return $"= {Value1}";
+                case NumericFilterOperator.NotEquals:
+                    return $"≠ {Value1}";
+                case NumericFilterOperator.GreaterThan:
+                    return $"> {Value1}";
+                case NumericFilterOperator.LessThan:
+                    return $"< {Value1}";
+                case NumericFilterOperator.GreaterThanOrEquals:
+                    return $">= {Value1}";
+                case NumericFilterOperator.LessThanOrEquals:
+                    return $"<= {Value1}";
+                case NumericFilterOperator.Between:
+                    return $"{Math.Min(Value1, Value2)} ~ {Math.Max(Value1, Value2)}";
+                default:
+                    return "";
+            }
+        }
+    }
 
-    ///// <summary>
-    ///// 筛选管理器
-    ///// </summary>
-    //public class FilterManager
-    //{
-    //    private Dictionary<FluentDataGridViewColumn, ColumnFilter> filters =
-    //        new Dictionary<FluentDataGridViewColumn, ColumnFilter>();
+    /// <summary>
+    /// 字符串筛选条件
+    /// </summary>
+    public class StringFilterCondition : FilterCondition
+    {
+        public StringFilterCondition()
+        {
+            ValueType = FilterValueType.String;
+        }
 
-    //    public void AddFilter(ColumnFilter filter)
-    //    {
-    //        if (filter != null && filter.Column != null)
-    //        {
-    //            filters[filter.Column] = filter;
-    //        }
-    //    }
+        public string FilterText { get; set; }
+        public bool CaseSensitive { get; set; } = false;
 
-    //    public void RemoveFilter(FluentDataGridViewColumn column)
-    //    {
-    //        filters.Remove(column);
-    //    }
+        public override bool Match(object value)
+        {
+            if (value == null)
+            {
+                return string.IsNullOrEmpty(FilterText);
+            }
 
-    //    public void ClearFilters()
-    //    {
-    //        filters.Clear();
-    //    }
+            string strValue = value.ToString();
 
-    //    public bool HasFilters => filters.Count > 0;
+            if (CaseSensitive)
+            {
+                return strValue.Contains(FilterText ?? "");
+            }
+            else
+            {
+                return strValue.IndexOf(FilterText ?? "", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+        }
 
-    //    public bool MatchRow(FluentDataGridViewRow row)
-    //    {
-    //        // 所有筛选条件都必须匹配
-    //        foreach (var filter in filters.Values)
-    //        {
-    //            var cell = row.Cells.FirstOrDefault(c => c.OwningColumn == filter.Column);
-    //            if (cell == null || !filter.Match(cell.Value))
-    //            {
-    //                return false;
-    //            }
-    //        }
-    //        return true;
-    //    }
+        public override string GetDescription()
+        {
+            return $"包含 \"{FilterText}\"";
+        }
+    }
 
-    //    public IEnumerable<ColumnFilter> GetFilters()
-    //    {
-    //        return filters.Values;
-    //    }
+    /// <summary>
+    /// 布尔筛选条件
+    /// </summary>
+    public class BooleanFilterCondition : FilterCondition
+    {
+        public BooleanFilterCondition()
+        {
+            ValueType = FilterValueType.Boolean;
+        }
 
-    //    public ColumnFilter GetFilter(FluentDataGridViewColumn column)
-    //    {
-    //        filters.TryGetValue(column, out var filter);
-    //        return filter;
-    //    }
-    //}
+        public bool FilterValue { get; set; }
 
-    ///// <summary>
-    ///// 列筛选输入框
-    ///// </summary>
-    //internal class ColumnFilterTextBox : TextBox
-    //{
-    //    public ColumnFilterTextBox()
-    //    {
-    //        BorderStyle = BorderStyle.FixedSingle;
-    //        Font = new Font("Microsoft YaHei", 8f);
-    //        Height = 20;
-    //    }
+        public override bool Match(object value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
 
-    //    public FluentDataGridViewColumn Column { get; set; }
-    //}
+            if (value is bool b)
+            {
+                return b == FilterValue;
+            }
 
-    ///// <summary>
-    ///// 数值筛选对话框
-    ///// </summary>
-    //internal class NumericFilterDialog : Form
-    //{
-    //    private ComboBox cmbOperator;
-    //    private TextBox txtValue1;
-    //    private TextBox txtValue2;
-    //    private Label lblValue2;
-    //    private Button btnOK;
-    //    private Button btnCancel;
+            if (bool.TryParse(value.ToString(), out bool boolValue))
+            {
+                return boolValue == FilterValue;
+            }
 
-    //    public NumericFilterDialog(string columnName)
-    //    {
-    //        InitializeComponents(columnName);
-    //    }
+            return false;
+        }
 
-    //    public FilterOperator SelectedOperator { get; private set; }
-    //    public double Value1 { get; private set; }
-    //    public double Value2 { get; private set; }
+        public override string GetDescription()
+        {
+            return FilterValue ? "True" : "False";
+        }
+    }
+
+    /// <summary>
+    /// 日期筛选条件
+    /// </summary>
+    public class DateTimeFilterCondition : FilterCondition
+    {
+        public DateTimeFilterCondition()
+        {
+            ValueType = FilterValueType.DateTime;
+        }
+
+        public DateTimeFilterOperator Operator { get; set; }
+        public DateTime Date1 { get; set; }
+        public DateTime Date2 { get; set; } // 用于 Between
+
+        public override bool Match(object value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+
+            DateTime dateValue;
+            if (value is DateTime dt)
+            {
+                dateValue = dt;
+            }
+            else if (!DateTime.TryParse(value.ToString(), out dateValue))
+            {
+                return false;
+            }
+
+            // 只比较日期部分
+            dateValue = dateValue.Date;
+            var date1 = Date1.Date;
+            var date2 = Date2.Date;
+
+            switch (Operator)
+            {
+                case DateTimeFilterOperator.Before:
+                    return dateValue <= date1; // 包含边界
+                case DateTimeFilterOperator.After:
+                    return dateValue >= date1; // 包含边界
+                case DateTimeFilterOperator.Between:
+                    var minDate = date1 < date2 ? date1 : date2;
+                    var maxDate = date1 > date2 ? date1 : date2;
+                    return dateValue >= minDate && dateValue <= maxDate;
+                default:
+                    return false;
+            }
+        }
+
+        public override string GetDescription()
+        {
+            switch (Operator)
+            {
+                case DateTimeFilterOperator.Before:
+                    return $"早于或等于 {Date1:yyyy-MM-dd}";
+                case DateTimeFilterOperator.After:
+                    return $"晚于或等于 {Date1:yyyy-MM-dd}";
+                case DateTimeFilterOperator.Between:
+                    var minDate = Date1 < Date2 ? Date1 : Date2;
+                    var maxDate = Date1 > Date2 ? Date1 : Date2;
+                    return $"{minDate:yyyy-MM-dd} ~ {maxDate:yyyy-MM-dd}";
+                default:
+                    return "";
+            }
+        }
+    }
 
 
-    //    private void InitializeComponents(string columnName)
-    //    {
-    //        Text = $"筛选 - {columnName}";
-    //        Size = new Size(350, 200);
-    //        StartPosition = FormStartPosition.CenterParent;
-    //        FormBorderStyle = FormBorderStyle.FixedDialog;
-    //        MaximizeBox = false;
-    //        MinimizeBox = false;
+    /// <summary>
+    /// 数据筛选窗体
+    /// </summary>
+    internal class FluentDataFilterForm : FluentForm
+    {
+        private FluentDataGridView dataGridView;
+        private Dictionary<string, List<FilterCondition>> filters;
+        private ListView filterListView;
+        private ComboBox cmbColumn;
+        private Panel conditionPanel;
+        private Button btnAdd;
+        private Button btnUpdate;
+        private Button btnRemove;
+        private Button btnClearAll;
+        private Button btnOK;
+        private Button btnCancel;
 
-    //        var lblOperator = new Label
-    //        {
-    //            Text = "条件:",
-    //            Location = new Point(20, 20),
-    //            AutoSize = true
-    //        };
+        private FilterCondition selectedCondition;
 
-    //        cmbOperator = new ComboBox
-    //        {
-    //            Location = new Point(80, 17),
-    //            Width = 240,
-    //            DropDownStyle = ComboBoxStyle.DropDownList
-    //        };
-    //        cmbOperator.Items.AddRange(new object[]
-    //        {
-    //            "等于",
-    //            "不等于",
-    //            "大于",
-    //            "小于",
-    //            "大于等于",
-    //            "小于等于",
-    //            "范围"
-    //        });
-    //        cmbOperator.SelectedIndex = 0;
-    //        cmbOperator.SelectedIndexChanged += (s, e) => UpdateValueFields();
+        public FluentDataFilterForm(FluentDataGridView grid, Dictionary<string, List<FilterCondition>> existingFilters)
+        {
+            this.dataGridView = grid;
+            this.filters = new Dictionary<string, List<FilterCondition>>();
 
-    //        var lblValue1 = new Label
-    //        {
-    //            Text = "值:",
-    //            Location = new Point(20, 60),
-    //            AutoSize = true
-    //        };
+            // 深拷贝现有筛选条件
+            foreach (var kvp in existingFilters)
+            {
+                filters[kvp.Key] = new List<FilterCondition>(kvp.Value);
+            }
 
-    //        txtValue1 = new TextBox
-    //        {
-    //            Location = new Point(80, 57),
-    //            Width = 240
-    //        };
+            InitializeComponents();
+            LoadFilters();
+        }
 
-    //        lblValue2 = new Label
-    //        {
-    //            Text = "到:",
-    //            Location = new Point(20, 95),
-    //            AutoSize = true,
-    //            Visible = false
-    //        };
+        private void InitializeComponents()
+        {
+            Text = "数据筛选";
+            Size = new Size(600, 480);
+            base.CanResize = false;
+            CornerRadius = 0;
+            TopMost = true;
+            StartPosition = FormStartPosition.CenterScreen;
 
-    //        txtValue2 = new TextBox
-    //        {
-    //            Location = new Point(80, 92),
-    //            Width = 240,
-    //            Visible = false
-    //        };
+            // 隐藏最大化和最小化按钮
+            TitleBar.ShowMaximizeButton = false;
+            TitleBar.ShowMinimizeButton = false;
 
-    //        btnOK = new Button
-    //        {
-    //            Text = "确定",
-    //            DialogResult = DialogResult.OK,
-    //            Location = new Point(160, 130),
-    //            Size = new Size(75, 25)
-    //        };
-    //        btnOK.Click += BtnOK_Click;
+            int top = 36;
 
-    //        btnCancel = new Button
-    //        {
-    //            Text = "取消",
-    //            DialogResult = DialogResult.Cancel,
-    //            Location = new Point(245, 130),
-    //            Size = new Size(75, 25)
-    //        };
+            // 筛选列表
+            filterListView = new ListView
+            {
+                Location = new Point(10, top),
+                Size = new Size(570, 200),
+                View = View.Details,
+                FullRowSelect = true,
+                GridLines = true,
+                MultiSelect = false
+            };
+            filterListView.Columns.Add("列名", 150);
+            filterListView.Columns.Add("条件", 400);
+            filterListView.SelectedIndexChanged += FilterListView_SelectedIndexChanged;
 
-    //        Controls.AddRange(new Control[]
-    //        {
-    //        lblOperator, cmbOperator,
-    //        lblValue1, txtValue1,
-    //        lblValue2, txtValue2,
-    //        btnOK, btnCancel
-    //        });
+            top += filterListView.Height + 10;
 
-    //        AcceptButton = btnOK;
-    //        CancelButton = btnCancel;
-    //    }
+            // 列选择
+            var lblColumn = new Label
+            {
+                Text = "选择列:",
+                Location = new Point(10, top),
+                AutoSize = true
+            };
 
-    //    private void UpdateValueFields()
-    //    {
-    //        bool isBetween = cmbOperator.SelectedIndex == 6; // "范围"
-    //        lblValue2.Visible = isBetween;
-    //        txtValue2.Visible = isBetween;
-    //    }
+            cmbColumn = new ComboBox
+            {
+                Location = new Point(70, top - 3),
+                Size = new Size(200, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
 
-    //    private void BtnOK_Click(object sender, EventArgs e)
-    //    {
-    //        if (!double.TryParse(txtValue1.Text, out double val1))
-    //        {
-    //            MessageBox.Show("请输入有效的数值", "错误",
-    //                MessageBoxButtons.OK, MessageBoxIcon.Error);
-    //            DialogResult = DialogResult.None;
-    //            return;
-    //        }
+            // 加载可筛选的列
+            foreach (var column in dataGridView.Columns.Cast<FluentDataGridViewColumn>())
+            {
+                if (!string.IsNullOrEmpty(column.DataPropertyName) &&
+                    !(column is FluentDataGridViewButtonColumn)) // 排除按钮列等特殊列
+                {
+                    cmbColumn.Items.Add(new ColumnItem(column));
+                }
+            }
 
-    //        Value1 = val1;
+            if (cmbColumn.Items.Count > 0)
+            {
+                cmbColumn.SelectedIndex = 0;
+            }
 
-    //        switch (cmbOperator.SelectedIndex)
-    //        {
-    //            case 0: SelectedOperator = FilterOperator.Equals; break;
-    //            case 1: SelectedOperator = FilterOperator.NotEquals; break;
-    //            case 2: SelectedOperator = FilterOperator.GreaterThan; break;
-    //            case 3: SelectedOperator = FilterOperator.LessThan; break;
-    //            case 4: SelectedOperator = FilterOperator.GreaterThanOrEqual; break;
-    //            case 5: SelectedOperator = FilterOperator.LessThanOrEqual; break;
-    //            case 6:
-    //                SelectedOperator = FilterOperator.Between;
-    //                if (!double.TryParse(txtValue2.Text, out double val2))
-    //                {
-    //                    MessageBox.Show("请输入有效的第二个数值", "错误",
-    //                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-    //                    DialogResult = DialogResult.None;
-    //                    return;
-    //                }
-    //                Value2 = val2;
-    //                break;
-    //        }
-    //    }
-    //}
+            cmbColumn.SelectedIndexChanged += CmbColumn_SelectedIndexChanged;
+
+            top += cmbColumn.Height + 10;
+
+            // 条件面板
+            conditionPanel = new Panel
+            {
+                Location = new Point(10, top),
+                Size = new Size(570, 150),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            top += conditionPanel.Height + 10;
+
+            // 按钮布局调整
+            btnAdd = new Button
+            {
+                Text = "添加条件",
+                Location = new Point(10, top),
+                Size = new Size(90, 30)
+            };
+            btnAdd.Click += BtnAdd_Click;
+
+            btnUpdate = new Button
+            {
+                Text = "更新条件",
+                Location = new Point(110, top),
+                Size = new Size(90, 30),
+                Enabled = false  // 初始禁用
+            };
+            btnUpdate.Click += BtnUpdate_Click;
+
+            btnRemove = new Button
+            {
+                Text = "移除选中",
+                Location = new Point(210, top),
+                Size = new Size(90, 30),
+                Enabled = false
+            };
+            btnRemove.Click += BtnRemove_Click;
+
+            btnClearAll = new Button
+            {
+                Text = "清除全部",
+                Location = new Point(310, top),
+                Size = new Size(90, 30)
+            };
+            btnClearAll.Click += BtnClearAll_Click;
+
+            btnOK = new Button
+            {
+                Text = "确定",
+                Location = new Point(410, top),
+                Size = new Size(80, 30),
+                DialogResult = DialogResult.OK
+            };
+
+            btnCancel = new Button
+            {
+                Text = "取消",
+                Location = new Point(500, top),
+                Size = new Size(80, 30),
+                DialogResult = DialogResult.Cancel
+            };
+
+            Controls.AddRange(new Control[]
+            {
+                filterListView, lblColumn, cmbColumn, conditionPanel,
+                btnAdd, btnUpdate, btnRemove, btnClearAll, btnOK, btnCancel
+            });
+
+            AcceptButton = btnOK;
+            CancelButton = btnCancel;
+
+            UpdateConditionPanel();
+        }
+
+        private void CmbColumn_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (!isLoadingCondition)
+            {
+                ClearSelection();
+            }
+            UpdateConditionPanel();
+        }
+
+        private void UpdateConditionPanel()
+        {
+            conditionPanel.Controls.Clear();
+
+            if (cmbColumn.SelectedItem == null)
+            {
+                return;
+            }
+
+            var columnItem = (ColumnItem)cmbColumn.SelectedItem;
+            var valueType = dataGridView.GetColumnValueType(columnItem.Column.DataPropertyName);
+
+            int y = 10;
+
+            switch (valueType)
+            {
+                case FilterValueType.Numeric:
+                    CreateNumericConditionControls(y);
+                    break;
+                case FilterValueType.String:
+                    CreateStringConditionControls(y);
+                    break;
+                case FilterValueType.Boolean:
+                    CreateBooleanConditionControls(y);
+                    break;
+                case FilterValueType.DateTime:
+                    CreateDateTimeConditionControls(y);
+                    break;
+            }
+        }
+
+        private ComboBox numericOperatorCombo;
+        private TextBox numericValue1Text;
+        private TextBox numericValue2Text;
+        private Label numericValue2Label;
+
+        private void CreateNumericConditionControls(int startY)
+        {
+            var lblOperator = new Label
+            {
+                Text = "操作符:",
+                Location = new Point(10, startY),
+                AutoSize = true
+            };
+
+            numericOperatorCombo = new ComboBox
+            {
+                Location = new Point(70, startY - 3),
+                Size = new Size(150, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            numericOperatorCombo.Items.AddRange(new object[]
+            {
+                "等于 (=)",
+                "不等于 (≠)",
+                "大于 (>)",
+                "小于 (<)",
+                "大于等于 (>=)",
+                "小于等于 (<=)",
+                "范围"
+            });
+            numericOperatorCombo.SelectedIndex = 0;
+            numericOperatorCombo.SelectedIndexChanged += (s, e) =>
+            {
+                bool isRange = numericOperatorCombo.SelectedIndex == 6;
+                numericValue2Label.Visible = isRange;
+                numericValue2Text.Visible = isRange;
+            };
+
+            var lblValue1 = new Label
+            {
+                Text = "值:",
+                Location = new Point(10, startY + 35),
+                AutoSize = true
+            };
+
+            numericValue1Text = new TextBox
+            {
+                Location = new Point(70, startY + 32),
+                Size = new Size(150, 23)
+            };
+
+            numericValue2Label = new Label
+            {
+                Text = "到:",
+                Location = new Point(230, startY + 35),
+                AutoSize = true,
+                Visible = false
+            };
+
+            numericValue2Text = new TextBox
+            {
+                Location = new Point(260, startY + 32),
+                Size = new Size(150, 23),
+                Visible = false
+            };
+
+            conditionPanel.Controls.AddRange(new Control[]
+            {
+                lblOperator, numericOperatorCombo,
+                lblValue1, numericValue1Text,
+                numericValue2Label, numericValue2Text
+            });
+        }
+
+        private TextBox stringFilterText;
+        private CheckBox stringCaseSensitive;
+
+        private void CreateStringConditionControls(int startY)
+        {
+            var lblText = new Label
+            {
+                Text = "包含文本:",
+                Location = new Point(10, startY),
+                AutoSize = true
+            };
+
+            stringFilterText = new TextBox
+            {
+                Location = new Point(90, startY - 3),
+                Size = new Size(300, 23)
+            };
+
+            stringCaseSensitive = new CheckBox
+            {
+                Text = "区分大小写",
+                Location = new Point(10, startY + 30),
+                AutoSize = true
+            };
+
+            conditionPanel.Controls.AddRange(new Control[]
+            {
+                lblText, stringFilterText, stringCaseSensitive
+            });
+        }
+
+        private RadioButton boolTrueRadio;
+        private RadioButton boolFalseRadio;
+
+        private void CreateBooleanConditionControls(int startY)
+        {
+            var lblValue = new Label
+            {
+                Text = "值:",
+                Location = new Point(10, startY),
+                AutoSize = true
+            };
+
+            boolTrueRadio = new RadioButton
+            {
+                Text = "True",
+                Location = new Point(70, startY),
+                AutoSize = true,
+                Checked = true
+            };
+
+            boolFalseRadio = new RadioButton
+            {
+                Text = "False",
+                Location = new Point(150, startY),
+                AutoSize = true
+            };
+
+            conditionPanel.Controls.AddRange(new Control[]
+            {
+                lblValue, boolTrueRadio, boolFalseRadio
+            });
+        }
+
+        private ComboBox dateOperatorCombo;
+        private DateTimePicker datePicker1;
+        private DateTimePicker datePicker2;
+        private Label dateLabel2;
+
+        private void CreateDateTimeConditionControls(int startY)
+        {
+            var lblOperator = new Label
+            {
+                Text = "操作符:",
+                Location = new Point(10, startY),
+                AutoSize = true
+            };
+
+            dateOperatorCombo = new ComboBox
+            {
+                Location = new Point(70, startY - 3),
+                Size = new Size(150, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            dateOperatorCombo.Items.AddRange(new object[]
+            {
+                "早于或等于",
+                "晚于或等于",
+                "日期范围"
+            });
+            dateOperatorCombo.SelectedIndex = 0;
+            dateOperatorCombo.SelectedIndexChanged += (s, e) =>
+            {
+                bool isRange = dateOperatorCombo.SelectedIndex == 2;
+                dateLabel2.Visible = isRange;
+                datePicker2.Visible = isRange;
+            };
+
+            var lblDate1 = new Label
+            {
+                Text = "日期:",
+                Location = new Point(10, startY + 35),
+                AutoSize = true
+            };
+
+            datePicker1 = new DateTimePicker
+            {
+                Location = new Point(70, startY + 32),
+                Size = new Size(200, 23),
+                Format = DateTimePickerFormat.Short
+            };
+
+            dateLabel2 = new Label
+            {
+                Text = "到:",
+                Location = new Point(280, startY + 35),
+                AutoSize = true,
+                Visible = false
+            };
+
+            datePicker2 = new DateTimePicker
+            {
+                Location = new Point(310, startY + 32),
+                Size = new Size(200, 23),
+                Format = DateTimePickerFormat.Short,
+                Visible = false
+            };
+
+            conditionPanel.Controls.AddRange(new Control[]
+            {
+                lblOperator, dateOperatorCombo,
+                lblDate1, datePicker1,
+                dateLabel2, datePicker2
+            });
+        }
+
+        private void BtnAdd_Click(object sender, EventArgs e)
+        {
+            if (cmbColumn.SelectedItem == null)
+            {
+                MessageBox.Show("请选择列", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var columnItem = (ColumnItem)cmbColumn.SelectedItem;
+            var columnName = columnItem.Column.DataPropertyName;
+            var valueType = dataGridView.GetColumnValueType(columnName);
+
+            FilterCondition condition = null;
+
+            try
+            {
+                switch (valueType)
+                {
+                    case FilterValueType.Numeric:
+                        condition = CreateNumericCondition(columnName);
+                        break;
+                    case FilterValueType.String:
+                        condition = CreateStringCondition(columnName);
+                        break;
+                    case FilterValueType.Boolean:
+                        condition = CreateBooleanCondition(columnName);
+                        break;
+                    case FilterValueType.DateTime:
+                        condition = CreateDateTimeCondition(columnName);
+                        break;
+                }
+
+                if (condition != null)
+                {
+                    if (!filters.ContainsKey(columnName))
+                    {
+                        filters[columnName] = new List<FilterCondition>();
+                    }
+                    filters[columnName].Add(condition);
+
+                    LoadFilters();
+
+                    // 清除选中状态
+                    ClearSelection();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"添加条件失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private NumericFilterCondition CreateNumericCondition(string columnName)
+        {
+            if (!double.TryParse(numericValue1Text.Text, out double value1))
+            {
+                throw new Exception("请输入有效的数值");
+            }
+
+            var condition = new NumericFilterCondition
+            {
+                ColumnName = columnName,
+                Value1 = value1
+            };
+
+            switch (numericOperatorCombo.SelectedIndex)
+            {
+                case 0:
+                    condition.Operator = NumericFilterOperator.Equals;
+                    break;
+                case 1:
+                    condition.Operator = NumericFilterOperator.NotEquals;
+                    break;
+                case 2:
+                    condition.Operator = NumericFilterOperator.GreaterThan;
+                    break;
+                case 3:
+                    condition.Operator = NumericFilterOperator.LessThan;
+                    break;
+                case 4:
+                    condition.Operator = NumericFilterOperator.GreaterThanOrEquals;
+                    break;
+                case 5:
+                    condition.Operator = NumericFilterOperator.LessThanOrEquals;
+                    break;
+                case 6:
+                    condition.Operator = NumericFilterOperator.Between;
+                    if (!double.TryParse(numericValue2Text.Text, out double value2))
+                    {
+                        throw new Exception("请输入有效的范围值");
+                    }
+                    condition.Value2 = value2;
+                    break;
+            }
+
+            return condition;
+        }
+
+        private StringFilterCondition CreateStringCondition(string columnName)
+        {
+            return new StringFilterCondition
+            {
+                ColumnName = columnName,
+                FilterText = stringFilterText.Text,
+                CaseSensitive = stringCaseSensitive.Checked
+            };
+        }
+
+        private BooleanFilterCondition CreateBooleanCondition(string columnName)
+        {
+            return new BooleanFilterCondition
+            {
+                ColumnName = columnName,
+                FilterValue = boolTrueRadio.Checked
+            };
+        }
+
+        private DateTimeFilterCondition CreateDateTimeCondition(string columnName)
+        {
+            var condition = new DateTimeFilterCondition
+            {
+                ColumnName = columnName,
+                Date1 = datePicker1.Value
+            };
+
+            switch (dateOperatorCombo.SelectedIndex)
+            {
+                case 0:
+                    condition.Operator = DateTimeFilterOperator.Before;
+                    break;
+                case 1:
+                    condition.Operator = DateTimeFilterOperator.After;
+                    break;
+                case 2:
+                    condition.Operator = DateTimeFilterOperator.Between;
+                    condition.Date2 = datePicker2.Value;
+                    break;
+            }
+
+            return condition;
+        }
+
+
+        private void BtnUpdate_Click(object sender, EventArgs e)
+        {
+            if (selectedCondition == null || filterListView.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("请先选择要更新的条件", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (cmbColumn.SelectedItem == null)
+            {
+                MessageBox.Show("请选择列", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                var columnItem = (ColumnItem)cmbColumn.SelectedItem;
+                var newColumnName = columnItem.Column.DataPropertyName;
+                var oldColumnName = selectedCondition.ColumnName;
+
+                // 创建新的条件
+                FilterCondition newCondition = null;
+                var valueType = dataGridView.GetColumnValueType(newColumnName);
+
+                switch (valueType)
+                {
+                    case FilterValueType.Numeric:
+                        newCondition = CreateNumericCondition(newColumnName);
+                        break;
+                    case FilterValueType.String:
+                        newCondition = CreateStringCondition(newColumnName);
+                        break;
+                    case FilterValueType.Boolean:
+                        newCondition = CreateBooleanCondition(newColumnName);
+                        break;
+                    case FilterValueType.DateTime:
+                        newCondition = CreateDateTimeCondition(newColumnName);
+                        break;
+                }
+
+                if (newCondition != null)
+                {
+                    // 从旧列中移除
+                    if (filters.ContainsKey(oldColumnName))
+                    {
+                        filters[oldColumnName].Remove(selectedCondition);
+                        if (filters[oldColumnName].Count == 0)
+                        {
+                            filters.Remove(oldColumnName);
+                        }
+                    }
+
+                    // 添加到新列
+                    if (!filters.ContainsKey(newColumnName))
+                    {
+                        filters[newColumnName] = new List<FilterCondition>();
+                    }
+                    filters[newColumnName].Add(newCondition);
+
+                    LoadFilters();
+
+                    // 清除选中状态
+                    ClearSelection();
+
+                    MessageBox.Show("条件已更新", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"更新条件失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+        private void BtnRemove_Click(object sender, EventArgs e)
+        {
+            if (filterListView.SelectedItems.Count == 0)
+            {
+                return;
+            }
+
+            var item = filterListView.SelectedItems[0];
+            var condition = item.Tag as FilterCondition;
+
+            if (condition != null && filters.ContainsKey(condition.ColumnName))
+            {
+                filters[condition.ColumnName].Remove(condition);
+                if (filters[condition.ColumnName].Count == 0)
+                {
+                    filters.Remove(condition.ColumnName);
+                }
+            }
+
+            LoadFilters();
+            ClearSelection();
+        }
+
+        private void BtnClearAll_Click(object sender, EventArgs e)
+        {
+            if (filters.Count > 0)
+            {
+                var result = MessageBox.Show("确定要清除所有筛选条件吗？", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    filters.Clear();
+                    LoadFilters();
+                    ClearSelection();
+                }
+            }
+        }
+
+        private void LoadFilters()
+        {
+            filterListView.Items.Clear();
+
+            foreach (var kvp in filters)
+            {
+                var columnName = kvp.Key;
+                var column = dataGridView.Columns.Cast<FluentDataGridViewColumn>()
+                    .FirstOrDefault(c => c.DataPropertyName == columnName);
+
+                var columnDisplayName = column?.HeaderText ?? columnName;
+
+                foreach (var condition in kvp.Value)
+                {
+                    var item = new ListViewItem(columnDisplayName);
+                    item.SubItems.Add(condition.GetDescription());
+                    item.Tag = condition;
+                    filterListView.Items.Add(item);
+                }
+            }
+        }
+
+        private bool isLoadingCondition = false;
+        private void FilterListView_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            bool hasSelection = filterListView.SelectedItems.Count > 0;
+
+            btnRemove.Enabled = hasSelection;
+            btnUpdate.Enabled = hasSelection;
+
+            if (hasSelection)
+            {
+                var item = filterListView.SelectedItems[0];
+                selectedCondition = item.Tag as FilterCondition;
+
+                if (selectedCondition != null)
+                {
+                    LoadConditionToPanel(selectedCondition);
+                }
+            }
+            else
+            {
+                selectedCondition = null;
+                // 可以选择清空编辑面板或保持当前值
+            }
+        }
+
+        private void LoadConditionToPanel(FilterCondition condition)
+        {
+            isLoadingCondition = true;
+
+            try
+            {
+                // 选择对应的列
+                for (int i = 0; i < cmbColumn.Items.Count; i++)
+                {
+                    var columnItem = (ColumnItem)cmbColumn.Items[i];
+                    if (columnItem.Column.DataPropertyName == condition.ColumnName)
+                    {
+                        cmbColumn.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                // 根据条件类型加载值
+                switch (condition)
+                {
+                    case NumericFilterCondition numCondition:
+                        LoadNumericCondition(numCondition);
+                        break;
+                    case StringFilterCondition strCondition:
+                        LoadStringCondition(strCondition);
+                        break;
+                    case BooleanFilterCondition boolCondition:
+                        LoadBooleanCondition(boolCondition);
+                        break;
+                    case DateTimeFilterCondition dateCondition:
+                        LoadDateTimeCondition(dateCondition);
+                        break;
+                }
+            }
+            finally
+            {
+                isLoadingCondition = false;
+            }
+        }
+
+        /// <summary>
+        /// 加载数值条件
+        /// </summary>
+        /// <param name="condition"></param>
+        private void LoadNumericCondition(NumericFilterCondition condition)
+        {
+            if (numericOperatorCombo == null)
+            {
+                return;
+            }
+
+            // 设置操作符
+            switch (condition.Operator)
+            {
+                case NumericFilterOperator.Equals:
+                    numericOperatorCombo.SelectedIndex = 0;
+                    break;
+                case NumericFilterOperator.NotEquals:
+                    numericOperatorCombo.SelectedIndex = 1;
+                    break;
+                case NumericFilterOperator.GreaterThan:
+                    numericOperatorCombo.SelectedIndex = 2;
+                    break;
+                case NumericFilterOperator.LessThan:
+                    numericOperatorCombo.SelectedIndex = 3;
+                    break;
+                case NumericFilterOperator.GreaterThanOrEquals:
+                    numericOperatorCombo.SelectedIndex = 4;
+                    break;
+                case NumericFilterOperator.LessThanOrEquals:
+                    numericOperatorCombo.SelectedIndex = 5;
+                    break;
+                case NumericFilterOperator.Between:
+                    numericOperatorCombo.SelectedIndex = 6;
+                    numericValue2Text.Text = condition.Value2.ToString();
+                    break;
+            }
+
+            numericValue1Text.Text = condition.Value1.ToString();
+        }
+
+        /// <summary>
+        /// 加载字符串条件
+        /// </summary>
+        private void LoadStringCondition(StringFilterCondition condition)
+        {
+            if (stringFilterText == null)
+            {
+                return;
+            }
+
+            stringFilterText.Text = condition.FilterText ?? "";
+            stringCaseSensitive.Checked = condition.CaseSensitive;
+        }
+
+        /// <summary>
+        /// 加载布尔条件
+        /// </summary>
+        private void LoadBooleanCondition(BooleanFilterCondition condition)
+        {
+            if (boolTrueRadio == null)
+            {
+                return;
+            }
+
+            boolTrueRadio.Checked = condition.FilterValue;
+            boolFalseRadio.Checked = !condition.FilterValue;
+        }
+
+        /// <summary>
+        /// 加载日期条件
+        /// </summary>
+        private void LoadDateTimeCondition(DateTimeFilterCondition condition)
+        {
+            if (dateOperatorCombo == null)
+            {
+                return;
+            }
+
+            // 设置操作符
+            switch (condition.Operator)
+            {
+                case DateTimeFilterOperator.Before:
+                    dateOperatorCombo.SelectedIndex = 0;
+                    break;
+                case DateTimeFilterOperator.After:
+                    dateOperatorCombo.SelectedIndex = 1;
+                    break;
+                case DateTimeFilterOperator.Between:
+                    dateOperatorCombo.SelectedIndex = 2;
+                    datePicker2.Value = condition.Date2;
+                    break;
+            }
+
+            datePicker1.Value = condition.Date1;
+        }
+
+        /// <summary>
+        /// 清除选中状态
+        /// </summary>
+        private void ClearSelection()
+        {
+            filterListView.SelectedItems.Clear();
+            selectedCondition = null;
+        }
+
+
+        public Dictionary<string, List<FilterCondition>> GetFilters()
+        {
+            return filters;
+        }
+
+        private class ColumnItem
+        {
+            public FluentDataGridViewColumn Column { get; set; }
+
+            public ColumnItem(FluentDataGridViewColumn column)
+            {
+                Column = column;
+            }
+
+            public override string ToString()
+            {
+                return !string.IsNullOrEmpty(Column.HeaderText)
+                    ? Column.HeaderText
+                    : Column.Name;
+            }
+        }
+    }
 
     #endregion
 
@@ -9276,8 +10077,7 @@ namespace FluentControls.Controls
             catch (Exception ex)
             {
                 transaction?.Cancel();
-                MessageBox.Show($"编辑列时出错: {ex.Message}", "错误",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"编辑列时出错: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -9497,14 +10297,6 @@ namespace FluentControls.Controls
 
         #region 属性
 
-        [Category("数据")]
-        [Description("数据源")]
-        public object DataSource
-        {
-            get => dataGridView.DataSource;
-            set => SetProperty("DataSource", value);
-        }
-
         [Category("分页")]
         [Description("是否启用分页")]
         public bool EnablePagination
@@ -9595,10 +10387,6 @@ namespace FluentControls.Controls
         public override DesignerActionItemCollection GetSortedActionItems()
         {
             var items = new DesignerActionItemCollection();
-
-            // 数据
-            items.Add(new DesignerActionHeaderItem("数据"));
-            items.Add(new DesignerActionPropertyItem("DataSource", "数据源", "数据"));
 
             // 列
             items.Add(new DesignerActionHeaderItem("列"));
