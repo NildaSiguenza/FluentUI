@@ -60,10 +60,24 @@ namespace FluentControls.Controls
         private bool isDraggingColumn;
         private FluentListViewColumn draggingColumn;
 
+        private int smallIconItemWidth = 100;
+        private int largeIconItemWidth = 120;
+
         // 排序
         private int sortColumnIndex = -1;
         private ColumnSortOrder sortOrder = ColumnSortOrder.None;
         private IComparer itemComparer;
+
+        // 列宽调整
+        private bool allowColumnResize = true;
+        private bool isResizingColumn = false;
+        private FluentListViewColumn resizingColumn;
+        private int resizeStartX;
+        private int resizeStartWidth;
+        private const int ResizeHitArea = 4; // 列边界热区宽度
+
+        // 显示项边界(调试)
+        private bool showItemBounds = false;
 
         #endregion
 
@@ -336,6 +350,62 @@ namespace FluentControls.Controls
             }
         }
 
+        [Category("ListView")]
+        [Description("是否允许调整列宽")]
+        [DefaultValue(true)]
+        public bool AllowColumnResize
+        {
+            get => allowColumnResize;
+            set
+            {
+                if (allowColumnResize != value)
+                {
+                    allowColumnResize = value;
+                }
+            }
+        }
+
+        [Category("ListView")]
+        [Description("小图标模式项宽度")]
+        [DefaultValue(100)]
+        public int SmallIconItemWidth
+        {
+            get => smallIconItemWidth;
+            set
+            {
+                if (smallIconItemWidth != value && value > 0)
+                {
+                    smallIconItemWidth = value;
+                    if (viewMode == FluentListViewMode.SmallIcon)
+                    {
+                        UpdateLayout();
+                        Invalidate();
+                    }
+                }
+            }
+        }
+
+        [Category("ListView")]
+        [Description("大图标模式项宽度")]
+        [DefaultValue(120)]
+        public int LargeIconItemWidth
+        {
+            get => largeIconItemWidth;
+            set
+            {
+                if (largeIconItemWidth != value && value > 0)
+                {
+                    largeIconItemWidth = value;
+                    if (viewMode == FluentListViewMode.LargeIcon)
+                    {
+                        UpdateLayout();
+                        Invalidate();
+                    }
+                }
+            }
+        }
+
+
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public List<FluentListViewItem> SelectedItems => selectedItems;
@@ -449,6 +519,23 @@ namespace FluentControls.Controls
             }
         }
 
+        [Category("Debug")]
+        [Description("显示项边界框(调试用)")]
+        [DefaultValue(false)]
+        [Browsable(false)]
+        public bool ShowItemBounds
+        {
+            get => showItemBounds;
+            set
+            {
+                if (showItemBounds != value)
+                {
+                    showItemBounds = value;
+                    Invalidate();
+                }
+            }
+        }
+
         [Browsable(false)]
         public IComparer ItemSorter
         {
@@ -533,10 +620,16 @@ namespace FluentControls.Controls
         private void UpdateDetailsLayout(out int contentWidth, out int contentHeight)
         {
             int y = (showColumnHeaders ? headerHeight : 0) + contentPadding.Top;
-            int x = checkBoxes ? 20 : 0;
-            x += contentPadding.Left;
+            int startX = contentPadding.Left;
 
-            // 计算列位置
+            // 第一列的起始位置需要考虑复选框
+            if (checkBoxes)
+            {
+                startX += 20;
+            }
+
+            // 计算列位置 - 确保列头和数据行使用相同的起始位置
+            int x = startX;
             foreach (var column in columns.Where(c => c.Visible))
             {
                 column.Bounds = new Rectangle(x, 0, column.Width, headerHeight);
@@ -584,21 +677,36 @@ namespace FluentControls.Controls
         private void UpdateIconLayout(out int contentWidth, out int contentHeight)
         {
             int iconSize = viewMode == FluentListViewMode.LargeIcon ? largeIconSize : smallIconSize;
-            int itemWidth = viewMode == FluentListViewMode.Tile ? 250 : iconSize + 80;
+            int itemWidth;
             int itemH;
 
-            // 根据视图模式确定项高度
+            // 根据视图模式确定项尺寸
             if (viewMode == FluentListViewMode.Tile)
             {
+                itemWidth = 250;
                 itemH = tileItemHeight;
             }
             else if (viewMode == FluentListViewMode.LargeIcon)
             {
-                itemH = iconSize + 50;
+                itemWidth = largeIconItemWidth; // 使用配置的宽度
+
+                // 计算高度：图标 + 间距 + 文字
+                using (var g = CreateGraphics())
+                {
+                    var textHeight = (int)Math.Ceiling(Font.GetHeight(g));
+                    itemH = iconSize + 8 + textHeight + 8;
+                }
             }
-            else
+            else // SmallIcon
             {
-                itemH = itemHeight;
+                itemWidth = smallIconItemWidth; // 使用配置的宽度
+
+                // 计算高度：图标 + 间距 + 文字
+                using (var g = CreateGraphics())
+                {
+                    var textHeight = (int)Math.Ceiling(Font.GetHeight(g));
+                    itemH = iconSize + 8 + textHeight + 8;
+                }
             }
 
             int x = itemSpacing + contentPadding.Left;
@@ -745,23 +853,24 @@ namespace FluentControls.Controls
             var headerTextColor = GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
             var borderColor = GetThemeColor(c => c.Border, SystemColors.ControlDark);
 
-            // 应用内边距偏移
-            int offsetX = contentPadding.Left;
-            if (checkBoxes)
-            {
-                offsetX += 20;
-            }
-
             using (var bgBrush = new SolidBrush(headerBgColor))
             using (var textBrush = new SolidBrush(headerTextColor))
-            using (var borderPen = new Pen(borderColor))
+            using (var borderPen = new Pen(borderColor, 1))
             {
+                // 先绘制整个标题栏背景
+                var headerRect = new Rectangle(0, 0, Width, headerHeight);
+                g.FillRectangle(bgBrush, headerRect);
+
+                // 绘制底部分隔线
+                g.DrawLine(borderPen, 0, headerHeight - 1, Width, headerHeight - 1);
+
                 foreach (var column in columns.Where(c => c.Visible))
                 {
                     var bounds = column.Bounds;
                     bool isHovered = column == hoveredColumn;
+                    bool hasSortIndicator = column.SortOrder != ColumnSortOrder.None;
 
-                    // 绘制背景
+                    // 绘制悬停背景
                     if (isHovered)
                     {
                         var hoverColor = GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight);
@@ -770,60 +879,164 @@ namespace FluentControls.Controls
                             g.FillRectangle(hoverBrush, bounds);
                         }
                     }
-                    else
+
+                    // 计算排序箭头占用的空间
+                    int sortIndicatorWidth = hasSortIndicator ? 20 : 0;
+                    int textPadding = 4;
+
+                    // 根据对齐方式和排序指示器调整文本区域
+                    Rectangle textRect;
+
+                    if (column.TextAlign == HorizontalAlignment.Right)
                     {
-                        g.FillRectangle(bgBrush, bounds);
+                        if (hasSortIndicator)
+                        {
+                            textRect = new Rectangle(
+                                bounds.X + textPadding,
+                                bounds.Y,
+                                bounds.Width - sortIndicatorWidth - textPadding * 2,
+                                bounds.Height);
+                        }
+                        else
+                        {
+                            textRect = new Rectangle(
+                                bounds.X + textPadding,
+                                bounds.Y,
+                                bounds.Width - textPadding * 2,
+                                bounds.Height);
+                        }
+                    }
+                    else if (column.TextAlign == HorizontalAlignment.Center)
+                    {
+                        if (hasSortIndicator)
+                        {
+                            textRect = new Rectangle(
+                                bounds.X + textPadding,
+                                bounds.Y,
+                                bounds.Width - sortIndicatorWidth - textPadding * 2,
+                                bounds.Height);
+                        }
+                        else
+                        {
+                            textRect = new Rectangle(
+                                bounds.X + textPadding,
+                                bounds.Y,
+                                bounds.Width - textPadding * 2,
+                                bounds.Height);
+                        }
+                    }
+                    else // Left
+                    {
+                        if (hasSortIndicator)
+                        {
+                            textRect = new Rectangle(
+                                bounds.X + textPadding,
+                                bounds.Y,
+                                bounds.Width - sortIndicatorWidth - textPadding * 2,
+                                bounds.Height);
+                        }
+                        else
+                        {
+                            textRect = new Rectangle(
+                                bounds.X + textPadding,
+                                bounds.Y,
+                                bounds.Width - textPadding * 2,
+                                bounds.Height);
+                        }
                     }
 
-                    // 绘制边框
-                    g.DrawRectangle(borderPen, bounds);
-
                     // 绘制文本
-                    var textRect = new Rectangle(bounds.X + 4, bounds.Y, bounds.Width - 8, bounds.Height);
                     var format = new StringFormat
                     {
                         LineAlignment = StringAlignment.Center,
                         Alignment = column.TextAlign == HorizontalAlignment.Center ? StringAlignment.Center :
                                    column.TextAlign == HorizontalAlignment.Right ? StringAlignment.Far :
                                    StringAlignment.Near,
-                        Trimming = StringTrimming.EllipsisCharacter
+                        Trimming = StringTrimming.EllipsisCharacter,
+                        FormatFlags = StringFormatFlags.NoWrap
                     };
 
                     g.DrawString(column.Text, Font, textBrush, textRect, format);
 
                     // 绘制排序指示器
-                    if (column.SortOrder != ColumnSortOrder.None)
+                    if (hasSortIndicator)
                     {
                         DrawSortIndicator(g, bounds, column.SortOrder);
+                    }
+                }
+
+                // 最后绘制垂直分隔线(与网格线对齐)
+                if (gridLines)
+                {
+                    int x = contentPadding.Left;
+                    if (checkBoxes)
+                    {
+                        x += 20;
+                    }
+
+                    foreach (var column in columns.Where(c => c.Visible))
+                    {
+                        x += column.Width;
+                        // 绘制列分隔线，与网格线位置完全一致
+                        g.DrawLine(borderPen, x, 0, x, headerHeight);
                     }
                 }
             }
         }
 
-        private void DrawSortIndicator(Graphics g, Rectangle bounds, ColumnSortOrder order)
+        private void DrawSortIndicator(Graphics g, Rectangle columnBounds, ColumnSortOrder order)
         {
-            var color = GetThemeColor(c => c.TextSecondary, SystemColors.GrayText);
+            var color = GetThemeColor(c => c.Accent, SystemColors.Highlight);
+            var shadowColor = Color.FromArgb(50, color);
+
+            // 箭头尺寸
+            int arrowWidth = 7;
+            int arrowHeight = 4;
+
+            // 固定在列的最右侧
+            int rightPadding = 8;
+            int x = columnBounds.Right - rightPadding - arrowWidth;
+            int y = columnBounds.Y + (columnBounds.Height - arrowHeight) / 2;
+
+            Point[] points;
+
+            if (order == ColumnSortOrder.Ascending)
+            {
+                // 向上箭头 ▲
+                points = new Point[]
+                {
+                    new Point(x + arrowWidth / 2, y),
+                    new Point(x, y + arrowHeight),
+                    new Point(x + arrowWidth, y + arrowHeight)
+                };
+            }
+            else // Descending
+            {
+                // 向下箭头 ▼
+                points = new Point[]
+                {
+                    new Point(x, y),
+                    new Point(x + arrowWidth, y),
+                    new Point(x + arrowWidth / 2, y + arrowHeight)
+                };
+            }
+
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // 绘制阴影(可选，增加立体感)
+            var shadowPoints = points.Select(p => new Point(p.X + 1, p.Y + 1)).ToArray();
+            using (var shadowBrush = new SolidBrush(shadowColor))
+            {
+                g.FillPolygon(shadowBrush, shadowPoints);
+            }
+
+            // 绘制主箭头
             using (var brush = new SolidBrush(color))
             {
-                int x = bounds.Right - 16;
-                int y = bounds.Y + bounds.Height / 2;
-
-                Point[] points = order == ColumnSortOrder.Ascending
-                    ? new Point[]
-                    {
-                        new Point(x, y + 3),
-                        new Point(x + 6, y + 3),
-                        new Point(x + 3, y - 3)
-                    }
-                    : new Point[]
-                    {
-                        new Point(x, y - 3),
-                        new Point(x + 6, y - 3),
-                        new Point(x + 3, y + 3)
-                    };
-
                 g.FillPolygon(brush, points);
             }
+
+            g.SmoothingMode = SmoothingMode.Default;
         }
 
         private void DrawGridLines(Graphics g)
@@ -856,28 +1069,50 @@ namespace FluentControls.Controls
             bool isSelected = item.Selected;
             bool isHovered = item.Hovered;
 
-            // 绘制背景
-            if (isSelected || isHovered)
+            // 先绘制项的自定义背景色(如果有的话)
+            if (!item.BackColor.IsEmpty && item.BackColor != Color.Transparent)
             {
-                var bgColor = isSelected
-                    ? GetThemeColor(c => c.SurfacePressed, Color.FromArgb(200, SystemColors.Highlight))
-                    : GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight);
-
-                using (var brush = new SolidBrush(bgColor))
+                using (var brush = new SolidBrush(item.BackColor))
                 {
-                    if (fullRowSelect)
-                    {
-                        g.FillRectangle(brush, bounds);
-                    }
-                    else if (columns.Count > 0)
-                    {
-                        g.FillRectangle(brush, new Rectangle(bounds.X, bounds.Y, columns[0].Width, bounds.Height));
-                    }
+                    g.FillRectangle(brush, bounds);
                 }
             }
 
-            // 绘制复选框
+            // 然后在上面绘制选中/悬停效果(半透明)
+            if (isSelected || isHovered)
+            {
+                Color overlayColor;
+                if (isSelected)
+                {
+                    overlayColor = Color.FromArgb(100, GetThemeColor(c => c.Accent, SystemColors.Highlight));
+                }
+                else // isHovered
+                {
+                    overlayColor = Color.FromArgb(50, GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight));
+                }
+
+                using (var brush = new SolidBrush(overlayColor))
+                using (var path = GetRoundedRectangle(
+                    new Rectangle(bounds.X + 4, bounds.Y + 2, bounds.Width - 8, bounds.Height - 4), 4))
+                {
+                    g.FillPath(brush, path);
+                }
+            }
+
+            // 绘制选中指示器(修正：去掉错误的 displayMode 变量)
+            if (isSelected)
+            {
+                var accentColor = GetThemeColor(c => c.Accent, SystemColors.Highlight);
+                using (var brush = new SolidBrush(accentColor))
+                {
+                    // 选中指示器始终在左侧
+                    g.FillRectangle(brush, bounds.X, bounds.Y + 8, 3, bounds.Height - 16);
+                }
+            }
+
             int x = bounds.X + contentPadding.Left;
+
+            // 绘制复选框
             if (checkBoxes)
             {
                 DrawCheckBox(g, new Rectangle(x + 2, bounds.Y + (bounds.Height - 16) / 2, 16, 16), item.Checked);
@@ -894,30 +1129,53 @@ namespace FluentControls.Controls
 
                 var column = columns[i];
                 var subItem = item.SubItems[i];
+
+                // 修正：使用 column.Bounds.X 而不是额外偏移
                 var cellBounds = new Rectangle(
-                    column.Bounds.X + (i == 0 && checkBoxes ? 20 : 0),
+                    column.Bounds.X,
                     bounds.Y,
-                    column.Width - (i == 0 && checkBoxes ? 20 : 0),
+                    column.Width,
                     bounds.Height);
 
-                // 绘制图标（仅第一列）
+                // 第一列需要考虑复选框和图标的偏移
                 if (i == 0)
                 {
+                    int offset = contentPadding.Left;
+                    if (checkBoxes)
+                    {
+                        offset += 20;
+                    }
+
+                    // 绘制图标
                     var icon = GetItemIcon(item);
                     if (icon != null)
                     {
-                        var iconRect = new Rectangle(cellBounds.X + 2, cellBounds.Y + (cellBounds.Height - smallIconSize) / 2,
+                        var iconRect = new Rectangle(
+                            cellBounds.X + offset + 2,
+                            cellBounds.Y + (cellBounds.Height - smallIconSize) / 2,
                             smallIconSize, smallIconSize);
                         g.DrawImage(icon, iconRect);
-                        cellBounds.X += smallIconSize + 4;
-                        cellBounds.Width -= smallIconSize + 4;
+                        offset += smallIconSize + 4;
                     }
+
+                    cellBounds.X += offset;
+                    cellBounds.Width -= offset;
                 }
 
-                // 绘制文本
-                var textColor = !subItem.ForeColor.IsEmpty ? subItem.ForeColor :
-                               !item.ForeColor.IsEmpty ? item.ForeColor :
-                               GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
+                // 使用子项的前景色(如果有)，否则使用项的前景色，最后使用默认色
+                Color textColor;
+                if (!subItem.ForeColor.IsEmpty)
+                {
+                    textColor = subItem.ForeColor;
+                }
+                else if (!item.ForeColor.IsEmpty)
+                {
+                    textColor = item.ForeColor;
+                }
+                else
+                {
+                    textColor = GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
+                }
 
                 var textFont = subItem.Font ?? item.Font ?? Font;
 
@@ -933,8 +1191,9 @@ namespace FluentControls.Controls
                         FormatFlags = StringFormatFlags.NoWrap
                     };
 
-                    cellBounds.Inflate(-4, 0);
-                    g.DrawString(subItem.Text, textFont, brush, cellBounds, format);
+                    var textBounds = cellBounds;
+                    textBounds.Inflate(-4, 0);
+                    g.DrawString(subItem.Text, textFont, brush, textBounds, format);
                 }
             }
 
@@ -959,14 +1218,30 @@ namespace FluentControls.Controls
             bool isSelected = item.Selected;
             bool isHovered = item.Hovered;
 
-            // 绘制背景
+            // 先绘制项的自定义背景色
+            if (!item.BackColor.IsEmpty && item.BackColor != Color.Transparent)
+            {
+                using (var brush = new SolidBrush(item.BackColor))
+                using (var path = GetRoundedRectangle(bounds, 4))
+                {
+                    g.FillPath(brush, path);
+                }
+            }
+
+            // 然后绘制选中/悬停效果(半透明覆盖)
             if (isSelected || isHovered)
             {
-                var bgColor = isSelected
-                    ? GetThemeColor(c => c.SurfacePressed, Color.FromArgb(200, SystemColors.Highlight))
-                    : GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight);
+                Color overlayColor;
+                if (isSelected)
+                {
+                    overlayColor = Color.FromArgb(100, GetThemeColor(c => c.Accent, SystemColors.Highlight));
+                }
+                else
+                {
+                    overlayColor = Color.FromArgb(50, GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight));
+                }
 
-                using (var brush = new SolidBrush(bgColor))
+                using (var brush = new SolidBrush(overlayColor))
                 using (var path = GetRoundedRectangle(bounds, 4))
                 {
                     g.FillPath(brush, path);
@@ -991,9 +1266,9 @@ namespace FluentControls.Controls
                 x += smallIconSize + 4;
             }
 
-            // 绘制文本
-            var textColor = !item.ForeColor.IsEmpty ? item.ForeColor :
-                           GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
+            // 使用项的前景色
+            Color textColor = !item.ForeColor.IsEmpty ? item.ForeColor :
+                             GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
 
             using (var brush = new SolidBrush(textColor))
             {
@@ -1030,14 +1305,31 @@ namespace FluentControls.Controls
             bool isSelected = item.Selected;
             bool isHovered = item.Hovered;
 
-            // 绘制背景
+            // 先绘制项的自定义背景色
+            if (!item.BackColor.IsEmpty && item.BackColor != Color.Transparent)
+            {
+                using (var brush = new SolidBrush(item.BackColor))
+                using (var path = GetRoundedRectangle(bounds, 4))
+                {
+                    g.FillPath(brush, path);
+                }
+            }
+
+            // 然后绘制选中/悬停效果(覆盖整个项区域)
             if (isSelected || isHovered)
             {
-                var bgColor = isSelected
-                    ? GetThemeColor(c => c.SurfacePressed, Color.FromArgb(200, SystemColors.Highlight))
-                    : GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight);
+                Color overlayColor;
+                if (isSelected)
+                {
+                    overlayColor = Color.FromArgb(100, GetThemeColor(c => c.Accent, SystemColors.Highlight));
+                }
+                else
+                {
+                    overlayColor = Color.FromArgb(50, GetThemeColor(c => c.SurfaceHover, SystemColors.ControlLight));
+                }
 
-                using (var brush = new SolidBrush(bgColor))
+                // 使用整个 bounds 绘制选中区域
+                using (var brush = new SolidBrush(overlayColor))
                 using (var path = GetRoundedRectangle(bounds, 4))
                 {
                     g.FillPath(brush, path);
@@ -1050,29 +1342,64 @@ namespace FluentControls.Controls
             }
             else
             {
+                // 计算图标和文本的位置
+                int iconX = bounds.X + (bounds.Width - iconSize) / 2;
+                int iconY = bounds.Y + 4;
+
                 // 绘制图标
                 var icon = GetItemIcon(item, viewMode == FluentListViewMode.LargeIcon);
                 if (icon != null)
                 {
-                    var iconRect = new Rectangle(
-                        bounds.X + (bounds.Width - iconSize) / 2,
-                        bounds.Y + 4,
-                        iconSize, iconSize);
-                    g.DrawImage(icon, iconRect);
+                    var iconRect = new Rectangle(iconX, iconY, iconSize, iconSize);
+
+                    try
+                    {
+                        g.DrawImage(icon, iconRect);
+                    }
+                    catch
+                    {
+                        // 如果图标绘制失败，绘制占位符
+                        using (var pen = new Pen(Color.Gray, 1))
+                        {
+                            g.DrawRectangle(pen, iconRect);
+                        }
+                    }
+                }
+                else
+                {
+                    // 没有图标时绘制占位符(可选)
+                    if (viewMode == FluentListViewMode.LargeIcon)
+                    {
+                        var iconRect = new Rectangle(iconX, iconY, iconSize, iconSize);
+                        using (var pen = new Pen(Color.LightGray, 1))
+                        {
+                            g.DrawRectangle(pen, iconRect);
+                        }
+                    }
                 }
 
-                // 绘制文本
-                var textColor = !item.ForeColor.IsEmpty ? item.ForeColor :
-                               GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
+                // 绘制文本(在图标下方)
+                Color textColor = !item.ForeColor.IsEmpty ? item.ForeColor :
+                                 GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
 
                 using (var brush = new SolidBrush(textColor))
                 {
-                    var textRect = new Rectangle(bounds.X, bounds.Y + iconSize + 8, bounds.Width, bounds.Height - iconSize - 8);
+                    // 文本区域在图标下方
+                    int textY = iconY + iconSize + 4;
+                    int textHeight = bounds.Bottom - textY;
+
+                    var textRect = new Rectangle(
+                        bounds.X + 2,
+                        textY,
+                        bounds.Width - 4,
+                        textHeight);
+
                     var format = new StringFormat
                     {
                         Alignment = StringAlignment.Center,
                         LineAlignment = StringAlignment.Near,
-                        Trimming = StringTrimming.EllipsisCharacter
+                        Trimming = StringTrimming.EllipsisCharacter,
+                        FormatFlags = StringFormatFlags.NoWrap
                     };
 
                     g.DrawString(item.Text, item.Font ?? Font, brush, textRect, format);
@@ -1082,7 +1409,20 @@ namespace FluentControls.Controls
             // 绘制焦点框
             if (item.Focused && Focused)
             {
-                ControlPaint.DrawFocusRectangle(g, bounds);
+                // 焦点框绘制在整个项区域
+                var focusRect = bounds;
+                focusRect.Inflate(-1, -1);
+                ControlPaint.DrawFocusRectangle(g, focusRect);
+            }
+
+            // 调试：绘制项边界
+            if (showItemBounds)
+            {
+                using (var pen = new Pen(Color.Red, 1))
+                {
+                    pen.DashStyle = DashStyle.Dot;
+                    g.DrawRectangle(pen, bounds);
+                }
             }
         }
 
@@ -1106,9 +1446,9 @@ namespace FluentControls.Controls
             int textAreaWidth = bounds.Right - x - padding;
             int textY = y;
 
-            // 绘制主文本
-            var textColor = !item.ForeColor.IsEmpty ? item.ForeColor :
-                           GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
+            // 使用项的前景色
+            Color textColor = !item.ForeColor.IsEmpty ? item.ForeColor :
+                             GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
 
             var titleFont = item.Font ?? Font;
             if (titleFont.Style == FontStyle.Regular)
@@ -1300,7 +1640,43 @@ namespace FluentControls.Controls
 
             var adjustedPoint = new Point(e.X + scrollOffsetX, e.Y + scrollOffsetY);
 
-            // 检查列标题
+            // 如果正在调整列宽
+            if (isResizingColumn && resizingColumn != null)
+            {
+                int delta = e.X - resizeStartX;
+                int newWidth = Math.Max(20, resizeStartWidth + delta); // 最小宽度20
+                resizingColumn.Width = newWidth;
+                UpdateLayout();
+                Invalidate();
+                return;
+            }
+
+            // 检查是否在列边界上(可以调整列宽)
+            if (viewMode == FluentListViewMode.Details && showColumnHeaders &&
+                allowColumnResize && e.Y < headerHeight)
+            {
+                bool onResizeBorder = false;
+
+                foreach (var column in columns.Where(c => c.Visible))
+                {
+                    int rightEdge = column.Bounds.Right - scrollOffsetX;
+
+                    // 检查是否在列右边界的热区内
+                    if (Math.Abs(e.X - rightEdge) <= ResizeHitArea)
+                    {
+                        Cursor = Cursors.VSplit;
+                        onResizeBorder = true;
+                        break;
+                    }
+                }
+
+                if (!onResizeBorder)
+                {
+                    Cursor = Cursors.Default;
+                }
+            }
+
+            // 检查列标题悬停
             FluentListViewColumn newHoveredColumn = null;
             if (viewMode == FluentListViewMode.Details && showColumnHeaders && e.Y < headerHeight)
             {
@@ -1320,10 +1696,15 @@ namespace FluentControls.Controls
                 Invalidate();
             }
 
-            // 检查项
+            // 检查项悬停
             FluentListViewItem newHoveredItem = null;
             foreach (var item in items)
             {
+                if (item.Bounds.IsEmpty)
+                {
+                    continue;
+                }
+
                 if (item.Bounds.Contains(adjustedPoint))
                 {
                     newHoveredItem = item;
@@ -1352,6 +1733,13 @@ namespace FluentControls.Controls
 
                 Invalidate();
             }
+
+            // 设置光标
+            if (!isResizingColumn && Cursor != Cursors.VSplit)
+            {
+                bool overInteractive = newHoveredItem != null || newHoveredColumn != null;
+                Cursor = overInteractive ? Cursors.Hand : Cursors.Default;
+            }
         }
 
         protected override void OnMouseLeave(EventArgs e)
@@ -1378,6 +1766,40 @@ namespace FluentControls.Controls
             mouseDownPoint = e.Location;
 
             Focus();
+
+            // 检查是否在列边界上准备调整列宽
+            if (e.Button == MouseButtons.Left && viewMode == FluentListViewMode.Details &&
+                showColumnHeaders && allowColumnResize && e.Y < headerHeight)
+            {
+                foreach (var column in columns.Where(c => c.Visible))
+                {
+                    int rightEdge = column.Bounds.Right - scrollOffsetX;
+
+                    if (Math.Abs(e.X - rightEdge) <= ResizeHitArea)
+                    {
+                        isResizingColumn = true;
+                        resizingColumn = column;
+                        resizeStartX = e.X;
+                        resizeStartWidth = column.Width;
+                        Cursor = Cursors.VSplit;
+                        return;
+                    }
+                }
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+
+            // 结束列宽调整
+            if (isResizingColumn)
+            {
+                isResizingColumn = false;
+                resizingColumn = null;
+                Cursor = Cursors.Default;
+                return;
+            }
         }
 
         protected override void OnMouseClick(MouseEventArgs e)
@@ -1385,6 +1807,12 @@ namespace FluentControls.Controls
             base.OnMouseClick(e);
 
             if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            // 如果正在或刚完成列宽调整，不处理点击
+            if (isResizingColumn)
             {
                 return;
             }
@@ -1703,7 +2131,6 @@ namespace FluentControls.Controls
 
         #endregion
     }
-
 
     #region 列和项类
 
@@ -2696,6 +3123,5 @@ namespace FluentControls.Controls
     }
 
     #endregion
-
 
 }

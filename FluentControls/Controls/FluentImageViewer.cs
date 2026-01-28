@@ -312,7 +312,7 @@ namespace FluentControls.Controls
         /// </summary>
         [Category("Appearance")]
         [DefaultValue(ImageSizeMode.Zoom)]
-        [Description("图片大小显示模式（会同时设置所有模式）")]
+        [Description("图片大小显示模式(会同时设置所有模式)")]
         [Browsable(false)] // 隐藏，使用独立的模式设置
         public ImageSizeMode SizeMode
         {
@@ -401,7 +401,7 @@ namespace FluentControls.Controls
         /// </summary>
         [Category("Behavior")]
         [DefaultValue(2)]
-        [Description("跑马灯滚动速度（像素/帧）")]
+        [Description("跑马灯滚动速度(像素/帧)")]
         public int MarqueeSpeed
         {
             get => marqueeSpeed;
@@ -568,11 +568,8 @@ namespace FluentControls.Controls
             get => selectedIndex;
             set
             {
-                System.Diagnostics.Debug.WriteLine($"SelectedIndex changing: {selectedIndex} -> {value}");
-
                 if (value < 0 || value >= imageItems.Count)
                 {
-                    System.Diagnostics.Debug.WriteLine($"SelectedIndex out of range: {value}");
                     return;
                 }
 
@@ -591,8 +588,6 @@ namespace FluentControls.Controls
                     {
                         imageItems[selectedIndex].IsSelected = true;
                     }
-
-                    System.Diagnostics.Debug.WriteLine($"SelectedIndex changed to: {selectedIndex}");
 
                     OnImageSelected(new ImageEventArgs(selectedIndex));
 
@@ -768,8 +763,6 @@ namespace FluentControls.Controls
         {
             var contentArea = GetContentArea();
 
-            System.Diagnostics.Debug.WriteLine($"UpdateSingleLayout - ContentArea: {contentArea}, Selected: {selectedIndex}, Total: {imageItems.Count}");
-
             // 确保有选中的图片
             if (selectedIndex < 0 && imageItems.Count > 0)
             {
@@ -785,8 +778,6 @@ namespace FluentControls.Controls
 
             vScrollBar.Visible = false;
             hScrollBar.Visible = false;
-
-            System.Diagnostics.Debug.WriteLine($"UpdateSingleLayout completed - Bounds set to: {contentArea}");
         }
 
         private void UpdateGridLayout()
@@ -798,7 +789,7 @@ namespace FluentControls.Controls
             int cellWidth = (contentArea.Width - (cols - 1) * gridSpacing) / cols;
             int cellHeight = (contentArea.Height - (rows - 1) * gridSpacing) / rows;
 
-            // 计算所有图片的位置（不考虑可见性）
+            // 计算所有图片的位置(不考虑可见性)
             int index = 0;
             for (int r = 0; r < int.MaxValue && index < imageItems.Count; r++)
             {
@@ -1055,8 +1046,6 @@ namespace FluentControls.Controls
 
         private void DrawSingleImage(Graphics g)
         {
-            System.Diagnostics.Debug.WriteLine($"DrawSingleImage - Selected: {selectedIndex}, Count: {imageItems.Count}");
-
             // 确保有选中的图片
             if (selectedIndex < 0 && imageItems.Count > 0)
             {
@@ -1066,7 +1055,6 @@ namespace FluentControls.Controls
 
             if (selectedIndex < 0 || selectedIndex >= imageItems.Count)
             {
-                System.Diagnostics.Debug.WriteLine("DrawSingleImage - No valid selection");
                 DrawEmptyMessage(g);
                 return;
             }
@@ -1074,19 +1062,15 @@ namespace FluentControls.Controls
             var item = imageItems[selectedIndex];
             if (item == null)
             {
-                System.Diagnostics.Debug.WriteLine("DrawSingleImage - Item is null");
                 DrawEmptyMessage(g);
                 return;
             }
 
             if (item.CurrentImage == null)
             {
-                System.Diagnostics.Debug.WriteLine("DrawSingleImage - CurrentImage is null");
                 DrawEmptyMessage(g);
                 return;
             }
-
-            System.Diagnostics.Debug.WriteLine($"DrawSingleImage - Drawing image {selectedIndex}: {item.Name}, Bounds: {item.Bounds}");
 
             // 使用单图模式的大小模式
             var contentArea = GetContentArea();
@@ -1147,7 +1131,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 绘制图片（使用指定的大小模式）
+            // 绘制图片(使用指定的大小模式)
             var actualImageBounds = CalculateImageBounds(item.CurrentImage, imageBounds);
             DrawImageInBounds(g, item.CurrentImage, actualImageBounds, sizeMode);
 
@@ -1176,11 +1160,11 @@ namespace FluentControls.Controls
             // 设置抗锯齿
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // 背景色（半透明黑色）
+            // 背景色(半透明黑色)
             int bgOpacity = isHovered ? 180 : 100;
             var bgColor = Color.FromArgb(bgOpacity, 0, 0, 0);
 
-            // 绘制半透明背景（使用渐变效果更美观）
+            // 绘制半透明背景(使用渐变效果更美观)
             using (var path = new System.Drawing.Drawing2D.GraphicsPath())
             {
                 path.AddRectangle(bounds);
@@ -1226,7 +1210,7 @@ namespace FluentControls.Controls
                     arrowPath.AddLines(points);
                 }
 
-                // 绘制箭头（白色，带阴影效果）
+                // 绘制箭头(白色，带阴影效果)
                 var arrowColor = Color.White;
 
                 // 先绘制阴影
@@ -1803,7 +1787,7 @@ namespace FluentControls.Controls
         /// 旋转图片
         /// </summary>
         /// <param name="slotIndex">槽位索引</param>
-        /// <param name="angle">旋转角度（90, 180, 270）</param>
+        /// <param name="angle">旋转角度(90, 180, 270)</param>
         public void RotateImage(int slotIndex, int angle)
         {
             if (!ValidateEditMode() || !ValidateSlotIndex(slotIndex))
@@ -2003,7 +1987,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 应用编辑（将编辑后的图片应用回原图片列表）
+        /// 应用编辑(将编辑后的图片应用回原图片列表)
         /// </summary>
         public void ApplyEdit(int slotIndex = 0)
         {
@@ -2032,7 +2016,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 重置编辑（恢复到原始图片）
+        /// 重置编辑(恢复到原始图片)
         /// </summary>
         public void ResetEdit(int slotIndex = 0)
         {
@@ -2061,7 +2045,7 @@ namespace FluentControls.Controls
         {
             if (slotIndex < 0 || slotIndex >= editSlots.Count)
             {
-                MessageBox.Show($"槽位索引无效（0-{editSlots.Count - 1}）", "错误",
+                MessageBox.Show($"槽位索引无效(0-{editSlots.Count - 1})", "错误",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
@@ -2188,7 +2172,7 @@ namespace FluentControls.Controls
             var menuRefresh = new ToolStripMenuItem("刷新 (F5)", null,
                 (s, e) => Invalidate());
 
-            // 添加所有菜单项（删除了上一张/下一张/删除）
+            // 添加所有菜单项(删除了上一张/下一张/删除)
             normalContextMenu.Items.AddRange(new ToolStripItem[]
             {
                 menuDisplayMode,
@@ -2261,7 +2245,7 @@ namespace FluentControls.Controls
             var menuReset = new ToolStripMenuItem("重置编辑", null, MenuReset_Click);
             menuReset.ShortcutKeys = Keys.Control | Keys.R;
 
-            // 应用编辑（Ctrl+A 可能与全选冲突，改为 Ctrl+Enter，但 Enter 也不支持，改为在文本显示）
+            // 应用编辑(Ctrl+A 可能与全选冲突，改为 Ctrl+Enter，但 Enter 也不支持，改为在文本显示)
             var menuApply = new ToolStripMenuItem("应用编辑 (Ctrl+A)", null, MenuApply_Click);
 
             menuApply.ShortcutKeys = Keys.Control | Keys.Shift | Keys.A;
@@ -3049,8 +3033,6 @@ namespace FluentControls.Controls
                 newIndex = selectedIndex - 1;
             }
 
-            System.Diagnostics.Debug.WriteLine($"SelectPrevious: {selectedIndex} -> {newIndex}");
-
             SelectedIndex = newIndex;
 
             // 强制更新单图模式布局
@@ -3081,8 +3063,6 @@ namespace FluentControls.Controls
             {
                 newIndex = selectedIndex + 1;
             }
-
-            System.Diagnostics.Debug.WriteLine($"SelectNext: {selectedIndex} -> {newIndex}");
 
             SelectedIndex = newIndex;
 

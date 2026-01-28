@@ -859,7 +859,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 布局操作按钮（横向，支持换行）
+            // 布局操作按钮(横向，支持换行)
             var visibleControls = GetVisibleActionControls();
             if (visibleControls.Count > 0)
             {
@@ -975,7 +975,7 @@ namespace FluentControls.Controls
                 buttonAreaWidth = actionButtonMinWidth;
             }
 
-            // 布局按钮（右侧，横向排列，支持换行）
+            // 布局按钮(右侧，横向排列，支持换行)
             var visibleControls = GetVisibleActionControls();
             if (visibleControls.Count > 0)
             {

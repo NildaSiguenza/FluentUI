@@ -17,36 +17,92 @@ namespace Infrastructure
         private int start;      // 缓冲区起始位置
         private int count;      // 当前元素数量
         private readonly int capacity;  // 缓冲区容量
+        private readonly object lockObj = new object();
 
         public CircularBuffer(int capacity)
         {
+            if (capacity <= 0)
+            {
+                throw new ArgumentException("容量必须大于0", nameof(capacity));
+            }
+
             buffer = new T[capacity];
             this.capacity = capacity;
             start = 0;
             count = 0;
         }
 
+        public int Count
+        {
+            get
+            {
+                lock (lockObj)
+                {
+                    return count;
+                }
+            }
+        }
 
-        public int Count => count;
         public int Capacity => capacity;
-        public bool IsFull => count == capacity;
+
+        public bool IsFull
+        {
+            get
+            {
+                lock (lockObj)
+                {
+                    return count == capacity;
+                }
+            }
+        }
 
         /// <summary>
         /// 添加元素
         /// </summary>
         public void Add(T item)
         {
-            if (count < capacity)
+            lock (lockObj)
             {
-                // 缓冲区未满，直接添加
-                buffer[(start + count) % capacity] = item;
-                count++;
+                if (count < capacity)
+                {
+                    // 缓冲区未满，直接添加
+                    buffer[(start + count) % capacity] = item;
+                    count++;
+                }
+                else
+                {
+                    // 缓冲区已满，覆盖最旧的数据
+                    buffer[start] = item;
+                    start = (start + 1) % capacity;
+                }
             }
-            else
+        }
+
+        /// <summary>
+        /// 批量添加元素
+        /// </summary>
+        public void AddRange(T[] items)
+        {
+            if (items == null || items.Length == 0)
             {
-                // 缓冲区已满，覆盖最旧的数据
-                buffer[start] = item;
-                start = (start + 1) % capacity;
+                return;
+            }
+
+            lock (lockObj)
+            {
+                foreach (var item in items)
+                {
+                    if (count < capacity)
+                    {
+                        buffer[(start + count) % capacity] = item;
+                        count++;
+                    }
+                    else
+                    {
+                        buffer[start] = item;
+                        start = (start + 1) % capacity;
+                    }
+                }
             }
         }
 
@@ -57,11 +113,14 @@ namespace Infrastructure
         {
             get
             {
-                if (index < 0 || index >= count)
+                lock (lockObj)
                 {
-                    throw new IndexOutOfRangeException();
+                    if (index < 0 || index >= count)
+                    {
+                        throw new IndexOutOfRangeException();
+                    }
+                    return buffer[(start + index) % capacity];
                 }
-                return buffer[(start + index) % capacity];
             }
         }
 
@@ -70,23 +129,26 @@ namespace Infrastructure
         /// </summary>
         public T[] ToArray()
         {
-            T[] result = new T[count];
-            if (count == 0)
+            lock (lockObj)
             {
+                T[] result = new T[count];
+                if (count == 0)
+                {
+                    return result;
+                }
+
+                if (start + count <= capacity)
+                {
+                    Array.Copy(buffer, start, result, 0, count);
+                }
+                else
+                {
+                    int firstPart = capacity - start;
+                    Array.Copy(buffer, start, result, 0, firstPart);
+                    Array.Copy(buffer, 0, result, firstPart, count - firstPart);
+                }
                 return result;
             }
-
-            if (start + count <= capacity)
-            {
-                Array.Copy(buffer, start, result, 0, count);
-            }
-            else
-            {
-                int firstPart = capacity - start;
-                Array.Copy(buffer, start, result, 0, firstPart);
-                Array.Copy(buffer, 0, result, firstPart, count - firstPart);
-            }
-            return result;
         }
 
         /// <summary>
@@ -94,11 +156,12 @@ namespace Infrastructure
         /// </summary>
         public void Clear()
         {
-            start = 0;
-            count = 0;
-            Array.Clear(buffer, 0, capacity);
+            lock (lockObj)
+            {
+                start = 0;
+                count = 0;
+                Array.Clear(buffer, 0, capacity);
+            }
         }
-
     }
-
 }

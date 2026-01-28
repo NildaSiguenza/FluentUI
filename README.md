@@ -27,7 +27,7 @@ dotnet add package FluentControls
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (31)
+## Control List (33)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
@@ -47,19 +47,20 @@ dotnet add package FluentControls
 - FluentColorComboBox: A combo box control that supports color selection.
 - FluentShape: A graphic control that supports drawing various shapes.
 
-### Container Controls (2)
+### Container Controls (3)
 - FluentPanel: A panel control that supports various layout methods.
 - FluentTabControl: A tab control that supports switching between multiple tabs. 
+- ✨FluentRepeater: A repeating control that supports template display.
 
 ### List Controls (5)
 - FluentCheckBoxList: A checkbox list control that supports multi-selection lists. 
 - FluentRadioList: A radio button list control that supports single-selection lists. 
 - FluentListBox: A list box control that supports multi-selection and custom styles.
 - FluentTreeView: A tree view control that supports displaying a hierarchical structure.
-- ✨FluentNavigationView: A control that supports displaying a navigation menu.
+- FluentNavigationView: A control that supports displaying a navigation menu.
 
 ### Data Controls (2)
-- ✨FluentListView: A list view control that supports displaying and sorting multiple columns.
+- FluentListView: A list view control that supports displaying and sorting multiple columns.
 - FluentDataGridView: A data grid view control that supports data binding and editing.
 
 ### Layout Controls (1)
@@ -74,13 +75,14 @@ dotnet add package FluentControls
 - FluentForm: A form control that supports custom styles and behaviors.
 - FluentDialog: A dialog box control that supports multiple display styles. 
 
-### Combo Controls (3)
-- ✨FluentCard: A combo control that supports card-style display. 
+### Combo Controls (4)
+- FluentCard: A combo control that supports card-style display. 
 - FluentPagination: A pagination control that supports pagination display and navigation.
-- ✨FluentImageViewer: An image viewer control that supports image viewing and basic editing.
+- FluentImageViewer: An image viewer control that supports image viewing and basic editing.
+- ✨FluentLogView: A log view control that supports log display and filtering.
 
 ### Components (1)
-- ✨FluentImageList: A component that supports image list management.
+- FluentImageList: A component that supports image list management.
 
 
 ## Links

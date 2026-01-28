@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using FluentControls.Themes;
 using FluentControls.Controls;
+using Infrastructure;
 
 namespace FluentControls
 {
@@ -39,6 +40,10 @@ namespace FluentControls
         // 样式缓存
         private bool stylesInitialized = false;
 
+        // 批量更新
+        private int updateCount = 0;
+        private bool suppressRedraw = false;
+        private readonly object updateLock = new object();
 
         protected FluentControlBase()
         {
@@ -240,6 +245,44 @@ namespace FluentControls
         [DefaultValue(300)]
         [Description("动画持续时间(毫秒)")]
         public int AnimationDuration { get; set; } = 300;
+
+
+        /// <summary>
+        /// 是否正在批量更新
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public bool IsUpdating
+        {
+            get
+            {
+                lock (updateLock)
+                {
+                    return updateCount > 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取当前更新嵌套层数
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        protected int UpdateCount
+        {
+            get
+            {
+                lock (updateLock)
+                {
+                    return updateCount;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否应该跳过重绘
+        /// </summary>
+        protected bool ShouldSuppressRedraw => suppressRedraw;
 
         #endregion
 
@@ -629,6 +672,12 @@ namespace FluentControls
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            // 如果正在批量更新，跳过绘制
+            if (suppressRedraw)
+            {
+                return;
+            }
+
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
@@ -706,6 +755,117 @@ namespace FluentControls
         protected abstract void DrawBackground(Graphics g);
         protected abstract void DrawContent(Graphics g);
         protected abstract void DrawBorder(Graphics g);
+
+        #endregion
+
+        #region 批量更新
+
+        /// <summary>
+        /// 创建更新作用域
+        /// </summary>
+        public UpdateScope CreateUpdateScope()
+        {
+            return new UpdateScope(this);
+        }
+
+        /// <summary>
+        /// 开始批量更新，暂停重绘
+        /// </summary>
+        public virtual void BeginUpdate()
+        {
+            lock (updateLock)
+            {
+                updateCount++;
+
+                if (updateCount == 1)
+                {
+                    suppressRedraw = true;
+
+                    // 暂停布局
+                    SuspendLayout();
+
+                    // 禁止重绘(仅当句柄已创建)
+                    if (IsHandleCreated)
+                    {
+                        try
+                        {
+                            NativeMethods.SendMessage(Handle, NativeMethods.WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+                        }
+                        catch
+                        {
+                            // 忽略错误
+                        }
+                    }
+
+                    // 调用虚方法，让子类可以执行自定义操作
+                    OnBeginUpdate();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 结束批量更新，恢复重绘
+        /// </summary>
+        public virtual void EndUpdate()
+        {
+            lock (updateLock)
+            {
+                if (updateCount > 0)
+                {
+                    updateCount--;
+
+                    if (updateCount == 0)
+                    {
+                        // 恢复重绘(仅当句柄已创建)
+                        if (IsHandleCreated)
+                        {
+                            try
+                            {
+                                NativeMethods.SendMessage(Handle, NativeMethods.WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
+                            }
+                            catch
+                            {
+                                // 忽略错误
+                            }
+                        }
+
+                        // 调用虚方法，让子类可以执行自定义操作
+                        OnEndUpdate();
+
+                        suppressRedraw = false;
+
+                        // 恢复布局并刷新
+                        ResumeLayout(true);
+                        Refresh();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 强制结束所有更新
+        /// </summary>
+        public void ForceEndUpdate()
+        {
+            lock (updateLock)
+            {
+                if (updateCount > 0)
+                {
+                    updateCount = 1;
+                    EndUpdate();
+                }
+            }
+        }
+
+        protected virtual void OnBeginUpdate()
+        {
+
+        }
+
+        protected virtual void OnEndUpdate()
+        {
+
+        }
 
         #endregion
 
@@ -819,6 +979,12 @@ namespace FluentControls
         {
             if (disposing)
             {
+                // 确保更新状态被清理
+                if (updateCount > 0)
+                {
+                    ForceEndUpdate();
+                }
+
                 animationTimer?.Dispose();
                 rippleTimer?.Dispose();
             }

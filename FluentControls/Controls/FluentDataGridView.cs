@@ -876,7 +876,7 @@ namespace FluentControls.Controls
 
                 var cellValue = column.GetCellValue(dataItem);
 
-                // 该列的所有条件必须都满足（AND关系）
+                // 该列的所有条件必须都满足(AND关系)
                 foreach (var condition in conditions)
                 {
                     if (!condition.Match(cellValue))

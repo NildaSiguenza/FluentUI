@@ -66,7 +66,7 @@ namespace FluentControls.Controls
         /// </summary>
         [Category("Behavior")]
         [DefaultValue(true)]
-        [Description("是否保持图片原始质量（不进行压缩和缩放）")]
+        [Description("是否保持图片原始质量(不进行压缩和缩放)")]
         public bool PreserveOriginalQuality
         {
             get => preserveOriginalQuality;
@@ -303,7 +303,7 @@ namespace FluentControls.Controls
         public string Description { get; set; }
 
         /// <summary>
-        /// 标签（用于分类）
+        /// 标签(用于分类)
         /// </summary>
         public string Tag { get; set; }
 

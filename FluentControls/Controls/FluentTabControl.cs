@@ -1278,9 +1278,6 @@ namespace FluentControls.Controls
             // 如果边界发生变化, 更新控件
             if (Bounds != newBounds)
             {
-                // 调试输出
-                System.Diagnostics.Debug.WriteLine($"UpdateDockBounds - Old: {Bounds}, New: {newBounds}");
-
                 // 更新边界
                 Bounds = newBounds;
 
