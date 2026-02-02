@@ -14,6 +14,7 @@ using System.Runtime.Remoting.Contexts;
 using System.Windows.Forms.Design;
 using System.Security.Permissions;
 using System.Drawing.Drawing2D;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace FluentControls.Controls
 {
@@ -475,6 +476,18 @@ namespace FluentControls.Controls
             }
         }
 
+        public void ShowTab(FluentTabPage tabPage)
+        {
+            bool flag = ContainsTab(tabPage);
+
+            if (!flag)
+            {
+                AddTab(tabPage);
+            }
+
+            SelectedTab = tabPage;
+        }
+
         public void HideTab(int index)
         {
             if (index >= 0 && index < tabPagesCollection.Count)
@@ -496,6 +509,16 @@ namespace FluentControls.Controls
 
                 RecalculateLayout();
                 Invalidate();
+            }
+        }
+
+        public void HideTab(FluentTabPage tabPage)
+        {
+            bool flag = ContainsTab(tabPage);
+
+            if (flag)
+            {
+                HideTab(TabPages.IndexOf(tabPage));
             }
         }
 
@@ -522,6 +545,32 @@ namespace FluentControls.Controls
                 var tabPage = tabPagesCollection[i];
                 tabPage.Visible = (i == selectedIndex && tabPage.State != TabPageState.Hidden);
             }
+        }
+
+        public bool ContainsTab(FluentTabPage tabPage)
+        {
+            return TabPages.Contains(tabPage);
+        }
+
+        public bool ContainsTab(string text)
+        {
+            if (FindTab(text) != null)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public FluentTabPage FindTab(string text)
+        {
+            for (int i = 0; i < TabPages.Count; i++)
+            {
+                if (TabPages[i].Text == text)
+                {
+                    return TabPages[i];
+                }
+            }
+            return null;
         }
 
         #endregion
@@ -1236,7 +1285,8 @@ namespace FluentControls.Controls
             switch (Dock)
             {
                 case DockStyle.Fill:
-                    newBounds = parentClient;
+                    // Fill模式需要考虑同级控件的占用空间
+                    newBounds = CalculateFillBounds(parentClient);
                     break;
 
                 case DockStyle.Top:
@@ -1278,13 +1328,76 @@ namespace FluentControls.Controls
             // 如果边界发生变化, 更新控件
             if (Bounds != newBounds)
             {
-                // 更新边界
-                Bounds = newBounds;
+                // 暂停布局
+                SuspendLayout();
 
-                // 重新计算内部布局
-                RecalculateLayout();
-                Invalidate();
+                try
+                {
+                    Bounds = newBounds;
+                    RecalculateLayout();
+                }
+                finally
+                {
+                    ResumeLayout(true);
+                }
+
+                Invalidate(true);
             }
+        }
+
+        /// <summary>
+        /// 计算Fill模式下的可用边界，排除同级Dock控件占用的空间
+        /// </summary>
+        private Rectangle CalculateFillBounds(Rectangle parentClient)
+        {
+            int left = parentClient.Left;
+            int top = parentClient.Top;
+            int right = parentClient.Right;
+            int bottom = parentClient.Bottom;
+
+            // 遍历同级控件，计算它们占用的空间
+            foreach (Control sibling in Parent.Controls)
+            {
+                // 跳过自己
+                if (sibling == this)
+                    continue;
+
+                // 只考虑可见的控件
+                if (!sibling.Visible)
+                    continue;
+
+                // 根据兄弟控件的Dock属性调整可用空间
+                switch (sibling.Dock)
+                {
+                    case DockStyle.Left:
+                        // 左侧控件占用的空间，从左边界向右推
+                        left = Math.Max(left, sibling.Right);
+                        break;
+
+                    case DockStyle.Right:
+                        // 右侧控件占用的空间，从右边界向左推
+                        right = Math.Min(right, sibling.Left);
+                        break;
+
+                    case DockStyle.Top:
+                        // 顶部控件占用的空间，从上边界向下推
+                        top = Math.Max(top, sibling.Bottom);
+                        break;
+
+                    case DockStyle.Bottom:
+                        // 底部控件占用的空间，从下边界向上推
+                        bottom = Math.Min(bottom, sibling.Top);
+                        break;
+
+                        // DockStyle.Fill 和 DockStyle.None 不影响计算
+                }
+            }
+
+            // 计算剩余可用空间
+            int width = Math.Max(0, right - left);
+            int height = Math.Max(0, bottom - top);
+
+            return new Rectangle(left, top, width, height);
         }
 
         #endregion

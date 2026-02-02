@@ -2433,7 +2433,7 @@ namespace FluentControls.Controls
         {
             if (selectedIndex >= 0 && selectedIndex < imageItems.Count)
             {
-                var result = MessageBox.Show("确定要删除选中的图片吗？", "确认删除",
+                var result = MessageBox.Show("确定要删除选中的图片吗?", "确认删除",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
                 if (result == DialogResult.Yes)
@@ -2613,7 +2613,7 @@ namespace FluentControls.Controls
 
         private void MenuExitEdit_Click(object sender, EventArgs e)
         {
-            var result = MessageBox.Show("退出编辑模式？未保存的更改将丢失。", "确认",
+            var result = MessageBox.Show("退出编辑模式?未保存的更改将丢失。", "确认",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (result == DialogResult.Yes)
@@ -3235,7 +3235,7 @@ namespace FluentControls.Controls
                 case Keys.Delete:
                     if (editMode == ImageEditMode.None && selectedIndex >= 0)
                     {
-                        var result = MessageBox.Show("确定要删除选中的图片吗？", "确认",
+                        var result = MessageBox.Show("确定要删除选中的图片吗?", "确认",
                             MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                         if (result == DialogResult.Yes)
                         {

@@ -3286,7 +3286,7 @@ namespace FluentControls.Controls
             if (workingCollection.Count > 0)
             {
                 var result = MessageBox.Show(
-                    "当前已有顶点数据, 是否要清空并初始化为默认顶点？",
+                    "当前已有顶点数据, 是否要清空并初始化为默认顶点?",
                     "确认",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
@@ -3381,7 +3381,7 @@ namespace FluentControls.Controls
 
         private void BtnClear_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show("确定要清空所有顶点吗？", "确认",
+            if (MessageBox.Show("确定要清空所有顶点吗?", "确认",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 workingCollection.Clear();

@@ -559,7 +559,6 @@ namespace FluentControls.Controls
 
         #endregion
 
-
         #region 布局计算
 
         protected override void OnLayout(LayoutEventArgs e)

@@ -1124,7 +1124,7 @@ namespace FluentControls.Controls
 
         public void ClearItems()
         {
-            if (MessageBox.Show("确定要清空所有项目吗？", "确认", MessageBoxButtons.YesNo,
+            if (MessageBox.Show("确定要清空所有项目吗?", "确认", MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 IDesignerHost host = GetService(typeof(IDesignerHost)) as IDesignerHost;

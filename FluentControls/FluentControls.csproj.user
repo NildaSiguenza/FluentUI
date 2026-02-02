@@ -59,7 +59,13 @@
     <Compile Update="Controls\FluentListView.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Controls\FluentLogView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\FluentMenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentMessage.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentNavigationView.cs">
@@ -74,10 +80,16 @@
     <Compile Update="Controls\FluentProgess.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Controls\FluentPropertyGrid.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\FluentRadio.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentRadioList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentRepeater.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentShape.cs">

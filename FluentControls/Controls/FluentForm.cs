@@ -79,6 +79,9 @@ namespace FluentControls.Controls
         private bool isDragging = false;
         private Point dragStartPoint;
 
+        private IButtonControl acceptButton;
+        private IButtonControl cancelButton;
+
         private DateTime lastTitleBarClickTime = DateTime.MinValue;
         private const int DOUBLE_CLICK_TIME = 500; // 毫秒
 
@@ -111,7 +114,7 @@ namespace FluentControls.Controls
             MinimumSize = new Size(300, 200);
             hotKeys = new Dictionary<int, HotKeyInfo>();
             titleBarButtons = new List<FluentTitleBarButton>();
-
+            Font = new Font("Microsoft YaHei", 9.35f, FontStyle.Regular);
         }
 
         private void InitializeTitleBar()
@@ -249,8 +252,8 @@ namespace FluentControls.Controls
 
         [Category("Fluent")]
         [Description("关闭确认消息")]
-        [DefaultValue("确定要关闭窗口吗？")]
-        public string CloseConfirmMessage { get; set; } = "确定要关闭窗口吗？";
+        [DefaultValue("确定要关闭窗口吗?")]
+        public string CloseConfirmMessage { get; set; } = "确定要关闭窗口吗?";
 
         [Category("Fluent")]
         [Description("全屏时是否覆盖任务栏")]
@@ -280,6 +283,34 @@ namespace FluentControls.Controls
                     }
                 }
             }
+        }
+
+        [Category("Fluent")]
+        [Description("默认按钮(Enter键触发)")]
+        [DefaultValue(null)]
+        public new IButtonControl AcceptButton
+        {
+            get => acceptButton;
+            set
+            {
+                if (acceptButton != value)
+                {
+                    acceptButton = value;
+                    if (acceptButton != null)
+                    {
+                        acceptButton.NotifyDefault(true);
+                    }
+                }
+            }
+        }
+
+        [Category("Fluent")]
+        [Description("取消按钮(Esc键触发)")]
+        [DefaultValue(null)]
+        public new IButtonControl CancelButton
+        {
+            get => cancelButton;
+            set => cancelButton = value;
         }
 
         #endregion
@@ -644,6 +675,26 @@ namespace FluentControls.Controls
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            // 处理 Enter 键
+            if (keyData == Keys.Enter && AcceptButton != null)
+            {
+                // 检查当前焦点控件是否是多行文本框
+                if (ActiveControl is TextBox textBox && textBox.Multiline)
+                {
+                    return base.ProcessCmdKey(ref msg, keyData);
+                }
+
+                AcceptButton.PerformClick();
+                return true;
+            }
+
+            // 处理 Esc 键
+            if (keyData == Keys.Escape && CancelButton != null)
+            {
+                CancelButton.PerformClick();
+                return true;
+            }
+
             // 检查本地快捷键
             if (localHotKeys.ContainsKey(keyData))
             {
@@ -652,6 +703,33 @@ namespace FluentControls.Controls
             }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        protected override bool ProcessDialogKey(Keys keyData)
+        {
+            // 处理 Enter 键
+            if (keyData == Keys.Enter)
+            {
+                if (AcceptButton != null && !(ActiveControl is Button))
+                {
+                    if (ActiveControl is TextBox textBox && textBox.Multiline)
+                    {
+                        return base.ProcessDialogKey(keyData);
+                    }
+
+                    AcceptButton.PerformClick();
+                    return true;
+                }
+            }
+
+            // 处理 Esc 键
+            if (keyData == Keys.Escape && CancelButton != null)
+            {
+                CancelButton.PerformClick();
+                return true;
+            }
+
+            return base.ProcessDialogKey(keyData);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

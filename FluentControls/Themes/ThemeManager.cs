@@ -49,7 +49,7 @@ namespace FluentControls.Themes
             }
         }
 
-        public static IFluentTheme DefaultTheme => new ClassicTheme();
+        public static IFluentTheme DefaultTheme => new LightTheme();
 
         /// <summary>
         /// 是否已设置主题

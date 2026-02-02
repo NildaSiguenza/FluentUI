@@ -9474,7 +9474,7 @@ namespace FluentControls.Controls
         {
             if (filters.Count > 0)
             {
-                var result = MessageBox.Show("确定要清除所有筛选条件吗？", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var result = MessageBox.Show("确定要清除所有筛选条件吗?", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
                 if (result == DialogResult.Yes)
                 {

@@ -32,11 +32,25 @@ namespace FluentControls.Controls
         {
         }
 
-        public FluentDialog(DialogType type)
+        public FluentDialog(DialogType type, DialogButtons? buttons = null, Size? size = null)
         {
             InitializeDialog();
             DialogType = type;
-            DialogButtons = GetDefaultButtons(type);
+
+            if (size.HasValue)
+            {
+                this.Size = size.Value;
+            }
+
+            // 设置按钮组
+            if (buttons.HasValue)
+            {
+                DialogButtons = buttons.Value;
+            }
+            else
+            {
+                DialogButtons = GetDefaultButtons(type);
+            }
         }
 
         private void InitializeDialog()
@@ -67,7 +81,8 @@ namespace FluentControls.Controls
             contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(20)
+                Padding = new Padding(20),
+                AutoScroll = (DialogType == DialogType.Custom) ? true : false
             };
 
             // 图标
@@ -208,6 +223,14 @@ namespace FluentControls.Controls
 
         #region 辅助方法
 
+        public void AddCustomControl(Control control)
+        {
+            if (dialogType == DialogType.Custom)
+            {
+                contentPanel.Controls.Add(control);
+            }
+        }
+
         private void UpdateDialogAppearance()
         {
             switch (dialogType)
@@ -245,8 +268,14 @@ namespace FluentControls.Controls
 
                 case DialogType.Custom:
                     iconPictureBox.Visible = false;
-                    messageLabel.Location = new Point(20, 20);
-                    messageLabel.Size = new Size(360, 180);
+                    messageLabel.Visible = false;
+                    inputTextBox.Visible = false;
+                    contentPanel.Controls.Remove(iconPictureBox);
+                    contentPanel.Controls.Remove(messageLabel);
+                    contentPanel.Controls.Remove(inputTextBox);
+
+                    // 调整内容面板填充
+                    contentPanel.Padding = new Padding(8);
                     break;
             }
         }
@@ -287,7 +316,8 @@ namespace FluentControls.Controls
 
                 case DialogType.Input:
                     return DialogButtons.OKCancel;
-
+                case DialogType.Custom:
+                    return DialogButtons.OK;
                 default:
                     return DialogButtons.OK;
             }
@@ -378,6 +408,11 @@ namespace FluentControls.Controls
             if (isPrimary)
             {
                 this.AcceptButton = button;
+            }
+
+            if (result == DialogResult.Cancel || result == DialogResult.No)
+            {
+                this.CancelButton = button;
             }
         }
 

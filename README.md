@@ -27,13 +27,13 @@ dotnet add package FluentControls
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (33)
+## Control List (35)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
 - FluentContainerBase: The base class for container controls, supporting child control layout and management.
 
-### Basic Controls (12)
+### Basic Controls (13)
 - FluentButton: A button control supporting lighting effects and animations. 
 - FluentTextBox: A text input box supporting input type control and prefixes/suffixes. 
 - FluentLabel: A label control supporting multiple display modes. 
@@ -46,11 +46,12 @@ dotnet add package FluentControls
 - FluentColorPicker: A color picker control that supports color selection and preset color pickers.
 - FluentColorComboBox: A combo box control that supports color selection.
 - FluentShape: A graphic control that supports drawing various shapes.
+- ✨FluentMessage: A message control that supports displaying various message types. 
 
 ### Container Controls (3)
 - FluentPanel: A panel control that supports various layout methods.
 - FluentTabControl: A tab control that supports switching between multiple tabs. 
-- ✨FluentRepeater: A repeating control that supports template display.
+- FluentRepeater: A repeating control that supports template display.
 
 ### List Controls (5)
 - FluentCheckBoxList: A checkbox list control that supports multi-selection lists. 
@@ -75,11 +76,12 @@ dotnet add package FluentControls
 - FluentForm: A form control that supports custom styles and behaviors.
 - FluentDialog: A dialog box control that supports multiple display styles. 
 
-### Combo Controls (4)
+### Combo Controls (5)
 - FluentCard: A combo control that supports card-style display. 
 - FluentPagination: A pagination control that supports pagination display and navigation.
 - FluentImageViewer: An image viewer control that supports image viewing and basic editing.
-- ✨FluentLogView: A log view control that supports log display and filtering.
+- FluentLogView: A log view control that supports log display and filtering.
+- ✨FluentPropertyGrid: A property grid control that supports property editing and display.(25/11/20)
 
 ### Components (1)
 - FluentImageList: A component that supports image list management.

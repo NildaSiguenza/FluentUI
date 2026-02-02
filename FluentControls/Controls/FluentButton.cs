@@ -273,7 +273,12 @@ namespace FluentControls.Controls
         [Description("按钮圆角半径")]
         [DefaultValue(0)]
         public int CornerRadius { get; set; } = 0;
-        DialogResult IButtonControl.DialogResult { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        DialogResult IButtonControl.DialogResult
+        {
+            get => dialogResult;
+            set => dialogResult = value;
+        }
 
         #endregion
 
@@ -295,18 +300,34 @@ namespace FluentControls.Controls
 
         public void PerformClick()
         {
-            OnClick(EventArgs.Empty);
+            if (this.CanSelect)
+            {
+                this.OnClick(EventArgs.Empty);
+            }
         }
 
         void IButtonControl.NotifyDefault(bool value)
         {
-            isDefault = value;
-            this.Invalidate();
+            if (isDefault != value)
+            {
+                isDefault = value;
+                this.Invalidate();
+            }
         }
 
         #endregion
 
         #region 重写方法
+
+        protected override bool ProcessDialogKey(Keys keyData)
+        {
+            if (keyData == Keys.Enter || keyData == Keys.Space)
+            {
+                OnClick(EventArgs.Empty);
+                return true;
+            }
+            return base.ProcessDialogKey(keyData);
+        }
 
         protected override void OnThemeChanged()
         {
@@ -460,6 +481,20 @@ namespace FluentControls.Controls
             rect.Width--;
             rect.Height--;
 
+            // 如果是默认按钮，绘制加粗边框
+            if (isDefault && Enabled)
+            {
+                rect.Inflate(-1, -1);
+                using (var path = GetRoundedRectangle(rect, CornerRadius))
+                {
+                    using (var pen = new Pen(Theme.Colors.PrimaryLight, 1))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
+                rect.Inflate(-1, -1);
+            }
+
             if (ButtonStyle == ButtonStyle.Secondary)
             {
                 using (var path = GetRoundedRectangle(rect, CornerRadius))
@@ -477,7 +512,7 @@ namespace FluentControls.Controls
                 rect.Inflate(-2, -2);
                 using (var path = GetRoundedRectangle(rect, Math.Max(0, CornerRadius - 2)))
                 {
-                    using (var pen = new Pen(Theme.Colors.BorderFocused, 2))
+                    using (var pen = new Pen(Theme.Colors.BorderFocused, 1))
                     {
                         pen.DashStyle = DashStyle.Dot;
                         g.DrawPath(pen, path);

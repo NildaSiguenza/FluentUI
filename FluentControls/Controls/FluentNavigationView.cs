@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Design;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,7 +22,7 @@ namespace FluentControls.Controls
         #region 字段
 
         private bool isExpanded = true;
-        private bool showSearchBar = true;
+        private bool showSearchBar = false;
         private bool showNavigationIcon = true;
         private bool showNavigationTitle = true;
         private NavigationViewDisplayMode displayMode = NavigationViewDisplayMode.Left;
@@ -55,19 +56,33 @@ namespace FluentControls.Controls
         private NavigationItem hoveredItem;
         private NavigationCategory hoveredCategory;
 
-        // 搜索 - 使用 FluentTextBox
+        // 搜索
         private FluentTextBox searchBox;
         private string searchText = string.Empty;
         private List<NavigationItem> filteredItems;
+
+        // 父控件引用
+        private Control currentParent = null;
+
+        // 滚动相关
+        private int scrollOffset = 0;  // 当前滚动偏移量
+        private int maxScrollOffset = 0;  // 最大滚动偏移量
+        private Rectangle scrollUpButtonBounds;  // 上滚动按钮区域
+        private Rectangle scrollDownButtonBounds;  // 下滚动按钮区域
+        private bool showScrollUpButton = false;  // 是否显示上滚动按钮
+        private bool showScrollDownButton = false;  // 是否显示下滚动按钮
+        private int scrollButtonHeight = 32;  // 滚动按钮高度
 
         // 动画
         private Timer expandTimer;
         private int currentWidth;
         private int targetWidth;
         private bool isAnimatingExpand;
+        private int animationDuration = 200;
 
-        // 用于跟踪宽度变化
+        // 用于跟踪控件尺寸变化
         private int lastWidth;
+        private int lastHeight;
 
         #endregion
 
@@ -98,6 +113,7 @@ namespace FluentControls.Controls
             currentWidth = expandedWidth;
             targetWidth = expandedWidth;
             lastWidth = expandedWidth;
+            lastHeight = 600;
 
             UpdateLayout();
         }
@@ -131,7 +147,10 @@ namespace FluentControls.Controls
 
         private void InitializeExpandAnimation()
         {
-            expandTimer = new Timer { Interval = 16 };
+            expandTimer = new Timer
+            {
+                Interval = 8
+            };
             expandTimer.Tick += ExpandTimer_Tick;
         }
 
@@ -175,7 +194,7 @@ namespace FluentControls.Controls
 
         [Category("Navigation")]
         [Description("是否显示搜索栏")]
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool ShowSearchBar
         {
             get => showSearchBar;
@@ -431,7 +450,6 @@ namespace FluentControls.Controls
             }
         }
 
-        // 重写 Width 属性以确保设计时也能正确更新
         public new int Width
         {
             get => base.Width;
@@ -501,11 +519,18 @@ namespace FluentControls.Controls
         {
             base.OnResize(e);
 
-            // 检测宽度是否改变
-            if (Width != lastWidth)
+            // 检测宽度或高度是否改变
+            bool widthChanged = Width != lastWidth;
+            bool heightChanged = Height != lastHeight;
+
+            if (widthChanged || heightChanged)
             {
                 lastWidth = Width;
+                lastHeight = Height;
+
+                // 强制更新布局
                 UpdateLayout();
+                Invalidate();
             }
         }
 
@@ -513,6 +538,7 @@ namespace FluentControls.Controls
         {
             base.OnSizeChanged(e);
             UpdateLayout();
+            Invalidate();
         }
 
         protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
@@ -520,16 +546,33 @@ namespace FluentControls.Controls
             base.SetBoundsCore(x, y, width, height, specified);
 
             // 当边界改变时更新布局
-            if ((specified & BoundsSpecified.Width) != 0 || (specified & BoundsSpecified.Height) != 0)
+            if ((specified & BoundsSpecified.Size) != 0)
             {
-                UpdateLayout();
+                // 使用 BeginInvoke 确保在布局完成后执行
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        if (!IsDisposed)
+                        {
+                            UpdateLayout();
+                            Invalidate();
+                        }
+                    }));
+                }
             }
         }
 
         protected override void OnBoundsChanged()
         {
             base.OnBoundsChanged();
-            UpdateLayout();
+
+            // 边界改变时更新布局
+            if (!IsDisposed)
+            {
+                UpdateLayout();
+                Invalidate();
+            }
         }
 
         private void UpdateLayout()
@@ -539,7 +582,8 @@ namespace FluentControls.Controls
                 return;
             }
 
-            int width = Width; // 使用当前实际宽度
+            int width = Width;
+            int height = Height;  // 使用实际高度
             int y = 0;
 
             // 标题区域
@@ -562,11 +606,10 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 折叠状态
                 if (showNavigationIcon && navigationIcon != null)
                 {
                     navIconBounds = new Rectangle((width - toggleSize) / 2, 8, toggleSize, toggleSize);
-                    toggleButtonBounds = Rectangle.Empty; // 隐藏，点击navIcon也能展开
+                    toggleButtonBounds = Rectangle.Empty;
                 }
                 else
                 {
@@ -604,22 +647,35 @@ namespace FluentControls.Controls
             if (footerItemCapacity > 0 && footerItems.Count > 0)
             {
                 int visibleFooterCount = Math.Min(footerItemCapacity, footerItems.Count(item => item.IsVisible));
-                // 考虑间距：n个项目有n-1个间距，再加上上下padding
                 footerHeight = visibleFooterCount * itemHeight + Math.Max(0, visibleFooterCount - 1) * footerItemSpacing + 16;
             }
 
-            // 菜单区域
-            menuBounds = new Rectangle(0, y, width, Height - y - footerHeight);
+            // 原始菜单区域(不考虑滚动按钮)
+            int menuTop = y;
+            int menuBottom = height - footerHeight;  // 使用实际高度
+            int menuHeight = menuBottom - menuTop;
+
+            // 确保菜单高度为正数
+            if (menuHeight < 0)
+            {
+                menuHeight = 0;
+            }
+
+            // 设置菜单区域
+            menuBounds = new Rectangle(0, menuTop, width, menuHeight);
 
             // 底部菜单区域
             if (footerHeight > 0)
             {
-                footerBounds = new Rectangle(0, Height - footerHeight, width, footerHeight);
+                footerBounds = new Rectangle(0, height - footerHeight, width, footerHeight);
             }
             else
             {
                 footerBounds = Rectangle.Empty;
             }
+
+            // 计算滚动相关(必须在设置menuBounds之后)
+            UpdateScrollState();
 
             // 更新菜单项位置
             UpdateMenuItemBounds();
@@ -635,37 +691,45 @@ namespace FluentControls.Controls
                 return;
             }
 
-            int y = menuBounds.Y;
-            var itemsToDisplay = string.IsNullOrEmpty(searchText)
-                ? GetAllMenuItems()
-                : filteredItems;
+            // 从菜单区域的顶部开始，减去滚动偏移量
+            int y = menuBounds.Y - scrollOffset;
+            var itemsToDisplay = string.IsNullOrEmpty(searchText) ? GetAllMenuItems() : filteredItems;
 
             foreach (var item in itemsToDisplay)
             {
                 if (!item.IsVisible)
                 {
+                    item.Bounds = Rectangle.Empty;
+                    continue;
+                }
+
+                // 折叠模式下只显示有图标的项
+                if (!isExpanded && item.Icon == null && !(item is NavigationCategory))
+                {
+                    item.Bounds = Rectangle.Empty;
                     continue;
                 }
 
                 if (item is NavigationCategory category)
                 {
-                    // 分类标题
+                    // 设置分类的边界
                     category.Bounds = new Rectangle(menuBounds.X, y, menuBounds.Width, itemHeight);
-                    y += itemHeight + menuItemSpacing; // 添加间距
+                    y += itemHeight + menuItemSpacing;
 
-                    // 分类子项
+                    // 如果分类展开，继续计算子项
                     if (category.IsExpanded)
                     {
                         foreach (var subItem in category.Items)
                         {
                             if (!subItem.IsVisible)
                             {
+                                subItem.Bounds = Rectangle.Empty;
                                 continue;
                             }
 
-                            // 折叠模式下只显示有图标的项
                             if (!isExpanded && subItem.Icon == null)
                             {
+                                subItem.Bounds = Rectangle.Empty;
                                 continue;
                             }
 
@@ -674,31 +738,89 @@ namespace FluentControls.Controls
                                 y,
                                 menuBounds.Width - (isExpanded ? 16 : 0),
                                 itemHeight);
-                            y += itemHeight + menuItemSpacing; // 添加间距
-
-                            if (y > menuBounds.Bottom)
-                            {
-                                break;
-                            }
+                            y += itemHeight + menuItemSpacing;
                         }
                     }
                 }
                 else
                 {
-                    // 折叠模式下只显示有图标的项
-                    if (!isExpanded && item.Icon == null)
-                    {
-                        continue;
-                    }
-
                     item.Bounds = new Rectangle(menuBounds.X, y, menuBounds.Width, itemHeight);
-                    y += itemHeight + menuItemSpacing; // 添加间距
+                    y += itemHeight + menuItemSpacing;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新滚动状态
+        /// </summary>
+        private void UpdateScrollState()
+        {
+            if (menuBounds.IsEmpty)
+            {
+                showScrollUpButton = false;
+                showScrollDownButton = false;
+                scrollUpButtonBounds = Rectangle.Empty;
+                scrollDownButtonBounds = Rectangle.Empty;
+                scrollOffset = 0;
+                maxScrollOffset = 0;
+                return;
+            }
+
+            // 计算内容总高度
+            int contentHeight = CalculateMenuContentHeight();
+            int availableHeight = menuBounds.Height;
+
+            // 判断是否需要滚动
+            bool needScroll = contentHeight > availableHeight;
+
+            if (needScroll)
+            {
+                // 计算最大滚动偏移量
+                maxScrollOffset = Math.Max(0, contentHeight - availableHeight);
+
+                // 限制当前滚动偏移量
+                scrollOffset = Math.Max(0, Math.Min(scrollOffset, maxScrollOffset));
+
+                // 判断是否显示上下滚动按钮
+                showScrollUpButton = scrollOffset > 0;
+                showScrollDownButton = scrollOffset < maxScrollOffset;
+
+                // 设置滚动按钮位置
+                if (showScrollUpButton)
+                {
+                    scrollUpButtonBounds = new Rectangle(
+                        menuBounds.X,
+                        menuBounds.Y,
+                        menuBounds.Width,
+                        scrollButtonHeight);
+                }
+                else
+                {
+                    scrollUpButtonBounds = Rectangle.Empty;
                 }
 
-                if (y > menuBounds.Bottom)
+                if (showScrollDownButton)
                 {
-                    break;
+                    scrollDownButtonBounds = new Rectangle(
+                        menuBounds.X,
+                        menuBounds.Bottom - scrollButtonHeight,
+                        menuBounds.Width,
+                        scrollButtonHeight);
                 }
+                else
+                {
+                    scrollDownButtonBounds = Rectangle.Empty;
+                }
+            }
+            else
+            {
+                // 不需要滚动，重置所有状态
+                scrollOffset = 0;
+                maxScrollOffset = 0;
+                showScrollUpButton = false;
+                showScrollDownButton = false;
+                scrollUpButtonBounds = Rectangle.Empty;
+                scrollDownButtonBounds = Rectangle.Empty;
             }
         }
 
@@ -755,6 +877,250 @@ namespace FluentControls.Controls
 
         #endregion
 
+        #region 滚动功能实现
+
+        /// <summary>
+        /// 更新滚动按钮状态
+        /// </summary>
+        private void UpdateScrollButtons(int menuTop, int menuBottom)
+        {
+            // 计算内容总高度
+            int contentHeight = CalculateMenuContentHeight();
+            int availableHeight = menuBottom - menuTop;
+
+            // 判断是否需要滚动
+            bool needScroll = contentHeight > availableHeight;
+
+            if (needScroll)
+            {
+                // 为滚动按钮调整可用高度
+                availableHeight -= scrollButtonHeight * 2;
+                maxScrollOffset = Math.Max(0, contentHeight - availableHeight);
+
+                // 限制滚动偏移量
+                scrollOffset = Math.Max(0, Math.Min(scrollOffset, maxScrollOffset));
+
+                // 判断是否显示上下滚动按钮
+                showScrollUpButton = scrollOffset > 0;
+                showScrollDownButton = scrollOffset < maxScrollOffset;
+
+                // 设置按钮位置
+                if (showScrollUpButton)
+                {
+                    scrollUpButtonBounds = new Rectangle(0, menuTop, Width, scrollButtonHeight);
+                }
+                else
+                {
+                    scrollUpButtonBounds = Rectangle.Empty;
+                }
+
+                if (showScrollDownButton)
+                {
+                    scrollDownButtonBounds = new Rectangle(0, menuBottom - scrollButtonHeight, Width, scrollButtonHeight);
+                }
+                else
+                {
+                    scrollDownButtonBounds = Rectangle.Empty;
+                }
+            }
+            else
+            {
+                // 不需要滚动
+                scrollOffset = 0;
+                maxScrollOffset = 0;
+                showScrollUpButton = false;
+                showScrollDownButton = false;
+                scrollUpButtonBounds = Rectangle.Empty;
+                scrollDownButtonBounds = Rectangle.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 计算菜单内容总高度
+        /// </summary>
+        private int CalculateMenuContentHeight()
+        {
+            int totalHeight = 0;
+            var itemsToDisplay = string.IsNullOrEmpty(searchText) ? GetAllMenuItems() : filteredItems;
+
+            foreach (var item in itemsToDisplay)
+            {
+                if (!item.IsVisible)
+                {
+                    continue;
+                }
+
+                if (!isExpanded && item.Icon == null)
+                {
+                    continue;
+                }
+
+                if (item is NavigationCategory category)
+                {
+                    totalHeight += itemHeight + menuItemSpacing;
+
+                    if (category.IsExpanded)
+                    {
+                        foreach (var subItem in category.Items)
+                        {
+                            if (!subItem.IsVisible)
+                            {
+                                continue;
+                            }
+
+                            if (!isExpanded && subItem.Icon == null)
+                            {
+                                continue;
+                            }
+
+                            totalHeight += itemHeight + menuItemSpacing;
+                        }
+                    }
+                }
+                else
+                {
+                    totalHeight += itemHeight + menuItemSpacing;
+                }
+            }
+
+            // 移除最后一个间距
+            if (totalHeight > 0 && menuItemSpacing > 0)
+            {
+                totalHeight -= menuItemSpacing;
+            }
+
+            return totalHeight;
+        }
+
+        /// <summary>
+        /// 向上滚动
+        /// </summary>
+        private void ScrollUp()
+        {
+            if (scrollOffset > 0)
+            {
+                scrollOffset = Math.Max(0, scrollOffset - itemHeight);
+                UpdateScrollState();
+                UpdateMenuItemBounds();
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 向下滚动
+        /// </summary>
+        private void ScrollDown()
+        {
+            if (scrollOffset < maxScrollOffset)
+            {
+                scrollOffset = Math.Min(maxScrollOffset, scrollOffset + itemHeight);
+                UpdateScrollState();
+                UpdateMenuItemBounds();
+                Invalidate();
+            }
+        }
+
+        #endregion
+
+        #region 父控件事件处理
+
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+
+            // 取消订阅旧父控件的事件
+            if (currentParent != null)
+            {
+                currentParent.SizeChanged -= Parent_SizeChanged;
+                currentParent.Resize -= Parent_Resize;
+                currentParent.Layout -= Parent_Layout;
+            }
+
+            currentParent = Parent;
+
+            // 订阅新父控件的事件
+            if (currentParent != null)
+            {
+                currentParent.SizeChanged += Parent_SizeChanged;
+                currentParent.Resize += Parent_Resize;
+                currentParent.Layout += Parent_Layout;
+            }
+        }
+
+        private void Parent_SizeChanged(object sender, EventArgs e)
+        {
+            if (Dock != DockStyle.None)
+            {
+                UpdateDockBounds();
+                UpdateLayout();
+                Invalidate();
+            }
+        }
+
+        private void Parent_Resize(object sender, EventArgs e)
+        {
+            if (Dock != DockStyle.None)
+            {
+                UpdateDockBounds();
+                UpdateLayout();
+                Invalidate();
+            }
+        }
+
+        private void Parent_Layout(object sender, LayoutEventArgs e)
+        {
+            // 父控件布局时也可能影响尺寸
+            if (Dock != DockStyle.None)
+            {
+                UpdateDockBounds();
+                UpdateLayout();
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 根据 Dock 模式更新控件边界
+        /// </summary>
+        private void UpdateDockBounds()
+        {
+            if (Parent == null || isAnimatingExpand)
+            {
+                return;
+            }
+
+            Rectangle parentClient = Parent.ClientRectangle;
+
+            switch (Dock)
+            {
+                case DockStyle.Left:
+                case DockStyle.Right:
+                    // 左右 Dock 时，高度应该等于父控件的高度
+                    if (Height != parentClient.Height)
+                    {
+                        base.Height = parentClient.Height - Parent.Padding.Vertical;
+                    }
+                    break;
+
+                case DockStyle.Top:
+                case DockStyle.Bottom:
+                    if (Width != parentClient.Width)
+                    {
+                        base.Width = parentClient.Width - Parent.Padding.Horizontal;
+                    }
+                    break;
+
+                case DockStyle.Fill:
+                    // Fill 时，宽高都应该填充
+                    if (Size != parentClient.Size)
+                    {
+                        base.Size = parentClient.Size;
+                    }
+                    break;
+            }
+        }
+
+        #endregion
+
         #region 绘制
 
         protected override void DrawBackground(Graphics g)
@@ -771,8 +1137,6 @@ namespace FluentControls.Controls
             // 绘制标题区域
             DrawHeader(g);
 
-            // FluentTextBox 会自己绘制，不需要在这里绘制
-
             // 绘制菜单项
             DrawMenuItems(g);
 
@@ -780,6 +1144,17 @@ namespace FluentControls.Controls
             if (!footerBounds.IsEmpty)
             {
                 DrawFooterItems(g);
+            }
+
+            // 绘制滚动按钮
+            if (showScrollUpButton)
+            {
+                DrawScrollButton(g, scrollUpButtonBounds, true);
+            }
+
+            if (showScrollDownButton)
+            {
+                DrawScrollButton(g, scrollDownButtonBounds, false);
             }
         }
 
@@ -894,7 +1269,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 设置裁剪区域
+            // 设置裁剪区域，确保菜单项只在菜单区域内绘制
             var oldClip = g.Clip;
             g.SetClip(menuBounds);
 
@@ -909,21 +1284,21 @@ namespace FluentControls.Controls
                     continue;
                 }
 
-                if (!menuBounds.IntersectsWith(item.Bounds))
-                {
-                    continue;
-                }
-
                 // 折叠模式下只绘制有图标的项
-                if (!isExpanded && item.Icon == null)
+                if (!isExpanded && item.Icon == null && !(item is NavigationCategory))
                 {
                     continue;
                 }
 
                 if (item is NavigationCategory category)
                 {
-                    DrawCategoryItem(g, category);
+                    // 如果分类的边界与菜单区域有交集，就绘制它
+                    if (menuBounds.IntersectsWith(category.Bounds))
+                    {
+                        DrawCategoryItem(g, category);
+                    }
 
+                    // 绘制子项(即使分类标题被隐藏，子项也可能可见)
                     if (category.IsExpanded)
                     {
                         foreach (var subItem in category.Items)
@@ -938,16 +1313,25 @@ namespace FluentControls.Controls
                                 continue;
                             }
 
-                            DrawMenuItem(g, subItem, true);
+                            // 只要子项的边界与菜单区域有交集，就绘制
+                            if (menuBounds.IntersectsWith(subItem.Bounds))
+                            {
+                                DrawMenuItem(g, subItem, true);
+                            }
                         }
                     }
                 }
                 else
                 {
-                    DrawMenuItem(g, item, false);
+                    // 只要项的边界与菜单区域有交集，就绘制
+                    if (menuBounds.IntersectsWith(item.Bounds))
+                    {
+                        DrawMenuItem(g, item, false);
+                    }
                 }
             }
 
+            // 恢复裁剪区域
             g.Clip = oldClip;
         }
 
@@ -1148,6 +1532,99 @@ namespace FluentControls.Controls
             }
         }
 
+        /// <summary>
+        /// 绘制滚动按钮
+        /// </summary>
+        private void DrawScrollButton(Graphics g, Rectangle bounds, bool isUp)
+        {
+            if (bounds.IsEmpty)
+            {
+                return;
+            }
+
+            Point mousePos = PointToClient(MousePosition);
+            bool isHovered = bounds.Contains(mousePos);
+
+            // 绘制渐变半透明背景
+            Color color1 = GetThemeColor(c => c.Surface, SystemColors.Control);
+            Color color2 = GetThemeColor(c => c.Surface, SystemColors.Control);
+
+            using (var bgBrush = new LinearGradientBrush(
+                new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height),
+                Color.FromArgb(230, color1),
+                Color.FromArgb(180, color2),
+                isUp ? 90f : 270f))
+            {
+                g.FillRectangle(bgBrush, bounds);
+            }
+
+            // 悬停效果
+            if (isHovered)
+            {
+                Color hoverColor = Color.FromArgb(60, GetThemeColor(c => c.Primary, SystemColors.Highlight));
+                using (var brush = new SolidBrush(hoverColor))
+                {
+                    g.FillRectangle(brush, bounds);
+                }
+            }
+
+            // 绘制箭头 - 确保居中
+            Color arrowColor = isHovered
+                ? GetThemeColor(c => c.Primary, SystemColors.Highlight)
+                : GetThemeColor(c => c.TextPrimary, SystemColors.ControlText);
+
+            using (var brush = new SolidBrush(arrowColor))
+            {
+                int centerX = bounds.X + bounds.Width / 2;
+                int centerY = bounds.Y + bounds.Height / 2;  // 这个应该是正确的中心Y坐标
+                int arrowSize = 8;  // 箭头大小
+
+                Point[] arrow;
+                if (isUp)
+                {
+                    // 向上箭头 - 顶点在上方
+                    arrow = new Point[]
+                    {
+                        new Point(centerX, centerY - arrowSize / 2),           // 顶点
+                        new Point(centerX - arrowSize, centerY + arrowSize / 2), // 左下
+                        new Point(centerX + arrowSize, centerY + arrowSize / 2)  // 右下
+                    };
+                }
+                else
+                {
+                    // 向下箭头 - 顶点在下方
+                    arrow = new Point[]
+                    {
+                        new Point(centerX, centerY + arrowSize / 2),           // 底点
+                        new Point(centerX - arrowSize, centerY - arrowSize / 2), // 左上
+                        new Point(centerX + arrowSize, centerY - arrowSize / 2)  // 右上
+                    };
+                }
+
+                // 使用抗锯齿
+                var oldMode = g.SmoothingMode;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.FillPolygon(brush, arrow);
+                g.SmoothingMode = oldMode;
+            }
+
+            // 绘制边框线(用于分隔)
+            Color borderColor = Color.FromArgb(100, GetThemeColor(c => c.Border, SystemColors.ControlDark));
+            using (var pen = new Pen(borderColor, 1))
+            {
+                if (isUp)
+                {
+                    // 上箭头在底部绘制分隔线
+                    g.DrawLine(pen, bounds.Left, bounds.Bottom - 1, bounds.Right, bounds.Bottom - 1);
+                }
+                else
+                {
+                    // 下箭头在顶部绘制分隔线
+                    g.DrawLine(pen, bounds.Left, bounds.Top, bounds.Right, bounds.Top);
+                }
+            }
+        }
+
         #endregion
 
         #region 鼠标事件处理
@@ -1218,7 +1695,9 @@ namespace FluentControls.Controls
             bool overInteractive = newHoveredItem != null ||
                                   newHoveredCategory != null ||
                                   toggleButtonBounds.Contains(e.Location) ||
-                                  navIconBounds.Contains(e.Location);
+                                  navIconBounds.Contains(e.Location) ||
+                                  scrollUpButtonBounds.Contains(e.Location) ||
+                                  scrollDownButtonBounds.Contains(e.Location);
             Cursor = overInteractive ? Cursors.Hand : Cursors.Default;
         }
 
@@ -1239,6 +1718,19 @@ namespace FluentControls.Controls
                 return;
             }
 
+            // 点击滚动按钮
+            if (showScrollUpButton && scrollUpButtonBounds.Contains(e.Location))
+            {
+                ScrollUp();
+                return;
+            }
+
+            if (showScrollDownButton && scrollDownButtonBounds.Contains(e.Location))
+            {
+                ScrollDown();
+                return;
+            }
+
             // 点击折叠/展开按钮
             if (!toggleButtonBounds.IsEmpty && toggleButtonBounds.Contains(e.Location))
             {
@@ -1246,7 +1738,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 点击导航图标(仅在折叠状态下展开)
+            // 点击导航图标
             if (!navIconBounds.IsEmpty && navIconBounds.Contains(e.Location))
             {
                 if (!isExpanded)
@@ -1260,7 +1752,7 @@ namespace FluentControls.Controls
             if (hoveredCategory != null && isExpanded)
             {
                 hoveredCategory.IsExpanded = !hoveredCategory.IsExpanded;
-                UpdateLayout();
+                UpdateLayout();  // 重新计算布局，包括滚动状态
                 Invalidate();
                 return;
             }
@@ -1284,6 +1776,25 @@ namespace FluentControls.Controls
             }
         }
 
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+
+            if (maxScrollOffset > 0)
+            {
+                if (e.Delta > 0)
+                {
+                    // 向上滚动
+                    ScrollUp();
+                }
+                else if (e.Delta < 0)
+                {
+                    // 向下滚动
+                    ScrollDown();
+                }
+            }
+        }
+
         #endregion
 
         #region 搜索功能
@@ -1300,6 +1811,8 @@ namespace FluentControls.Controls
 
             if (string.IsNullOrEmpty(searchText))
             {
+                // 搜索被清空，重置滚动
+                scrollOffset = 0;
                 UpdateLayout();
                 Invalidate();
                 return;
@@ -1326,6 +1839,8 @@ namespace FluentControls.Controls
                 }
             }
 
+            // 重置滚动到顶部
+            scrollOffset = 0;
             UpdateLayout();
             Invalidate();
         }
@@ -1361,13 +1876,18 @@ namespace FluentControls.Controls
         {
             targetWidth = expand ? expandedWidth : compactWidth;
 
-            if (EnableAnimation)
+            if (EnableAnimation && animationDuration > 0)
             {
                 isAnimatingExpand = true;
+                // 根据动画时间计算定时器间隔
+                int frames = animationDuration / 16; // 假设60fps，每帧16ms
+                frames = Math.Max(1, frames);
+                expandTimer.Interval = Math.Max(8, animationDuration / frames);
                 expandTimer.Start();
             }
             else
             {
+                // 无动画，直接切换
                 isAnimatingExpand = true;
                 currentWidth = targetWidth;
                 base.Width = targetWidth;
@@ -1379,7 +1899,9 @@ namespace FluentControls.Controls
 
         private void ExpandTimer_Tick(object sender, EventArgs e)
         {
-            int step = Math.Max(1, Math.Abs(targetWidth - currentWidth) / 10);
+            // 根据动画时间计算步进值
+            int totalFrames = Math.Max(1, animationDuration / expandTimer.Interval);
+            int step = Math.Max(1, Math.Abs(targetWidth - currentWidth) / totalFrames);
 
             if (currentWidth < targetWidth)
             {
@@ -1451,6 +1973,14 @@ namespace FluentControls.Controls
         {
             if (disposing)
             {
+                if (currentParent != null)
+                {
+                    currentParent.SizeChanged -= Parent_SizeChanged;
+                    currentParent.Resize -= Parent_Resize;
+                    currentParent.Layout -= Parent_Layout;
+                    currentParent = null;
+                }
+
                 expandTimer?.Dispose();
                 searchBox?.Dispose();
             }
@@ -1548,6 +2078,26 @@ namespace FluentControls.Controls
     [ToolboxItem(false)]
     public class NavigationMenuItem : NavigationItem
     {
+        public NavigationMenuItem()
+        {
+        }
+
+        public NavigationMenuItem(string name)
+        {
+            Text = name;
+        }
+
+        public NavigationMenuItem(string name, Image icon, EventHandler @event = null, object tag = null)
+        {
+            Text = name;
+            Icon = icon;
+            Tag = tag;
+            if (@event != null)
+            {
+                Click += @event;
+            }
+        }
+
         [Browsable(false)]
         public event EventHandler Click;
 
@@ -1569,6 +2119,11 @@ namespace FluentControls.Controls
         public NavigationCategory()
         {
             items = new NavigationItemCollection();
+        }
+
+        public NavigationCategory(string name) : this()
+        {
+            Text = name;
         }
 
         [Category("Behavior")]

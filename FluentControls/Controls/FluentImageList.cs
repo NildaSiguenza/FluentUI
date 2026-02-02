@@ -655,7 +655,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            var result = MessageBox.Show("确定要清空所有图片吗？", "确认",
+            var result = MessageBox.Show("确定要清空所有图片吗?", "确认",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (result == DialogResult.Yes)

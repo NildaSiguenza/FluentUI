@@ -522,6 +522,19 @@ namespace FluentControls.Controls
             }
         }
 
+        public void AddContextMenu(ToolStripMenuItem menuItem)
+        {
+            contextMenu.Items.Add(menuItem);
+        }
+
+        public void AddContextMenu(string text, Action action)
+        {
+            var menuItem = new ToolStripMenuItem { Text = text };
+            menuItem.Click += (s, e) => action?.Invoke();
+
+            contextMenu.Items.Add(menuItem);
+        }
+
         #endregion
 
         #region 私有方法

@@ -21,9 +21,9 @@ namespace FluentControls.Controls
 
         private TextBox innerTextBox;
         private ListBox autoCompleteListBox;
+        private Label placeholderLabel;
         private ToolTip toolTip;
         private StringCollection autoCompleteStringCollection = new StringCollection();
-
 
         private string text = "";
         private string placeholder = "";
@@ -55,6 +55,7 @@ namespace FluentControls.Controls
         private Padding textPadding = new Padding(8, 8, 8, 8);
         private int prefixSpacing = 4;
         private int suffixSpacing = 4;
+        private int prefixAreaWidth = 0;
 
         private bool multiline = false;
         private bool wordWrap = true;
@@ -101,6 +102,7 @@ namespace FluentControls.Controls
 
             innerTextBox.TextChanged += (s, e) =>
             {
+                UpdatePlaceholderVisibility();
                 OnTextChanged(e);
                 if (enableAutoComplete)
                 {
@@ -119,6 +121,7 @@ namespace FluentControls.Controls
             innerTextBox.GotFocus += (s, e) =>
             {
                 isFocused = true;
+                UpdatePlaceholderVisibility();
                 State = ControlState.Focused;
                 Invalidate();
             };
@@ -126,6 +129,7 @@ namespace FluentControls.Controls
             innerTextBox.LostFocus += (s, e) =>
             {
                 isFocused = false;
+                UpdatePlaceholderVisibility();
                 State = ControlState.Normal;
                 HideAutoComplete();
                 Invalidate();
@@ -140,7 +144,28 @@ namespace FluentControls.Controls
             };
 
             Controls.Add(innerTextBox);
+
+            InitializePlaceholderLabel();
             UpdateLayout();
+        }
+
+        private void InitializePlaceholderLabel()
+        {
+            placeholderLabel = new Label
+            {
+                Text = placeholder,
+                BackColor = Color.Transparent,
+                AutoSize = false,
+                Cursor = Cursors.IBeam,
+                Font = InnerFont,
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+
+            placeholderLabel.Click += (s, e) => innerTextBox.Focus();
+
+            Controls.Add(placeholderLabel);
+            placeholderLabel.BringToFront();
         }
 
         private void InitializeAutoComplete()
@@ -235,8 +260,13 @@ namespace FluentControls.Controls
                 if (innerTextBox != null)
                 {
                     innerTextBox.Font = value ?? Font;
-                    UpdateLayout();
                 }
+
+                if (placeholderLabel != null)
+                {
+                    placeholderLabel.Font = value ?? Font;
+                }
+                UpdateLayout();
             }
         }
 
@@ -244,8 +274,6 @@ namespace FluentControls.Controls
         [Description("最小高度")]
         [DefaultValue(24)]
         public int MinHeight { get; set; } = 24;
-
-        #region 新增：边框属性
 
         [Category("Border")]
         [Description("边框宽度")]
@@ -327,8 +355,6 @@ namespace FluentControls.Controls
             }
         }
 
-        #endregion
-
         [Category("Fluent")]
         [Description("占位符文本")]
         public string Placeholder
@@ -336,8 +362,15 @@ namespace FluentControls.Controls
             get => placeholder;
             set
             {
-                placeholder = value;
-                Invalidate();
+                if (placeholder != value)
+                {
+                    placeholder = value;
+                    if (placeholderLabel != null)
+                    {
+                        placeholderLabel.Text = value;
+                        UpdatePlaceholderVisibility();
+                    }
+                }
             }
         }
 
@@ -514,6 +547,22 @@ namespace FluentControls.Controls
             }
         }
 
+        /// <summary>
+        /// 前缀整体宽度
+        /// (此属性大于0则优先使用此属性确定前缀区域整体宽度,包含前缀文本和前缀间距)
+        /// </summary>
+        [Category("Fluent")]
+        [Description("前缀整体宽度")]
+        public int PrefixAreaWidth
+        {
+            get => prefixAreaWidth;
+            set
+            {
+                prefixAreaWidth = value;
+                UpdateLayout();
+            }
+        }
+
         [Category("Fluent")]
         [Description("后缀间距")]
         public int SuffixSpacing
@@ -674,10 +723,14 @@ namespace FluentControls.Controls
             BackColor = Theme.Colors.Surface;
             ForeColor = Theme.Colors.TextPrimary;
 
-            // 使用主题色作为默认边框色
             if (borderColor == Color.Gray || borderColor == SystemColors.ControlDark)
             {
                 borderColor = Theme.Colors.Border;
+            }
+
+            if (placeholderLabel != null)
+            {
+                placeholderLabel.ForeColor = Theme.Colors.TextDisabled;
             }
         }
 
@@ -709,7 +762,16 @@ namespace FluentControls.Controls
                 if (ShowPrefix && !string.IsNullOrEmpty(Prefix))
                 {
                     var prefixSize = g.MeasureString(Prefix, PrefixFont);
-                    prefixWidth = (int)Math.Ceiling(prefixSize.Width) + PrefixSpacing;
+                    int prefixTextWidth = (int)Math.Ceiling(prefixSize.Width);
+
+                    if (prefixAreaWidth > prefixTextWidth)
+                    {
+                        prefixWidth = prefixAreaWidth;
+                    }
+                    else
+                    {
+                        prefixWidth = prefixTextWidth + PrefixSpacing;
+                    }
                 }
 
                 if (ShowSuffix && !string.IsNullOrEmpty(Suffix))
@@ -724,14 +786,12 @@ namespace FluentControls.Controls
                 iconWidth = 20 + 8;
             }
 
-            // 计算边框占用的空间
             int borderOffset = showBorder ? borderSize : 0;
 
-            // 计算水平位置和宽度
+            // 计算 innerTextBox 的位置和大小
             int x = Padding.Left + borderOffset;
             int width = Width - Padding.Horizontal - (borderOffset * 2);
 
-            // 根据图标位置调整
             if (Icon != null && IconPosition == IconPosition.Left)
             {
                 x += iconWidth;
@@ -742,23 +802,44 @@ namespace FluentControls.Controls
                 width -= iconWidth;
             }
 
-            // 调整前后缀
             x += prefixWidth;
             width -= prefixWidth + suffixWidth;
 
-            // 计算垂直位置和高度
             int y = Padding.Top + borderOffset;
             int height = Height - Padding.Vertical - (borderOffset * 2);
 
-            // 确保最小尺寸
             width = Math.Max(20, width);
             height = Math.Max(10, height);
 
-            // 设置位置和大小
             innerTextBox.Location = new Point(x, y);
             innerTextBox.Size = new Size(width, height);
 
-            // 设置 Anchor 让 TextBox 随控件大小变化
+            // 更新 placeholderLabel 的位置和大小
+            if (placeholderLabel != null)
+            {
+                placeholderLabel.Location = innerTextBox.Location;
+                placeholderLabel.Size = innerTextBox.Size;
+
+                // 更新字体和颜色
+                placeholderLabel.Font = InnerFont;
+
+                // 设置 Placeholder 颜色
+                if (UseTheme && Theme != null)
+                {
+                    placeholderLabel.ForeColor = Theme.Colors.TextDisabled;
+                }
+                else
+                {
+                    placeholderLabel.ForeColor = Color.Gray;
+                }
+
+                // 确保在 innerTextBox 上方
+                placeholderLabel.BringToFront();
+
+                // 更新显示状态
+                UpdatePlaceholderVisibility();
+            }
+
             if (Multiline)
             {
                 innerTextBox.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Bottom;
@@ -789,6 +870,24 @@ namespace FluentControls.Controls
                 case TextAlignment.Right:
                     innerTextBox.TextAlign = HorizontalAlignment.Right;
                     break;
+            }
+        }
+
+        private void UpdatePlaceholderVisibility()
+        {
+            if (placeholderLabel == null)
+            {
+                return;
+            }
+
+            // 当文本为空且未获得焦点时显示 Placeholder
+            bool shouldShow = string.IsNullOrEmpty(innerTextBox.Text) &&
+                              !isFocused &&
+                              !string.IsNullOrEmpty(placeholder);
+
+            if (placeholderLabel.Visible != shouldShow)
+            {
+                placeholderLabel.Visible = shouldShow;
             }
         }
 
@@ -1019,7 +1118,6 @@ namespace FluentControls.Controls
             DrawPrefix(g);
             DrawSuffix(g);
             DrawIcon(g);
-            DrawPlaceholder(g);
         }
 
         protected override void DrawBackground(Graphics g)
@@ -1173,34 +1271,6 @@ namespace FluentControls.Controls
             g.DrawImage(Icon, iconRect);
         }
 
-        private void DrawPlaceholder(Graphics g)
-        {
-            if (!string.IsNullOrEmpty(innerTextBox.Text) ||
-                string.IsNullOrEmpty(Placeholder) ||
-                isFocused)
-            {
-                return;
-            }
-
-            Color placeholderColor;
-            if (UseTheme && Theme != null)
-            {
-                placeholderColor = Theme.Colors.TextDisabled;
-            }
-            else
-            {
-                placeholderColor = Color.Gray;
-            }
-
-            using (var brush = new SolidBrush(placeholderColor))
-            {
-                var rect = innerTextBox.Bounds;
-                var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
-
-                TextRenderer.DrawText(g, Placeholder, innerTextBox.Font, rect, placeholderColor, flags);
-            }
-        }
-
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
@@ -1232,6 +1302,20 @@ namespace FluentControls.Controls
             }
 
             base.SetBoundsCore(x, y, width, height, specified);
+        }
+
+        #endregion
+
+        #region 资源释放
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                toolTip?.Dispose();
+                placeholderLabel?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         #endregion

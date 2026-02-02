@@ -2640,7 +2640,7 @@ namespace FluentControls.Controls
             if (menuStrip.Items.Count > 0)
             {
                 var result = MessageBox.Show(
-                    "菜单栏已有菜单项, 是否清除后继续？",
+                    "菜单栏已有菜单项, 是否清除后继续?",
                     "确认",
                     MessageBoxButtons.YesNoCancel,
                     MessageBoxIcon.Question);
@@ -2671,7 +2671,7 @@ namespace FluentControls.Controls
             }
 
             var result = MessageBox.Show(
-                "确定要清除所有菜单项吗？",
+                "确定要清除所有菜单项吗?",
                 "确认",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);

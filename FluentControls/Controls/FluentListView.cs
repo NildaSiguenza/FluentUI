@@ -2988,7 +2988,7 @@ namespace FluentControls.Controls
         [Description("清空所有列")]
         public void ClearColumns()
         {
-            if (MessageBox.Show("确定要清空所有列吗？", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show("确定要清空所有列吗?", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 listView.Columns.Clear();
                 RaiseComponentChanged(TypeDescriptor.GetProperties(listView)["Columns"]);
@@ -2998,7 +2998,7 @@ namespace FluentControls.Controls
         [Description("清空所有项")]
         public void ClearItems()
         {
-            if (MessageBox.Show("确定要清空所有项吗？", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show("确定要清空所有项吗?", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 listView.Items.Clear();
                 RaiseComponentChanged(TypeDescriptor.GetProperties(listView)["Items"]);

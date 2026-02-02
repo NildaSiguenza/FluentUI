@@ -1307,6 +1307,7 @@ namespace FluentControls.Controls
 
     #region 项包装器
 
+    [ToolboxItem(false)]
     public class RepeaterItemWrapper : Panel
     {
         private int iconSize;
