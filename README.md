@@ -22,6 +22,11 @@ A Fluent-style WinForms control library based on .NET Framework 4.8.
 ```powershell
 dotnet add package FluentControls
 ```
+## IconFonts
+```
+Runtime: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your application's runtime directory.
+Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your [Visual Studio program directory]\[Visual Studio version]\Enterprise\Common7\IDE\ directory.
+```
 
 ## Updates
 > FluentControls follows Semantic Versioning.  
@@ -83,7 +88,7 @@ dotnet add package FluentControls
 - FluentPagination: A pagination control that supports pagination display and navigation.
 - FluentImageViewer: An image viewer control that supports image viewing and basic editing.
 - FluentLogView: A log view control that supports log display and filtering.
-- FluentPropertyGrid: A property grid control that supports property editing and display.(25/11/20)
+- FluentPropertyGrid: A property grid control that supports property editing and display.
 
 ### Components (1)
 - FluentImageList: A component that supports image list management.
