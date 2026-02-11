@@ -1,0 +1,28 @@
+{
+    "Providers": [
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.BoxiconsIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/Boxicons/boxicons.ttf",
+            "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeFreeSolidIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Free-Solid-900.otf",
+            "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeFreeIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Free-Regular-400.otf",
+            "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeBrandsIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Brands-Regular-400.otf",
+            "Enabled": true
+        }
+    ]
+}
