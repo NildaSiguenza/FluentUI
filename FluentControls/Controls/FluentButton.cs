@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.ComponentModel;
 using System.Drawing.Design;
+using FluentControls.IconFonts;
 
 namespace FluentControls.Controls
 {
@@ -65,7 +66,7 @@ namespace FluentControls.Controls
 
         [Category("Fluent")]
         [Description("按钮显示的图像")]
-        [Editor(typeof(ImageEditor), typeof(UITypeEditor))]
+        [Editor(typeof(IconFontImageEditor), typeof(UITypeEditor))]
         public Image Image
         {
             get => image;

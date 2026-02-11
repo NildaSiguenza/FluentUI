@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version Condition="'$(Version)' == ''">0.2.2</Version>
+    <Version Condition="'$(Version)' == ''">0.2.3</Version>
     <PackageIcon Condition="'$(PackageIcon)' == ''">nuget-icon.png</PackageIcon>
     <Authors>Nilda Siguenza</Authors>
     <Company>Nilda Siguenza</Company>

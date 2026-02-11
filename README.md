@@ -27,13 +27,13 @@ dotnet add package FluentControls
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (35)
+## Control List (37)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
 - FluentContainerBase: The base class for container controls, supporting child control layout and management.
 
-### Basic Controls (13)
+### Basic Controls (15)
 - FluentButton: A button control supporting lighting effects and animations. 
 - FluentTextBox: A text input box supporting input type control and prefixes/suffixes. 
 - FluentLabel: A label control supporting multiple display modes. 
@@ -46,7 +46,9 @@ dotnet add package FluentControls
 - FluentColorPicker: A color picker control that supports color selection and preset color pickers.
 - FluentColorComboBox: A combo box control that supports color selection.
 - FluentShape: A graphic control that supports drawing various shapes.
-- ✨FluentMessage: A message control that supports displaying various message types. 
+- FluentMessage: A message control that supports displaying various message types. 
+- ✨FluentSplitButton: A button control that supports splitting.
+- ✨FluentFontIcon: An icon control that supports font icon display.
 
 ### Container Controls (3)
 - FluentPanel: A panel control that supports various layout methods.
@@ -81,7 +83,7 @@ dotnet add package FluentControls
 - FluentPagination: A pagination control that supports pagination display and navigation.
 - FluentImageViewer: An image viewer control that supports image viewing and basic editing.
 - FluentLogView: A log view control that supports log display and filtering.
-- ✨FluentPropertyGrid: A property grid control that supports property editing and display.(25/11/20)
+- FluentPropertyGrid: A property grid control that supports property editing and display.(25/11/20)
 
 ### Components (1)
 - FluentImageList: A component that supports image list management.

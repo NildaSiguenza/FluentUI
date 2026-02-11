@@ -24,7 +24,9 @@ namespace FluentControls.Logging
         public SerilogEventAdapter(object logEvent)
         {
             if (logEvent == null)
+            {
                 throw new ArgumentNullException(nameof(logEvent));
+            }
 
             serilogEvent = logEvent;
             logEventType = logEvent.GetType();

@@ -513,7 +513,10 @@ namespace FluentControls.Controls
 
         public void Draw(Graphics g, IFluentTheme theme)
         {
-            if (theme == null) return;
+            if (theme == null)
+            {
+                return;
+            }
 
             // 绘制背景
             Color bgColor = Color.Transparent;

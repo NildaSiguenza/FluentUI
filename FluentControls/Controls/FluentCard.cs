@@ -1709,10 +1709,12 @@ namespace FluentControls.Controls
         {
             if (disposing)
             {
-                foreach (var control in actionControls.Values)
+
+                for (int i = 0; i < actionControls.Count; i++)
                 {
-                    control.Dispose();
+                    actionControls.Values.ElementAt(i)?.Dispose();
                 }
+
                 actionControls.Clear();
 
                 cardImage?.Dispose();

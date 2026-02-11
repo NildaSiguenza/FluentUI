@@ -1360,11 +1360,15 @@ namespace FluentControls.Controls
             {
                 // 跳过自己
                 if (sibling == this)
+                {
                     continue;
+                }
 
                 // 只考虑可见的控件
                 if (!sibling.Visible)
+                {
                     continue;
+                }
 
                 // 根据兄弟控件的Dock属性调整可用空间
                 switch (sibling.Dock)

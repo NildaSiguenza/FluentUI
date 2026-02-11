@@ -169,6 +169,48 @@ namespace FluentControls
             form.Invalidate();
         }
 
+        /// <summary>
+        /// 恢复窗口焦点
+        /// </summary>
+        public static void RestoreFocus(this Form form, Control focusControl = null)
+        {
+            if (form == null || form.IsDisposed)
+            {
+                return;
+            }
+
+            try
+            {
+                // 激活窗口
+                if (!form.Focused)
+                {
+                    form.Activate();
+                }
+
+                // 尝试将焦点返回给控件
+                if (focusControl!=null && !focusControl.IsDisposed && focusControl.CanFocus)
+                {
+                    focusControl.Focus();
+                }
+                else if (form.CanFocus)
+                {
+                    form.Focus();
+                }
+
+                // 确保窗口在前面
+                if (form.WindowState == FormWindowState.Minimized)
+                {
+                    form.WindowState = FormWindowState.Normal;
+                }
+
+                form.BringToFront();
+            }
+            catch (Exception)
+            {
+                // 忽略焦点恢复错误
+            }
+        }
+
     }
 
 

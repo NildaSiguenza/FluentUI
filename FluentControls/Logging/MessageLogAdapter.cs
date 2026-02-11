@@ -38,7 +38,9 @@ namespace FluentControls.Logging
         public static ILogEvent CreateMessageLogEvent(MessageOptions options)
         {
             if (options == null)
+            {
                 return null;
+            }
 
             var logEvent = new DefaultLogEvent
             {

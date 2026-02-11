@@ -1484,7 +1484,10 @@ namespace FluentControls.Controls
             base.OnPaintAdornments(pe);
 
             FluentSlider slider = Control as FluentSlider;
-            if (slider == null) return;
+            if (slider == null)
+            {
+                return;
+            }
 
             // 绘制设计时的辅助信息
             using (Pen pen = new Pen(Color.FromArgb(100, SystemColors.Highlight)))

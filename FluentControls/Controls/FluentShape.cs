@@ -1937,7 +1937,9 @@ namespace FluentControls.Controls
         public void Draw(Graphics g, Rectangle bounds, ShapeStyle style)
         {
             if (bounds.Width <= 0 || bounds.Height <= 0)
+            {
                 return;
+            }
 
             // 限制角度范围
             var hAngle = Math.Max(-70, Math.Min(70, HorizontalViewAngle));
@@ -1962,7 +1964,9 @@ namespace FluentControls.Controls
             var frontHeight = bounds.Height - depthY - totalPadding * 2;
 
             if (frontWidth <= 0 || frontHeight <= 0)
+            {
                 return;
+            }
 
             // 根据倾斜方向确定前面的位置和深度偏移
             float frontLeft, frontTop, offsetX, offsetY;
@@ -3292,7 +3296,9 @@ namespace FluentControls.Controls
                     MessageBoxIcon.Question);
 
                 if (result != DialogResult.Yes)
+                {
                     return;
+                }
             }
 
             workingCollection.Clear();
@@ -3538,9 +3544,14 @@ namespace FluentControls.Controls
             using (var pen = new Pen(Color.LightGray))
             {
                 for (int x = 0; x < panelPreview.Width; x += 20)
+                {
                     g.DrawLine(pen, x, 0, x, panelPreview.Height);
+                }
+
                 for (int y = 0; y < panelPreview.Height; y += 20)
+                {
                     g.DrawLine(pen, 0, y, panelPreview.Width, y);
+                }
             }
 
             if (workingCollection.Count == 0)
