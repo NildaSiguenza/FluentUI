@@ -1,28 +1,46 @@
 {
-    "Providers": [
-        {
-            "ProviderTypeName": "FluentControls.IconFonts.BoxiconsIconProvider",
-            "AssemblyName": "FluentControls",
-            "FontFilePath": "Fonts/Boxicons/boxicons.ttf",
-            "Enabled": true
-        },
-        {
-            "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeFreeSolidIconProvider",
-            "AssemblyName": "FluentControls",
-            "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Free-Solid-900.otf",
-            "Enabled": true
-        },
-        {
-            "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeFreeIconProvider",
-            "AssemblyName": "FluentControls",
-            "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Free-Regular-400.otf",
-            "Enabled": true
-        },
-        {
-            "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeBrandsIconProvider",
-            "AssemblyName": "FluentControls",
-            "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Brands-Regular-400.otf",
-            "Enabled": true
-        }
-    ]
+  "Providers": [
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.MynauiIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/MynauiIcon/mynaui.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.MynauiSolidIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/MynauiIcon/mynaui-solid.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.RemixiconIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Remixicon/remixicon.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.BoxiconsIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Boxicons/boxicons.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeFreeSolidIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Free-Solid-900.otf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeFreeIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Free-Regular-400.otf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.FontAwesomeBrandsIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Brands-Regular-400.otf",
+      "Enabled": true
+    }
+  ]
 }
