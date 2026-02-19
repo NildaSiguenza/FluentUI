@@ -147,29 +147,6 @@ namespace FluentControls.IconFonts
         }
 
         /// <summary>
-        /// 获取图标Image
-        /// </summary>
-        //public Image GetIcon(string fontFamily, string iconName, float size, Color color, float rotation = 0)
-        //{
-        //    var provider = GetProvider(fontFamily);
-        //    if (provider == null)
-        //    {
-        //        return null;
-        //    }
-
-        //    var unicode = provider.GetIconMapping().TryGetValue(iconName, out string value) ? value : null;
-        //    if (unicode == null)
-        //    {
-        //        return null;
-        //    }
-
-        //    var font = provider.GetFont(size);
-        //    var imageSize = new Size((int)size, (int)size);
-
-        //    return IconFontRenderer.ToImage(unicode, font, color, imageSize, rotation);
-        //}
-
-        /// <summary>
         /// 加载配置文件
         /// </summary>
         private void LoadConfiguration()

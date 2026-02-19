@@ -23,17 +23,23 @@ A Fluent-style WinForms control library based on .NET Framework 4.8.
 dotnet add package FluentControls
 ```
 
+## IconFonts
+```
+Runtime: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your application's runtime directory.
+Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your [Visual Studio program directory]\[Visual Studio version]\Enterprise\Common7\IDE\ directory.
+```
+
 ## Updates
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (37)
+## Control List (39)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
 - FluentContainerBase: The base class for container controls, supporting child control layout and management.
 
-### Basic Controls (15)
+### Basic Controls (16)
 - FluentButton: A button control supporting lighting effects and animations. 
 - FluentTextBox: A text input box supporting input type control and prefixes/suffixes. 
 - FluentLabel: A label control supporting multiple display modes. 
@@ -47,8 +53,9 @@ dotnet add package FluentControls
 - FluentColorComboBox: A combo box control that supports color selection.
 - FluentShape: A graphic control that supports drawing various shapes.
 - FluentMessage: A message control that supports displaying various message types. 
-- ✨FluentSplitButton: A button control that supports splitting.
-- ✨FluentFontIcon: An icon control that supports font icon display.
+- FluentSplitButton: A button control that supports splitting.
+- FluentFontIcon: An icon control that supports font icon display.
+- ✨FluentMasker: A control that supports masking effects.
 
 ### Container Controls (3)
 - FluentPanel: A panel control that supports various layout methods.
@@ -78,12 +85,13 @@ dotnet add package FluentControls
 - FluentForm: A form control that supports custom styles and behaviors.
 - FluentDialog: A dialog box control that supports multiple display styles. 
 
-### Combo Controls (5)
+### Combo Controls (6)
 - FluentCard: A combo control that supports card-style display. 
 - FluentPagination: A pagination control that supports pagination display and navigation.
 - FluentImageViewer: An image viewer control that supports image viewing and basic editing.
 - FluentLogView: A log view control that supports log display and filtering.
-- FluentPropertyGrid: A property grid control that supports property editing and display.(25/11/20)
+- FluentPropertyGrid: A property grid control that supports property editing and display.
+- ✨FluentFileSelect: A combo control that supports file selection. 
 
 ### Components (1)
 - FluentImageList: A component that supports image list management.

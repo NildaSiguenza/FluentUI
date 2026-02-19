@@ -1,6 +1,24 @@
 {
     "Providers": [
         {
+            "ProviderTypeName": "FluentControls.IconFonts.MynauiIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/MynauiIcon/mynaui.ttf",
+            "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.MynauiSolidIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/MynauiIcon/mynaui-solid.ttf",
+            "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.RemixiconIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/Remixicon/remixicon.ttf",
+            "Enabled": true
+        },
+        {
             "ProviderTypeName": "FluentControls.IconFonts.BoxiconsIconProvider",
             "AssemblyName": "FluentControls",
             "FontFilePath": "Fonts/Boxicons/boxicons.ttf",

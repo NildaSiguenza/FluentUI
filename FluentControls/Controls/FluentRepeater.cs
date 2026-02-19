@@ -15,10 +15,12 @@ namespace FluentControls.Controls
         #region 字段
 
         private Func<Control> itemFactory;
+        private Func<object, Control> itemFactoryWithData;
+
         private Size itemDefaultSize = new Size(200, 100);
         private RepeaterLayoutMode layoutMode = RepeaterLayoutMode.Auto;
         private int maxItemCount = int.MaxValue;
-        private Padding itemPadding = new Padding(8);
+        private Padding itemPadding = new Padding(6);
 
         private Panel scrollablePanel;
         private Panel containerPanel;
@@ -49,6 +51,11 @@ namespace FluentControls.Controls
         private RepeaterItemWrapper pendingHoverItem;
         private bool pendingAddButtonShow;
         private Point addButtonTargetPosition; // 添加按钮目标位置
+        private bool showAddButton = true;
+
+        // 项自适应大小
+        private bool autoSizeItems = false;
+        private Func<Control, Size> itemSizeCalculator;
 
         // 事件
         public event EventHandler<RepeaterItemEventArgs> ItemAdded;
@@ -73,7 +80,7 @@ namespace FluentControls.Controls
                          ControlStyles.SupportsTransparentBackColor, true);
 
             this.BackColor = Color.FromArgb(250, 250, 250);
-            this.Padding = new Padding(10);
+            this.Padding = new Padding(8);
             this.Size = new Size(400, 300);
 
             // 创建可滚动面板
@@ -312,6 +319,44 @@ namespace FluentControls.Controls
             }
         }
 
+        [Category("Repeater")]
+        [Description("是否在悬停空白区域时显示添加项按钮")]
+        [DefaultValue(true)]
+        public bool ShowAddButton
+        {
+            get => showAddButton;
+            set
+            {
+                if (showAddButton != value)
+                {
+                    showAddButton = value;
+                    if (!value)
+                    {
+                        addButton.Visible = false;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否启用项自适应大小
+        /// </summary>
+        [Category("Repeater")]
+        [Description("是否根据内容自动调整每个项的大小")]
+        [DefaultValue(false)]
+        public bool AutoSizeItems
+        {
+            get => autoSizeItems;
+            set
+            {
+                if (autoSizeItems != value)
+                {
+                    autoSizeItems = value;
+                    UpdateLayout();
+                }
+            }
+        }
+
         #endregion
 
         #region 抽象方法实现
@@ -373,14 +418,12 @@ namespace FluentControls.Controls
 
         protected override void DrawContent(Graphics g)
         {
-            // 内容由子控件自己绘制，这里不需要额外绘制
-            // 可以在这里绘制一些装饰性元素或提示文本
             if (items.Count == 0 && itemFactory == null)
             {
                 // 绘制提示文本
-                string hintText = "请先设置项目工厂或模板\n然后鼠标悬停添加项目";
-                using (var font = new Font("Microsoft YaHei UI", 10))
-                using (var brush = new SolidBrush(Color.FromArgb(150, 150, 150)))
+                string hintText = "请选择文件";
+                using (var font = new Font("Microsoft YaHei UI", 9))
+                using (var brush = new SolidBrush(Color.FromArgb(180, 150, 150, 150)))
                 {
                     var format = new StringFormat
                     {
@@ -403,6 +446,7 @@ namespace FluentControls.Controls
         public void SetItemFactory<T>() where T : Control, new()
         {
             itemFactory = () => new T();
+            itemFactoryWithData = null;
         }
 
         /// <summary>
@@ -412,7 +456,18 @@ namespace FluentControls.Controls
         public void SetItemFactory(Func<Control> factory)
         {
             itemFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+            itemFactoryWithData = null;
         }
+
+        /// <summary>
+        /// 设置项目工厂(支持输入参数)
+        /// </summary>
+        public void SetItemFactory<TData>(Func<TData, Control> factory)
+        {
+            itemFactoryWithData = data => factory((TData)data);
+            itemFactory = null;
+        }
+
 
         /// <summary>
         /// 设置项目模板
@@ -428,6 +483,7 @@ namespace FluentControls.Controls
             }
 
             itemFactory = () => CloneControl(template);
+            itemFactoryWithData = null;
         }
 
         /// <summary>
@@ -437,20 +493,74 @@ namespace FluentControls.Controls
         {
             if (IsFull)
             {
-                MessageBox.Show($"已达到最大容量限制({maxItemCount}项)", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                FluentMessageManager.Instance.Warning($"已达到最大容量限制({maxItemCount}项)");
                 return null;
             }
 
-            if (itemFactory == null)
+            if (itemFactory == null && itemFactoryWithData == null)
             {
-                MessageBox.Show("请先设置项目工厂或模板", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                FluentMessageManager.Instance.Warning($"请先设置项目工厂或模板");
                 return null;
             }
 
-            var control = itemFactory();
+            Control control = null;
+
+            if (itemFactory != null)
+            {
+                control = itemFactory();
+            }
+            else if (itemFactoryWithData != null)
+            {
+                control = itemFactoryWithData(null);
+            }
+
             if (control != null)
             {
-                control.Size = itemDefaultSize;
+                // 在添加前计算自适应大小
+                if (autoSizeItems)
+                {
+                    Size itemSize = GetItemSize(control);
+                    control.Size = itemSize;
+                }
+                else
+                {
+                    control.Size = itemDefaultSize;
+                }
+
+                AddItemInternal(control);
+            }
+
+            return control;
+        }
+
+        public Control AddItem<TData>(TData data)
+        {
+            if (IsFull)
+            {
+                FluentMessageManager.Instance.Warning($"已达到最大容量限制({maxItemCount}项)");
+                return null;
+            }
+
+            if (itemFactoryWithData == null)
+            {
+                FluentMessageManager.Instance.Warning($"请先设置项目工厂或模板");
+                return null;
+            }
+
+            var control = itemFactoryWithData(data);
+            if (control != null)
+            {
+                // 在添加前计算自适应大小
+                if (autoSizeItems)
+                {
+                    Size itemSize = GetItemSize(control);
+                    control.Size = itemSize;
+                }
+                else
+                {
+                    control.Size = itemDefaultSize;
+                }
+
                 AddItemInternal(control);
             }
 
@@ -518,7 +628,7 @@ namespace FluentControls.Controls
 
         private void AddItemInternal(Control control)
         {
-            var wrapper = new RepeaterItemWrapper(control, ICON_SIZE, deleteIconSize); // 传递删除按钮大小
+            var wrapper = new RepeaterItemWrapper(control, ICON_SIZE, deleteIconSize);
             wrapper.DeleteButton.Click += (s, e) => RemoveItemInternal(wrapper);
             wrapper.MouseEnter += ItemWrapper_MouseEnter;
             wrapper.MouseLeave += ItemWrapper_MouseLeave;
@@ -586,6 +696,11 @@ namespace FluentControls.Controls
 
         #region 布局
 
+        public void RefreshLayout()
+        {
+            UpdateLayout();
+        }
+
         private void UpdateLayout()
         {
             if (items.Count == 0)
@@ -622,12 +737,13 @@ namespace FluentControls.Controls
 
             foreach (var wrapper in items)
             {
+                Size itemSize = GetItemSize(wrapper.ItemControl);
+
                 wrapper.Location = new Point(x, 0);
-                // 不需要额外空间给添加按钮了
-                wrapper.Size = new Size(itemDefaultSize.Width, itemDefaultSize.Height);
+                wrapper.Size = itemSize;
                 wrapper.LayoutIcons(RepeaterLayoutMode.Horizontal);
 
-                x += itemDefaultSize.Width + itemPadding.Left + itemPadding.Right;
+                x += itemSize.Width + itemPadding.Left + itemPadding.Right;
                 maxHeight = Math.Max(maxHeight, wrapper.Height);
             }
 
@@ -644,12 +760,13 @@ namespace FluentControls.Controls
 
             foreach (var wrapper in items)
             {
+                Size itemSize = GetItemSize(wrapper.ItemControl);
+
                 wrapper.Location = new Point(0, y);
-                // 不需要额外空间给添加按钮了
-                wrapper.Size = new Size(itemDefaultSize.Width, itemDefaultSize.Height);
+                wrapper.Size = itemSize;
                 wrapper.LayoutIcons(RepeaterLayoutMode.Vertical);
 
-                y += itemDefaultSize.Height + itemPadding.Top + itemPadding.Bottom;
+                y += itemSize.Height + itemPadding.Top + itemPadding.Bottom;
                 maxWidth = Math.Max(maxWidth, wrapper.Width);
             }
 
@@ -663,42 +780,67 @@ namespace FluentControls.Controls
         {
             var viewportSize = GetViewportSize();
             int availableWidth = viewportSize.Width;
-            int itemWidthWithPadding = itemDefaultSize.Width + itemPadding.Left + itemPadding.Right;
-            int itemHeightWithPadding = itemDefaultSize.Height + itemPadding.Top + itemPadding.Bottom;
-
-            int itemsPerRow = Math.Max(1, availableWidth / itemWidthWithPadding);
 
             int x = 0;
             int y = 0;
             int rowHeight = 0;
-            int itemsInCurrentRow = 0;
             int maxWidth = 0;
 
             foreach (var wrapper in items)
             {
-                if (itemsInCurrentRow >= itemsPerRow)
+                Size itemSize = GetItemSize(wrapper.ItemControl);
+                int itemWidthWithPadding = itemSize.Width + itemPadding.Left + itemPadding.Right;
+
+                // 检查是否需要换行
+                if (x > 0 && x + itemWidthWithPadding > availableWidth)
                 {
                     x = 0;
                     y += rowHeight + itemPadding.Top + itemPadding.Bottom;
                     rowHeight = 0;
-                    itemsInCurrentRow = 0;
                 }
 
                 wrapper.Location = new Point(x, y);
-                // 不需要额外空间给添加按钮了
-                wrapper.Size = new Size(itemDefaultSize.Width, itemDefaultSize.Height);
+                wrapper.Size = itemSize;
                 wrapper.LayoutIcons(RepeaterLayoutMode.Auto);
 
-                x += wrapper.Width + itemPadding.Left + itemPadding.Right;
-                rowHeight = Math.Max(rowHeight, wrapper.Height);
+                x += itemWidthWithPadding;
+                rowHeight = Math.Max(rowHeight, itemSize.Height);
                 maxWidth = Math.Max(maxWidth, x);
-                itemsInCurrentRow++;
             }
 
             containerPanel.Size = new Size(
                 Math.Max(availableWidth, maxWidth),
                 y + rowHeight + itemPadding.Bottom
             );
+        }
+
+        private Size GetItemSize(Control itemControl)
+        {
+            if (autoSizeItems && itemSizeCalculator != null)
+            {
+                try
+                {
+                    return itemSizeCalculator(itemControl);
+                }
+                catch
+                {
+                    // 如果计算失败，使用默认大小
+                }
+            }
+
+            return itemDefaultSize;
+        }
+
+        /// <summary>
+        /// 设置项大小计算器
+        /// </summary>
+        public void SetItemSizeCalculator(Func<Control, Size> calculator)
+        {
+            itemSizeCalculator = calculator;
+            if (autoSizeItems)
+            {
+                UpdateLayout();
+            }
         }
 
         private Size GetViewportSize()
@@ -854,7 +996,7 @@ namespace FluentControls.Controls
 
         private void CheckEmptySpaceHover(Point location)
         {
-            if (IsFull)
+            if (!showAddButton || IsFull)
             {
                 hoverTimer.Stop();
                 HideAllIcons();
@@ -1315,14 +1457,14 @@ namespace FluentControls.Controls
         private RepeaterLayoutMode currentLayoutMode;
         private const int ICON_MARGIN = 4; // 图标边距
 
-        public RepeaterItemWrapper(Control itemControl, int iconSize, int deleteIconSize)
+        public RepeaterItemWrapper(Control itemControl, int iconSize, int deleteIconSize, Padding? padding = null)
         {
             ItemControl = itemControl;
             this.iconSize = iconSize;
             this.deleteIconSize = deleteIconSize;
 
             this.BackColor = Color.White;
-            this.Padding = new Padding(4);
+            this.Padding = padding ?? new Padding(0);
 
             // 绘制边框
             this.Paint += (s, e) =>
@@ -1380,17 +1522,33 @@ namespace FluentControls.Controls
             DeleteButton.Visible = false;
         }
 
+        //private FluentButton CreateIconButton(string text, string tooltip, Color color)
+        //{
+        //    var button = new FluentButton
+        //    {
+        //        Size = new Size(deleteIconSize, deleteIconSize),
+        //        Text = text,
+        //        Font = new Font("Microsoft YaHei", deleteIconSize * 0.5f, FontStyle.Bold),
+        //        ForeColor = Color.White,
+        //        BackColor = color,
+        //        Cursor = Cursors.Hand,
+        //        TabStop = false,
+        //        HoverBackColor = ControlPaint.Light(color, 0.2f),
+        //        PressedBackColor = ControlPaint.Dark(color, 0.1f),
+        //        TextAlign = ContentAlignment.MiddleCenter,
+        //        UseTheme = false
+        //    };
+
+        //    var toolTip = new ToolTip();
+        //    toolTip.SetToolTip(button, tooltip);
+
+        //    return button;
+        //}
+
         private FluentButton CreateIconButton(string text, string tooltip, Color color)
         {
-            var button = new FluentButton
+            var button = new DeleteIconItemButton(deleteIconSize, color)
             {
-                Size = new Size(deleteIconSize, deleteIconSize),
-                Text = text,
-                Font = new Font("Microsoft YaHei", deleteIconSize * 0.5f, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = color,
-                Cursor = Cursors.Hand,
-                TabStop = false,
                 HoverBackColor = ControlPaint.Light(color, 0.2f),
                 PressedBackColor = ControlPaint.Dark(color, 0.1f)
             };
@@ -1409,6 +1567,58 @@ namespace FluentControls.Controls
                 DeleteButton?.Dispose();
             }
             base.Dispose(disposing);
+        }
+    }
+
+    #endregion
+
+    #region 项删除按钮
+
+    internal class DeleteIconItemButton : FluentButton
+    {
+        public DeleteIconItemButton(int size, Color backgroundColor)
+        {
+            this.Size = new Size(size, size);
+            this.BackColor = backgroundColor;
+            this.ForeColor = Color.White;
+            this.Cursor = Cursors.Hand;
+            this.TabStop = false;
+            this.UseTheme = false;
+            this.Text = ""; // 不使用文本
+            this.CustomSpacing = 2;
+            this.UseCustomSpacing = true;
+            this.CornerRadius = 0;
+        }
+
+        protected override void DrawContent(Graphics g)
+        {
+            // 自己绘制叉号
+            g.SmoothingMode = SmoothingMode.HighQuality;
+
+            // 计算叉号的位置和大小
+            int margin = this.Width / 4;
+            int x1 = margin;
+            int y1 = margin;
+            int x2 = this.Width - margin;
+            int y2 = this.Height - margin;
+
+            // 获取当前状态的前景色
+            Color foreColor = this.ForeColor;
+            if (!this.Enabled)
+            {
+                foreColor = Color.FromArgb(128, foreColor);
+            }
+
+            // 使用当前前景色绘制叉号
+            using (var pen = new Pen(foreColor, Math.Max(2, this.Width / 10)))
+            {
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+
+                // 绘制两条交叉线
+                g.DrawLine(pen, x1, y1, x2, y2);
+                g.DrawLine(pen, x2, y1, x1, y2);
+            }
         }
     }
 

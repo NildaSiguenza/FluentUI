@@ -24,6 +24,9 @@ namespace FluentControls.Controls
         private Keys shortcutKeys = Keys.None;
         private bool showKeyTips = true;
 
+        private int contentSpacing = 2; // 自定义间距
+        private bool useCustomSpacing = false;
+
         private bool isDefault;
         private DialogResult dialogResult;
 
@@ -139,6 +142,32 @@ namespace FluentControls.Controls
             set
             {
                 imageTextSpacing = Math.Max(0, value);
+                Invalidate();
+            }
+        }
+
+        [Category("Fluent")]
+        [Description("自定义内容按钮间距")]
+        [DefaultValue(0)]
+        public int CustomSpacing
+        {
+            get => contentSpacing;
+            set
+            {
+                contentSpacing = Math.Max(0, value);
+                Invalidate();
+            }
+        }
+
+        [Category("Fluent")]
+        [Description("是否使用自定义内容按钮间距")]
+        [DefaultValue(false)]
+        public bool UseCustomSpacing
+        {
+            get => useCustomSpacing;
+            set
+            {
+                useCustomSpacing = value;
                 Invalidate();
             }
         }
@@ -438,7 +467,14 @@ namespace FluentControls.Controls
         protected override void DrawContent(Graphics g)
         {
             var rect = ClientRectangle;
-            rect.Inflate(-Theme.Spacing.Small, -Theme.Spacing.Small);
+            if (UseCustomSpacing)
+            {
+                rect.Inflate(-CustomSpacing, -CustomSpacing);
+            }
+            else
+            {
+                rect.Inflate(-Theme.Spacing.Small, -Theme.Spacing.Small);
+            }
 
             bool hasImage = Image != null;
             bool hasText = !string.IsNullOrEmpty(Text);

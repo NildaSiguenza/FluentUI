@@ -38,9 +38,6 @@
     <Compile Update="Controls\FluentDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Controls\FluentFontIcon.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Update="Controls\FluentForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -99,9 +96,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentSlider.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="Controls\FluentSplitButton.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentStatusStrip.cs">

@@ -3347,11 +3347,6 @@ namespace FluentControls.Controls
             items.Add(new DesignerActionHeaderItem("编辑"));
             items.Add(new DesignerActionMethodItem(this, "EditItems", "编辑项集合...", "编辑", "编辑按钮项集合", true));
 
-            // 添加主题相关
-            items.Add(new DesignerActionHeaderItem("主题"));
-            items.Add(new DesignerActionPropertyItem("UseTheme", "使用主题", "主题", "是否使用Fluent主题"));
-            items.Add(new DesignerActionPropertyItem("ThemeName", "主题名称:", "主题", "选择要使用的主题"));
-
             return items;
         }
 
@@ -3390,24 +3385,6 @@ namespace FluentControls.Controls
             set
             {
                 SetProperty("ShowText", value);
-            }
-        }
-
-        public bool UseTheme
-        {
-            get => splitButton.UseTheme;
-            set
-            {
-                SetProperty("UseTheme", value);
-            }
-        }
-
-        public string ThemeName
-        {
-            get => splitButton.ThemeName;
-            set
-            {
-                SetProperty("ThemeName", value);
             }
         }
 

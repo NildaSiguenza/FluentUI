@@ -188,7 +188,7 @@ namespace FluentControls
                 }
 
                 // 尝试将焦点返回给控件
-                if (focusControl!=null && !focusControl.IsDisposed && focusControl.CanFocus)
+                if (focusControl != null && !focusControl.IsDisposed && focusControl.CanFocus)
                 {
                     focusControl.Focus();
                 }
