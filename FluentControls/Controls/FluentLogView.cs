@@ -92,7 +92,7 @@ namespace FluentControls.Controls
 
             InitializeComponents();
 
-            // 延迟启动处理线程，确保控件完全初始化
+            // 延迟启动处理线程, 确保控件完全初始化
             this.HandleCreated += (s, e) =>
             {
                 if (processingThread == null || !processingThread.IsAlive)
@@ -601,7 +601,7 @@ namespace FluentControls.Controls
                 }
                 catch
                 {
-                    // 控件可能已释放，忽略
+                    // 控件可能已释放, 忽略
                 }
                 return;
             }
@@ -699,7 +699,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 如果配色方案返回透明色，使用ListView的背景色
+                // 如果配色方案返回透明色, 使用ListView的背景色
                 item.BackColor = listView?.BackColor ?? SystemColors.Window;
             }
 
@@ -994,7 +994,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 不使用主题时，设置默认背景色
+                // 不使用主题时, 设置默认背景色
                 BackColor = SystemColors.Window;
 
                 if (listView != null)

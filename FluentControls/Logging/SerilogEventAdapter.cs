@@ -114,7 +114,7 @@ namespace FluentControls.Logging
                             }
                         }
 
-                        // 如果上面失败，使用 ToString
+                        // 如果上面失败, 使用 ToString
                         if (string.IsNullOrEmpty(message))
                         {
                             message = serilogEvent.ToString();

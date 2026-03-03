@@ -216,7 +216,7 @@ namespace FluentControls.IconFonts
             previewPanel.Controls.Add(localFilePreview);
             mainContainer.Controls.Add(previewPanel, 0, 1);
 
-            // 如果有当前图片，显示它
+            // 如果有当前图片, 显示它
             if (originalImage != null)
             {
                 localFilePreview.Image = new Bitmap(originalImage);
@@ -346,7 +346,7 @@ namespace FluentControls.IconFonts
             resourceTreeView.AfterSelect += ResourceTreeView_AfterSelect;
             resourceTreeView.DoubleClick += ResourceTreeView_DoubleClick;
 
-            // 再添加 TreeView，它会填充剩余空间
+            // 再添加 TreeView, 它会填充剩余空间
             leftPanel.Controls.Add(resourceTreeView);
 
             contentSplitter.Panel1.Controls.Add(leftPanel);
@@ -565,7 +565,7 @@ namespace FluentControls.IconFonts
                             }
                             catch (Exception ex)
                             {
-                                // 方法2: 如果是文件引用，手动加载
+                                // 方法2: 如果是文件引用, 手动加载
                                 if (fileRef != null)
                                 {
                                     value = LoadResourceFromFileRef(reader.BasePath, fileRef);

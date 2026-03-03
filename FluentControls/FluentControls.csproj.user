@@ -38,6 +38,15 @@
     <Compile Update="Controls\FluentDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Controls\FluentDropdown.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentFileSelect.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentFontIcon.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\FluentForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -60,6 +69,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentLogView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentMasker.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentMenuStrip.cs">
@@ -98,6 +110,9 @@
     <Compile Update="Controls\FluentSlider.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Controls\FluentSplitButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\FluentStatusStrip.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -108,6 +123,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentToolStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentTooltip.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentTreeView.cs">

@@ -858,7 +858,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 布局操作按钮(横向，支持换行)
+            // 布局操作按钮(横向, 支持换行)
             var visibleControls = GetVisibleActionControls();
             if (visibleControls.Count > 0)
             {
@@ -969,18 +969,18 @@ namespace FluentControls.Controls
             // 确保按钮区域至少有最小宽度
             if (buttonAreaWidth < actionButtonMinWidth)
             {
-                // 如果宽度不够，让文本区域收缩
+                // 如果宽度不够, 让文本区域收缩
                 textWidth = bounds.Width - actionButtonMinWidth - elementSpacing;
                 buttonAreaWidth = actionButtonMinWidth;
             }
 
-            // 布局按钮(右侧，横向排列，支持换行)
+            // 布局按钮(右侧, 横向排列, 支持换行)
             var visibleControls = GetVisibleActionControls();
             if (visibleControls.Count > 0)
             {
                 int buttonX = bounds.Right - buttonAreaWidth;
 
-                // 如果按钮总宽度超过可用宽度，需要换行
+                // 如果按钮总宽度超过可用宽度, 需要换行
                 int totalButtonWidth = 0;
                 foreach (var control in visibleControls)
                 {
@@ -989,7 +989,7 @@ namespace FluentControls.Controls
 
                 if (totalButtonWidth > buttonAreaWidth)
                 {
-                    // 需要换行，使用全宽
+                    // 需要换行, 使用全宽
                     buttonX = bounds.X + textWidth + elementSpacing;
                     buttonAreaWidth = bounds.Width - textWidth - elementSpacing;
                 }

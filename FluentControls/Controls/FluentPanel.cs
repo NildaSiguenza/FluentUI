@@ -32,6 +32,7 @@ namespace FluentControls.Controls
 
         // 标题栏相关
         private bool showTitleBar = true;
+        private bool showTitleText = true;
         private string titleText = "Panel Title";
         private TitleAlignment titleAlignment = TitleAlignment.Left;
         private Color? titleBackColor;
@@ -67,7 +68,7 @@ namespace FluentControls.Controls
         private bool isUpdatingScrollBars = false;
 
         // 折叠动画
-        private bool showAnimation = true;
+        private bool showAnimation = false;
         private int animationDuration = 200;
         private bool isAnimating = false;
 
@@ -78,7 +79,9 @@ namespace FluentControls.Controls
         private bool isInitialized = false;
 
         // 事件
+        public event EventHandler BeforeCollapsedChange;
         public event EventHandler CollapsedChanged;
+        public event EventHandler TitleBarClicked;
 
         #region 构造函数
 
@@ -95,6 +98,8 @@ namespace FluentControls.Controls
             UpdateStyles();
 
             Size = new Size(300, 200);
+            this.Padding = new Padding(1);
+
             InitializeComponents();
             InitializeDebounceTimer();
 
@@ -110,12 +115,13 @@ namespace FluentControls.Controls
             titlePanel = new DoubleBufferedPanel
             {
                 Name = "titlePanel",
-                Dock = DockStyle.Top,
+                Dock = DockStyle.None,
                 Height = titleHeight,
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                AutoScroll = false
             };
             titlePanel.Paint += OnTitlePanelPaint;
-            // titlePanel.Resize += (s, e) => UpdateLayout();
+            titlePanel.MouseDown += OnTitlePanelMouseDown;
 
             // 标题标签
             titleLabel = new Label
@@ -127,6 +133,7 @@ namespace FluentControls.Controls
                 Text = titleText,
                 UseMnemonic = false // 防止&字符被解析为快捷键
             };
+            titleLabel.MouseDown += OnTitlePanelMouseDown;
 
             // 启用标题标签的双缓冲
             typeof(Control).GetProperty("DoubleBuffered",
@@ -136,7 +143,7 @@ namespace FluentControls.Controls
 
             titlePanel.Controls.Add(titleLabel);
 
-            // 折叠按钮 - 使用自定义绘制以减少闪烁
+            // 折叠按钮
             collapseButton = new Button
             {
                 Name = "collapseButton",
@@ -169,7 +176,7 @@ namespace FluentControls.Controls
             contentPanel = new DoubleBufferedPanel
             {
                 Name = "contentPanel",
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.None,
                 BackColor = Color.Transparent,
                 BorderStyle = BorderStyle.None,
                 AutoScroll = false
@@ -233,6 +240,20 @@ namespace FluentControls.Controls
                     collapseButton.Visible = value && collapsible;
                 }
                 UpdateLayout();
+            }
+        }
+
+        [Category("TitleBar")]
+        [Description("是否显示标题栏文本")]
+        [DefaultValue(true)]
+        public bool ShowTitleText
+        {
+            get => showTitleText;
+            set
+            {
+                showTitleText = value;
+                titleLabel.Visible = value;
+                titlePanel.Invalidate();
             }
         }
 
@@ -332,6 +353,19 @@ namespace FluentControls.Controls
             }
         }
 
+        public new Padding Padding
+        {
+            get => base.Padding;
+            set
+            {
+                if (base.Padding != value)
+                {
+                    base.Padding = value;
+                    UpdateLayout();
+                }
+            }
+        }
+
         [Category("TitleBar")]
         [Description("标题内边距")]
         public Padding TitlePadding
@@ -417,6 +451,17 @@ namespace FluentControls.Controls
             set
             {
                 borderWidth = Math.Max(0, Math.Min(10, value));
+
+                // 自动调整 Padding 以适应边框
+                if (borderWidth > 0)
+                {
+                    int paddingValue = Math.Max(borderWidth, 1);
+                    if (this.Padding.All != paddingValue)
+                    {
+                        this.Padding = new Padding(paddingValue);
+                    }
+                }
+
                 Invalidate();
             }
         }
@@ -670,6 +715,36 @@ namespace FluentControls.Controls
             }
         }
 
+        protected override void OnPaddingChanged(EventArgs e)
+        {
+            base.OnPaddingChanged(e);
+
+            if (isInitialized)
+            {
+                UpdateLayout();
+            }
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            // 在动画期间跳过布局更新
+            if (isInitialized && !isAnimating)
+            {
+                // 使用防抖定时器, 避免频繁更新
+                if (resizeDebounceTimer != null)
+                {
+                    resizeDebounceTimer.Stop();
+                    resizeDebounceTimer.Start();
+                }
+                else
+                {
+                    UpdateLayout();
+                }
+            }
+        }
+
         protected override void DrawBackground(Graphics g)
         {
             using (var brush = new SolidBrush(BackColor))
@@ -781,16 +856,6 @@ namespace FluentControls.Controls
             return new Rectangle(x, y, width, height);
         }
 
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-
-            if (isInitialized)
-            {
-                UpdateLayout();
-            }
-        }
-
         protected override void OnControlAdded(ControlEventArgs e)
         {
             if (isAnimating)
@@ -830,6 +895,7 @@ namespace FluentControls.Controls
             if (isInitialized)
             {
                 BeginInvoke(new Action(() => UpdateLayout()));
+                UpdateScrollBarVisibility();
             }
         }
 
@@ -855,83 +921,117 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 暂停布局和绘制
+            // 如果正在动画, 只做最小限度的更新
+            if (isAnimating)
+            {
+                UpdateLayoutDuringAnimation();
+                return;
+            }
+
             SuspendLayout();
             titlePanel.SuspendLayout();
 
             try
             {
-                // 确保标题面板宽度正确
-                if (titlePanel.Width != this.Width)
+                // 计算可用区域(减去 Padding 和 Border)
+                int leftOffset = this.Padding.Left;
+                int topOffset = this.Padding.Top;
+                int rightOffset = this.Padding.Right;
+                int bottomOffset = this.Padding.Bottom;
+
+                int availableWidth = Math.Max(0, this.Width - leftOffset - rightOffset);
+                int availableHeight = Math.Max(0, this.Height - topOffset - bottomOffset);
+
+                // 更新标题面板位置和大小
+                if (showTitleBar)
                 {
-                    titlePanel.Width = this.Width;
-                }
+                    int actualTitleHeight = Math.Min(titleHeight, availableHeight);
 
-                // 更新标题标签
-                var buttonWidth = (collapsible && showTitleBar) ? 30 : 0;
-                var newLabelLocation = new Point(titlePadding.Left, titlePadding.Top);
-                var newLabelSize = new Size(
-                    Math.Max(0, titlePanel.Width - titlePadding.Horizontal - buttonWidth),
-                    Math.Max(0, titleHeight - titlePadding.Vertical));
+                    titlePanel.Bounds = new Rectangle(
+                        leftOffset,
+                        topOffset,
+                        availableWidth,
+                        actualTitleHeight
+                    );
+                    titlePanel.Visible = true;
 
-                // 只在需要时更新，避免不必要的重绘
-                if (titleLabel.Location != newLabelLocation)
-                {
-                    titleLabel.Location = newLabelLocation;
-                }
+                    // 更新标题标签
+                    var buttonWidth = collapsible ? 30 : 0;
+                    titleLabel.Bounds = new Rectangle(
+                        titlePadding.Left,
+                        titlePadding.Top,
+                        Math.Max(0, titlePanel.Width - titlePadding.Horizontal - buttonWidth),
+                        Math.Max(0, actualTitleHeight - titlePadding.Vertical)
+                    );
 
-                if (titleLabel.Size != newLabelSize)
-                {
-                    titleLabel.Size = newLabelSize;
-                }
-
-                // 更新对齐方式
-                ContentAlignment newAlignment;
-                switch (titleAlignment)
-                {
-                    case TitleAlignment.Left:
-                        newAlignment = ContentAlignment.MiddleLeft;
-                        break;
-                    case TitleAlignment.Center:
-                        newAlignment = ContentAlignment.MiddleCenter;
-                        break;
-                    case TitleAlignment.Right:
-                        newAlignment = ContentAlignment.MiddleRight;
-                        break;
-                    default:
-                        newAlignment = ContentAlignment.MiddleLeft;
-                        break;
-                }
-
-                if (titleLabel.TextAlign != newAlignment)
-                {
-                    titleLabel.TextAlign = newAlignment;
-                }
-
-                // 更新折叠按钮位置
-                int buttonX = titlePanel.Width - 28;
-                int buttonY = (titleHeight - 24) / 2;
-                var newButtonLocation = new Point(Math.Max(0, buttonX), Math.Max(0, buttonY));
-
-                if (collapseButton.Location != newButtonLocation)
-                {
-                    collapseButton.Location = newButtonLocation;
-                }
-
-                bool shouldShowButton = showTitleBar && collapsible;
-                if (collapseButton.Visible != shouldShowButton)
-                {
-                    collapseButton.Visible = shouldShowButton;
-                }
-
-                // 更新内容面板
-                if (contentPanel != null)
-                {
-                    bool shouldShowContent = !isCollapsed;
-                    if (contentPanel.Visible != shouldShowContent)
+                    // 更新对齐方式
+                    ContentAlignment newAlignment;
+                    switch (titleAlignment)
                     {
-                        contentPanel.Visible = shouldShowContent;
+                        case TitleAlignment.Left:
+                            newAlignment = ContentAlignment.MiddleLeft;
+                            break;
+                        case TitleAlignment.Center:
+                            newAlignment = ContentAlignment.MiddleCenter;
+                            break;
+                        case TitleAlignment.Right:
+                            newAlignment = ContentAlignment.MiddleRight;
+                            break;
+                        default:
+                            newAlignment = ContentAlignment.MiddleLeft;
+                            break;
                     }
+
+                    if (titleLabel.TextAlign != newAlignment)
+                    {
+                        titleLabel.TextAlign = newAlignment;
+                    }
+
+                    // 更新折叠按钮位置
+                    if (collapsible)
+                    {
+                        collapseButton.Location = new Point(
+                            Math.Max(0, titlePanel.Width - 28),
+                            Math.Max(0, (actualTitleHeight - 24) / 2)
+                        );
+                        collapseButton.Visible = true;
+                    }
+                    else
+                    {
+                        collapseButton.Visible = false;
+                    }
+                }
+                else
+                {
+                    titlePanel.Visible = false;
+                    collapseButton.Visible = false;
+                }
+
+                // 更新内容面板位置和大小
+                if (contentPanel != null && !isCollapsed)
+                {
+                    int titlePanelHeight = showTitleBar ? Math.Min(titleHeight, availableHeight) : 0;
+                    int contentTop = topOffset + titlePanelHeight;
+                    int contentHeight = Math.Max(0, availableHeight - titlePanelHeight);
+
+                    if (contentHeight > 0)
+                    {
+                        contentPanel.Bounds = new Rectangle(
+                            leftOffset,
+                            contentTop,
+                            availableWidth,
+                            contentHeight
+                        );
+                        contentPanel.Visible = true;
+                    }
+                    else
+                    {
+                        contentPanel.Visible = false;
+                    }
+                }
+                else if (contentPanel != null)
+                {
+                    contentPanel.Visible = false;
                 }
             }
             finally
@@ -941,22 +1041,106 @@ namespace FluentControls.Controls
             }
         }
 
-        private void UpdateScrollBarVisibility()
+        /// <summary>
+        /// 动画期间的轻量级布局更新
+        /// </summary>
+        private void UpdateLayoutDuringAnimation()
         {
-            if (contentPanel == null || !isInitialized || isUpdatingScrollBars)
+            if (titlePanel == null || contentPanel == null)
             {
                 return;
             }
 
-            try
+            // 不使用 SuspendLayout, 直接更新关键布局
+            int leftOffset = this.Padding.Left;
+            int topOffset = this.Padding.Top;
+            int rightOffset = this.Padding.Right;
+            int bottomOffset = this.Padding.Bottom;
+
+            int availableWidth = Math.Max(0, this.Width - leftOffset - rightOffset);
+            int availableHeight = Math.Max(0, this.Height - topOffset - bottomOffset);
+
+            // 只更新宽度, 让高度由动画控制
+            if (showTitleBar)
             {
-                isUpdatingScrollBars = true;
-                contentPanel.AutoScroll = (scrollBarVisibility == ScrollBarVisibility.Auto);
+                titlePanel.Width = availableWidth;
+
+                // 更新标题标签宽度
+                var buttonWidth = collapsible ? 30 : 0;
+                titleLabel.Width = Math.Max(0, titlePanel.Width - titlePadding.Horizontal - buttonWidth);
+
+                // 更新折叠按钮位置
+                if (collapsible)
+                {
+                    collapseButton.Left = Math.Max(0, titlePanel.Width - 28);
+                }
             }
-            finally
+
+            // 更新内容面板
+            if (!isCollapsed && contentPanel.Visible)
             {
-                isUpdatingScrollBars = false;
+                contentPanel.Left = leftOffset;
+                contentPanel.Width = availableWidth;
+
+                int titlePanelHeight = showTitleBar ? titleHeight : 0;
+                int contentTop = topOffset + titlePanelHeight;
+                int contentHeight = Math.Max(0, availableHeight - titlePanelHeight);
+
+                if (contentHeight > 0)
+                {
+                    contentPanel.Top = contentTop;
+                    contentPanel.Height = contentHeight;
+                }
             }
+        }
+
+        private void UpdateScrollBarVisibility()
+        {
+            if (contentPanel == null || !isInitialized || IsCollapsed)
+            {
+                return;
+            }
+
+            switch (scrollBarVisibility)
+            {
+                case ScrollBarVisibility.Auto:
+                    contentPanel.AutoScroll = true;
+                    contentPanel.HorizontalScroll.Enabled = true;
+                    contentPanel.VerticalScroll.Enabled = true;
+                    break;
+
+                case ScrollBarVisibility.None:
+                    contentPanel.AutoScroll = false;
+                    contentPanel.HorizontalScroll.Visible = false;
+                    contentPanel.VerticalScroll.Visible = false;
+                    break;
+
+                case ScrollBarVisibility.Horizontal:
+                    contentPanel.AutoScroll = true;
+                    contentPanel.HorizontalScroll.Enabled = true;
+                    contentPanel.VerticalScroll.Enabled = false;
+                    // 强制只显示水平滚动条
+                    contentPanel.VerticalScroll.Visible = false;
+                    break;
+
+                case ScrollBarVisibility.Vertical:
+                    contentPanel.AutoScroll = true;
+                    contentPanel.HorizontalScroll.Enabled = false;
+                    contentPanel.VerticalScroll.Enabled = true;
+                    // 强制只显示垂直滚动条
+                    contentPanel.HorizontalScroll.Visible = false;
+                    break;
+
+                case ScrollBarVisibility.Both:
+                    contentPanel.AutoScroll = true;
+                    contentPanel.HorizontalScroll.Enabled = true;
+                    contentPanel.VerticalScroll.Enabled = true;
+                    contentPanel.HorizontalScroll.Visible = true;
+                    contentPanel.VerticalScroll.Visible = true;
+                    break;
+            }
+
+            contentPanel.PerformLayout();
         }
 
         private void PerformCollapse()
@@ -969,7 +1153,9 @@ namespace FluentControls.Controls
             // 记录受影响的控件
             RecordAffectedControls();
 
-            if (showAnimation && !DesignMode)
+            BeforeCollapsedChange?.Invoke(this, EventArgs.Empty);
+
+            if (ShowAnimation && !DesignMode)
             {
                 PerformCollapseWithAnimation();
             }
@@ -983,31 +1169,41 @@ namespace FluentControls.Controls
         {
             isAnimating = true;
 
-            // 暂停不必要的重绘
-            SuspendDrawing();
+            // 停止所有现有动画
+            AnimationManager.StopAllAnimations(this);
 
             if (isCollapsed)
             {
                 // 折叠动画
                 originalHeight = Height;
-                int targetHeight = showTitleBar ? titleHeight : 0;
 
-                // 恢复重绘后开始动画
-                ResumeDrawing();
+                int targetHeight = showTitleBar
+                    ? (titleHeight + this.Padding.Top + this.Padding.Bottom)
+                    : (this.Padding.Top + this.Padding.Bottom);
 
+                // 立即隐藏内容面板
+                if (contentPanel != null)
+                {
+                    contentPanel.Visible = false;
+                }
+
+                // 启动流畅的尺寸动画
                 AnimationManager.AnimateSize(
                     this,
                     new Size(Width, targetHeight),
                     animationDuration,
-                    Easing.CubicOut,
+                    Easing.Linear,
                     () =>
                     {
-                        contentPanel.Visible = false;
+                        // 动画完成
                         isAnimating = false;
                         UpdateAffectedControls(originalHeight, targetHeight);
+                        UpdateLayout(); // 完成后完整更新布局
                         CollapsedChanged?.Invoke(this, EventArgs.Empty);
-                    });
+                    }
+                );
 
+                // 同时动画受影响的控件
                 AnimateAffectedControls(originalHeight, targetHeight);
 
                 if (collapseButton != null)
@@ -1019,23 +1215,31 @@ namespace FluentControls.Controls
             {
                 // 展开动画
                 int startHeight = Height;
-                contentPanel.Visible = true;
 
-                // 恢复重绘后开始动画
-                ResumeDrawing();
+                // 先显示内容面板
+                if (contentPanel != null)
+                {
+                    contentPanel.Visible = true;
+                }
 
+                // 启动流畅的尺寸动画
                 AnimationManager.AnimateSize(
                     this,
                     new Size(Width, originalHeight),
                     animationDuration,
-                    Easing.CubicOut,
+                    Easing.Linear,
                     () =>
                     {
+                        // 动画完成
                         isAnimating = false;
                         UpdateAffectedControls(startHeight, originalHeight);
+                        UpdateLayout(); // 完成后完整更新布局
+                        UpdateScrollBarVisibility();
                         CollapsedChanged?.Invoke(this, EventArgs.Empty);
-                    });
+                    }
+                );
 
+                // 同时动画受影响的控件
                 AnimateAffectedControls(startHeight, originalHeight);
 
                 if (collapseButton != null)
@@ -1050,7 +1254,11 @@ namespace FluentControls.Controls
             if (isCollapsed)
             {
                 originalHeight = Height;
-                int newHeight = showTitleBar ? titleHeight : 0;
+
+                // 计算折叠后的高度
+                int newHeight = showTitleBar
+                    ? (titleHeight + this.Padding.Top + this.Padding.Bottom)
+                    : (this.Padding.Top + this.Padding.Bottom);
 
                 Height = newHeight;
                 if (contentPanel != null)
@@ -1067,6 +1275,7 @@ namespace FluentControls.Controls
             }
             else
             {
+                int oldHeight = Height;
                 Height = originalHeight;
                 if (contentPanel != null)
                 {
@@ -1078,7 +1287,7 @@ namespace FluentControls.Controls
                     collapseButton.Text = "▼";
                 }
 
-                UpdateAffectedControls(showTitleBar ? titleHeight : 0, originalHeight);
+                UpdateAffectedControls(oldHeight, originalHeight);
             }
 
             UpdateLayout();
@@ -1173,6 +1382,11 @@ namespace FluentControls.Controls
                 int y = titlePanel.Height - 1;
                 g.DrawLine(pen, e.ClipRectangle.Left, y, e.ClipRectangle.Right, y);
             }
+        }
+
+        private void OnTitlePanelMouseDown(object sender, MouseEventArgs e)
+        {
+            TitleBarClicked?.Invoke(this, EventArgs.Empty);
         }
 
         private void OnContentPanelControlAdded(object sender, ControlEventArgs e)

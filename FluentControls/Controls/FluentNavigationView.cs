@@ -691,7 +691,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 从菜单区域的顶部开始，减去滚动偏移量
+            // 从菜单区域的顶部开始, 减去滚动偏移量
             int y = menuBounds.Y - scrollOffset;
             var itemsToDisplay = string.IsNullOrEmpty(searchText) ? GetAllMenuItems() : filteredItems;
 
@@ -716,7 +716,7 @@ namespace FluentControls.Controls
                     category.Bounds = new Rectangle(menuBounds.X, y, menuBounds.Width, itemHeight);
                     y += itemHeight + menuItemSpacing;
 
-                    // 如果分类展开，继续计算子项
+                    // 如果分类展开, 继续计算子项
                     if (category.IsExpanded)
                     {
                         foreach (var subItem in category.Items)
@@ -814,7 +814,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 不需要滚动，重置所有状态
+                // 不需要滚动, 重置所有状态
                 scrollOffset = 0;
                 maxScrollOffset = 0;
                 showScrollUpButton = false;
@@ -1094,7 +1094,7 @@ namespace FluentControls.Controls
             {
                 case DockStyle.Left:
                 case DockStyle.Right:
-                    // 左右 Dock 时，高度应该等于父控件的高度
+                    // 左右 Dock 时, 高度应该等于父控件的高度
                     if (Height != parentClient.Height)
                     {
                         base.Height = parentClient.Height - Parent.Padding.Vertical;
@@ -1110,7 +1110,7 @@ namespace FluentControls.Controls
                     break;
 
                 case DockStyle.Fill:
-                    // Fill 时，宽高都应该填充
+                    // Fill 时, 宽高都应该填充
                     if (Size != parentClient.Size)
                     {
                         base.Size = parentClient.Size;
@@ -1269,7 +1269,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 设置裁剪区域，确保菜单项只在菜单区域内绘制
+            // 设置裁剪区域, 确保菜单项只在菜单区域内绘制
             var oldClip = g.Clip;
             g.SetClip(menuBounds);
 
@@ -1292,13 +1292,13 @@ namespace FluentControls.Controls
 
                 if (item is NavigationCategory category)
                 {
-                    // 如果分类的边界与菜单区域有交集，就绘制它
+                    // 如果分类的边界与菜单区域有交集, 就绘制它
                     if (menuBounds.IntersectsWith(category.Bounds))
                     {
                         DrawCategoryItem(g, category);
                     }
 
-                    // 绘制子项(即使分类标题被隐藏，子项也可能可见)
+                    // 绘制子项(即使分类标题被隐藏, 子项也可能可见)
                     if (category.IsExpanded)
                     {
                         foreach (var subItem in category.Items)
@@ -1313,7 +1313,7 @@ namespace FluentControls.Controls
                                 continue;
                             }
 
-                            // 只要子项的边界与菜单区域有交集，就绘制
+                            // 只要子项的边界与菜单区域有交集, 就绘制
                             if (menuBounds.IntersectsWith(subItem.Bounds))
                             {
                                 DrawMenuItem(g, subItem, true);
@@ -1323,7 +1323,7 @@ namespace FluentControls.Controls
                 }
                 else
                 {
-                    // 只要项的边界与菜单区域有交集，就绘制
+                    // 只要项的边界与菜单区域有交集, 就绘制
                     if (menuBounds.IntersectsWith(item.Bounds))
                     {
                         DrawMenuItem(g, item, false);
@@ -1752,7 +1752,7 @@ namespace FluentControls.Controls
             if (hoveredCategory != null && isExpanded)
             {
                 hoveredCategory.IsExpanded = !hoveredCategory.IsExpanded;
-                UpdateLayout();  // 重新计算布局，包括滚动状态
+                UpdateLayout();  // 重新计算布局, 包括滚动状态
                 Invalidate();
                 return;
             }
@@ -1811,7 +1811,7 @@ namespace FluentControls.Controls
 
             if (string.IsNullOrEmpty(searchText))
             {
-                // 搜索被清空，重置滚动
+                // 搜索被清空, 重置滚动
                 scrollOffset = 0;
                 UpdateLayout();
                 Invalidate();
@@ -1880,14 +1880,14 @@ namespace FluentControls.Controls
             {
                 isAnimatingExpand = true;
                 // 根据动画时间计算定时器间隔
-                int frames = animationDuration / 16; // 假设60fps，每帧16ms
+                int frames = animationDuration / 16; // 假设60fps, 每帧16ms
                 frames = Math.Max(1, frames);
                 expandTimer.Interval = Math.Max(8, animationDuration / frames);
                 expandTimer.Start();
             }
             else
             {
-                // 无动画，直接切换
+                // 无动画, 直接切换
                 isAnimatingExpand = true;
                 currentWidth = targetWidth;
                 base.Width = targetWidth;

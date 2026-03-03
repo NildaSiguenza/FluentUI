@@ -16,6 +16,7 @@ namespace FluentControls.Controls
     {
         private bool isChecked;
         private CheckBoxStyle checkBoxStyle;
+        private int checkBoxSize = 18;
         private ContentAlignment checkAlign;
         private int spacing;
         private float switchAnimationProgress;
@@ -69,6 +70,19 @@ namespace FluentControls.Controls
                         Invalidate();
                     }
                 }
+            }
+        }
+
+        [Category("Fluent")]
+        [Description("获取或设置复选框是否被选中")]
+        [DefaultValue(18)]
+        public int CheckBoxSize
+        {
+            get { return checkBoxSize; }
+            set
+            {
+                checkBoxSize = Math.Min(40, Math.Max(12, checkBoxSize));
+                Invalidate();
             }
         }
 
@@ -242,8 +256,6 @@ namespace FluentControls.Controls
         /// </summary>
         private void DrawStandard(Graphics g)
         {
-            int checkBoxSize = 20;
-
             // 计算复选框和文本位置
             Rectangle checkBoxRect;
             Rectangle textRect;

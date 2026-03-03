@@ -564,7 +564,7 @@ namespace FluentControls.Controls
 
             int preferredWidth = CalculatePreferredWidth();
 
-            // 只修改宽度，保持高度不变
+            // 只修改宽度, 保持高度不变
             if (Width != preferredWidth)
             {
                 Width = preferredWidth;
@@ -1045,7 +1045,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 如果没找到精确匹配，取消选中
+            // 如果没找到精确匹配, 取消选中
             colorListBox.SelectedIndex = -1;
         }
 

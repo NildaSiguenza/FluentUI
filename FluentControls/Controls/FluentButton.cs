@@ -20,7 +20,7 @@ namespace FluentControls.Controls
         private ContentLayout contentLayout = ContentLayout.ImageBeforeText;
         private ContentAlignment textAlign = ContentAlignment.MiddleCenter;
         private ContentAlignment imageAlign = ContentAlignment.MiddleCenter;
-        private int imageTextSpacing = 8;
+        private int imageTextSpacing = 4;
         private Keys shortcutKeys = Keys.None;
         private bool showKeyTips = true;
 
@@ -135,7 +135,7 @@ namespace FluentControls.Controls
 
         [Category("Fluent")]
         [Description("图像和文本之间的间距")]
-        [DefaultValue(8)]
+        [DefaultValue(4)]
         public int ImageTextSpacing
         {
             get => imageTextSpacing;
@@ -518,7 +518,7 @@ namespace FluentControls.Controls
             rect.Width--;
             rect.Height--;
 
-            // 如果是默认按钮，绘制加粗边框
+            // 如果是默认按钮, 绘制加粗边框
             if (isDefault && Enabled)
             {
                 rect.Inflate(-1, -1);

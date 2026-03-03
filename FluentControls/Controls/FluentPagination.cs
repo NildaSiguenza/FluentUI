@@ -46,7 +46,7 @@ namespace FluentControls.Controls
         private string nextPageText = "下一页";
         private string lastPageText = "末页";
         private string goText = "跳转";
-        private string pageInfoFormat = "第 {0}/{1} 页，共 {2} 条";
+        private string pageInfoFormat = "第 {0}/{1} 页, 共 {2} 条";
         private string pageSizeText = "每页";
         private bool showFirstLastButtons = true;
         private bool showPreviousNextButtons = true;
@@ -404,7 +404,7 @@ namespace FluentControls.Controls
         /// </summary>
         [Category("文本")]
         [Description("页面信息的显示格式。{0}=当前页,{1}=总页数,{2}=总记录数")]
-        [DefaultValue("第 {0}/{1} 页，共 {2} 条")]
+        [DefaultValue("第 {0}/{1} 页, 共 {2} 条")]
         public string PageInfoFormat
         {
             get => pageInfoFormat;
@@ -560,7 +560,7 @@ namespace FluentControls.Controls
         /// 页码改变前事件
         /// </summary>
         [Category("分页")]
-        [Description("页码改变前触发，可以取消")]
+        [Description("页码改变前触发, 可以取消")]
         public event EventHandler<PageChangingEventArgs> PageChanging;
 
         protected virtual void OnPageChanged()
@@ -594,7 +594,7 @@ namespace FluentControls.Controls
 
                 if (newPageSize != pageSize)
                 {
-                    // 计算新页码，尽量保持当前显示的第一条记录位置
+                    // 计算新页码, 尽量保持当前显示的第一条记录位置
                     int firstRecordIndex = (currentPage - 1) * pageSize;
 
                     // 更新页面大小
@@ -779,7 +779,7 @@ namespace FluentControls.Controls
 
             InitializePageSizeOptions();
 
-            // 如果当前页面大小不在新选项中，使用第一个选项
+            // 如果当前页面大小不在新选项中, 使用第一个选项
             if (!pageSizeOptions.Contains(pageSize))
             {
                 PageSize = pageSizeOptions[0];
@@ -819,7 +819,7 @@ namespace FluentControls.Controls
                 pageSizeOptions.Remove(option);
                 InitializePageSizeOptions();
 
-                // 如果移除的是当前选中的选项，切换到第一个选项
+                // 如果移除的是当前选中的选项, 切换到第一个选项
                 if (pageSize == option)
                 {
                     PageSize = pageSizeOptions[0];
@@ -886,7 +886,7 @@ namespace FluentControls.Controls
                 }
                 catch
                 {
-                    lblPageInfo.Text = $"第 {currentPage}/{totalPages} 页，共 {totalRecords} 条";
+                    lblPageInfo.Text = $"第 {currentPage}/{totalPages} 页, 共 {totalRecords} 条";
                 }
             }
         }

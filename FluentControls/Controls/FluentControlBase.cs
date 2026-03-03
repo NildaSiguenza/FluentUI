@@ -37,6 +37,9 @@ namespace FluentControls
         private Timer rippleTimer;
         private float rippleOpacity = 0.3f;
 
+        // 提示信息
+        private TooltipInfo tooltipInfo;
+
         // 样式缓存
         private bool stylesInitialized = false;
 
@@ -63,6 +66,21 @@ namespace FluentControls
 
         #region 属性
 
+        /// <summary>
+        /// 工具提示信息
+        /// </summary>
+        [Description("控件的工具提示信息")]
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public TooltipInfo Tooltip
+        {
+            get => tooltipInfo;
+            set
+            {
+                tooltipInfo = value;
+                OnTooltipChanged();
+            }
+        }
 
         /// <summary>
         /// 控件的主题
@@ -672,7 +690,7 @@ namespace FluentControls
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            // 如果正在批量更新，跳过绘制
+            // 如果正在批量更新, 跳过绘制
             if (suppressRedraw)
             {
                 return;
@@ -769,7 +787,7 @@ namespace FluentControls
         }
 
         /// <summary>
-        /// 开始批量更新，暂停重绘
+        /// 开始批量更新, 暂停重绘
         /// </summary>
         public virtual void BeginUpdate()
         {
@@ -797,14 +815,14 @@ namespace FluentControls
                         }
                     }
 
-                    // 调用虚方法，让子类可以执行自定义操作
+                    // 调用虚方法, 让子类可以执行自定义操作
                     OnBeginUpdate();
                 }
             }
         }
 
         /// <summary>
-        /// 结束批量更新，恢复重绘
+        /// 结束批量更新, 恢复重绘
         /// </summary>
         public virtual void EndUpdate()
         {
@@ -829,7 +847,7 @@ namespace FluentControls
                             }
                         }
 
-                        // 调用虚方法，让子类可以执行自定义操作
+                        // 调用虚方法, 让子类可以执行自定义操作
                         OnEndUpdate();
 
                         suppressRedraw = false;
@@ -865,6 +883,15 @@ namespace FluentControls
         protected virtual void OnEndUpdate()
         {
 
+        }
+
+        #endregion
+
+        #region 信息提示
+
+        protected virtual void OnTooltipChanged()
+        {
+            // 子类可以重写以处理提示信息更改
         }
 
         #endregion

@@ -51,7 +51,7 @@ namespace FluentControls.Logging
                 Group = "FluentMessage"
             };
 
-            // 如果有标题，添加到属性中
+            // 如果有标题, 添加到属性中
             if (!string.IsNullOrWhiteSpace(options.Title))
             {
                 logEvent.Properties["Title"] = options.Title;

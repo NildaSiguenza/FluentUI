@@ -1137,7 +1137,7 @@ namespace FluentControls.Controls
             {
                 openSubDropDowns.Add(subDropDown);
 
-                // 订阅关闭事件，自动从列表中移除
+                // 订阅关闭事件, 自动从列表中移除
                 subDropDown.Closed += (s, e) =>
                 {
                     openSubDropDowns.Remove(subDropDown);
@@ -1156,7 +1156,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 延迟执行，确保当前事件处理完成
+                // 延迟执行, 确保当前事件处理完成
                 if (IsHandleCreated && !IsDisposed)
                 {
                     BeginInvoke(new Action(() =>
@@ -1190,11 +1190,11 @@ namespace FluentControls.Controls
                 }
                 catch (ObjectDisposedException)
                 {
-                    // 对象已释放，忽略
+                    // 对象已释放, 忽略
                 }
                 catch (InvalidOperationException)
                 {
-                    // 可能在关闭过程中，忽略
+                    // 可能在关闭过程中, 忽略
                 }
             }
 
@@ -2495,7 +2495,7 @@ namespace FluentControls.Controls
             }
             else if (item.ItemType == FluentSplitButtonItemType.Label)
             {
-                // 点击标签，不做任何操作
+                // 点击标签, 不做任何操作
             }
         }
 
@@ -2506,7 +2506,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 如果该项的子面板已经打开，关闭它
+            // 如果该项的子面板已经打开, 关闭它
             if (subDropDown != null && !subDropDown.IsDisposed && subDropDown.Visible)
             {
                 try
@@ -2516,7 +2516,7 @@ namespace FluentControls.Controls
                 }
                 catch (ObjectDisposedException)
                 {
-                    // 已释放，忽略
+                    // 已释放, 忽略
                 }
                 finally
                 {
@@ -2538,7 +2538,7 @@ namespace FluentControls.Controls
                 }
                 catch (ObjectDisposedException)
                 {
-                    // 已释放，忽略
+                    // 已释放, 忽略
                 }
                 finally
                 {
@@ -2562,7 +2562,7 @@ namespace FluentControls.Controls
                 location = this.PointToScreen(new Point(0, this.Height));
             }
 
-            // 订阅关闭事件，清理引用
+            // 订阅关闭事件, 清理引用
             subDropDown.Closed += (s, e) =>
             {
                 try
@@ -2574,7 +2574,7 @@ namespace FluentControls.Controls
                 }
                 catch (ObjectDisposedException)
                 {
-                    // 已释放，忽略
+                    // 已释放, 忽略
                 }
                 finally
                 {
@@ -2767,7 +2767,7 @@ namespace FluentControls.Controls
                     }
                     catch (ObjectDisposedException)
                     {
-                        // 已释放，忽略
+                        // 已释放, 忽略
                     }
                     finally
                     {
@@ -2844,7 +2844,7 @@ namespace FluentControls.Controls
         /// </summary>
         private int CalculateNestingLevel(FluentSplitButtonItem item)
         {
-            int level = 1; // 从1开始，因为是子项面板
+            int level = 1; // 从1开始, 因为是子项面板
             var current = item.Parent;
             while (current != null)
             {
@@ -2862,10 +2862,10 @@ namespace FluentControls.Controls
                 // WS_EX_NOACTIVATE - 防止窗口激活时改变焦点
                 cp.ExStyle |= 0x08000000;
 
-                // 对于深层嵌套，添加额外的样式
+                // 对于深层嵌套, 添加额外的样式
                 if (nestingLevel >= 3)
                 {
-                    // WS_EX_TOOLWINDOW - 防止在任务栏显示，减少焦点影响
+                    // WS_EX_TOOLWINDOW - 防止在任务栏显示, 减少焦点影响
                     cp.ExStyle |= 0x00000080;
                 }
 
@@ -2883,12 +2883,12 @@ namespace FluentControls.Controls
                     return;
 
                 case WM_NCACTIVATE:
-                    // 阻止非客户区激活，但保持视觉效果
+                    // 阻止非客户区激活, 但保持视觉效果
                     m.WParam = (IntPtr)1;
                     break;
 
                 case WM_ACTIVATE:
-                    // 对于深层嵌套，完全阻止激活消息
+                    // 对于深层嵌套, 完全阻止激活消息
                     if (nestingLevel >= 3)
                     {
                         m.WParam = (IntPtr)WA_INACTIVE;
@@ -2907,14 +2907,14 @@ namespace FluentControls.Controls
             // 显示下拉面板
             base.Show(screenLocation);
 
-            // 如果是深层嵌套，立即恢复焦点
+            // 如果是深层嵌套, 立即恢复焦点
             if (nestingLevel >= 3 && currentActiveWindow != IntPtr.Zero)
             {
                 SetActiveWindow(currentActiveWindow);
             }
         }
 
-        // 重写 Close 方法，确保不影响焦点
+        // 重写 Close 方法, 确保不影响焦点
         public new void Close()
         {
             // 保存当前活动窗口
@@ -2923,10 +2923,10 @@ namespace FluentControls.Controls
             // 关闭面板
             base.Close();
 
-            // 如果是深层嵌套，恢复焦点
+            // 如果是深层嵌套, 恢复焦点
             if (nestingLevel >= 3 && currentActiveWindow != IntPtr.Zero)
             {
-                // 延迟恢复，确保关闭完成
+                // 延迟恢复, 确保关闭完成
                 if (rootOwner != null && !rootOwner.IsDisposed)
                 {
                     rootOwner.BeginInvoke(new Action(() =>

@@ -277,7 +277,7 @@ namespace FluentControls.Controls
                 iconBox.Location = new Point(PADDING_LEFT, iconY);
             }
 
-            // 如果只有内容没有标题，让内容垂直居中
+            // 如果只有内容没有标题, 让内容垂直居中
             if (!hasTitle && hasIcon)
             {
                 int contentAreaHeight = this.Height - PADDING_TOP - PADDING_BOTTOM;
@@ -1126,7 +1126,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 使用委托设置日志记录器
         /// </summary>
-        /// <param name="logAction">日志记录委托，接收 ILogEvent 参数</param>
+        /// <param name="logAction">日志记录委托, 接收 ILogEvent 参数</param>
         public void SetLogger(Action<ILogEvent> logAction)
         {
             if (logAction != null)
@@ -1265,7 +1265,7 @@ namespace FluentControls.Controls
                 LogMessage = true // 错误默认记录日志
             };
 
-            // 如果提供了异常，记录到日志中
+            // 如果提供了异常, 记录到日志中
             if (exception != null && logger != null)
             {
                 try
@@ -1378,7 +1378,7 @@ namespace FluentControls.Controls
 
             if (ownerForm == null)
             {
-                throw new InvalidOperationException("无法找到所有者窗口，请在MessageOptions中指定OwnerForm");
+                throw new InvalidOperationException("无法找到所有者窗口, 请在MessageOptions中指定OwnerForm");
             }
 
             // 添加到消息列表
@@ -1714,7 +1714,7 @@ namespace FluentControls.Controls
         public MessageDisplayMode DisplayMode { get; set; } = MessageDisplayMode.Application;
 
         /// <summary>
-        /// 持续时间(毫秒)，0表示不自动关闭
+        /// 持续时间(毫秒), 0表示不自动关闭
         /// </summary>
         public int Duration { get; set; } = 3000;
 

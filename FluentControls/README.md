@@ -24,6 +24,12 @@ A Fluent-style WinForms control library based on .NET Framework 4.8.
 dotnet add package FluentControls
 ```
 
+## IconFonts
+```
+Runtime: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your application's runtime directory.
+Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your [Visual Studio program directory]\[Visual Studio version]\Enterprise\Common7\IDE\ directory.
+```
+
 ## Updates
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.

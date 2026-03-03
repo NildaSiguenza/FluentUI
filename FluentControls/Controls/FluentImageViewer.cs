@@ -313,7 +313,7 @@ namespace FluentControls.Controls
         [Category("Appearance")]
         [DefaultValue(ImageSizeMode.Zoom)]
         [Description("图片大小显示模式(会同时设置所有模式)")]
-        [Browsable(false)] // 隐藏，使用独立的模式设置
+        [Browsable(false)] // 隐藏, 使用独立的模式设置
         public ImageSizeMode SizeMode
         {
             get => GetCurrentSizeMode();
@@ -1210,7 +1210,7 @@ namespace FluentControls.Controls
                     arrowPath.AddLines(points);
                 }
 
-                // 绘制箭头(白色，带阴影效果)
+                // 绘制箭头(白色, 带阴影效果)
                 var arrowColor = Color.White;
 
                 // 先绘制阴影
@@ -1240,7 +1240,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 如果悬停，绘制提示文本和圆形背景
+            // 如果悬停, 绘制提示文本和圆形背景
             if (isHovered)
             {
                 string text = isLeft ? "上一张" : "下一张";
@@ -1926,7 +1926,7 @@ namespace FluentControls.Controls
 
             try
             {
-                // 如果没有指定路径，显示保存对话框
+                // 如果没有指定路径, 显示保存对话框
                 if (string.IsNullOrEmpty(filePath))
                 {
                     using (var dialog = new SaveFileDialog())
@@ -2245,7 +2245,7 @@ namespace FluentControls.Controls
             var menuReset = new ToolStripMenuItem("重置编辑", null, MenuReset_Click);
             menuReset.ShortcutKeys = Keys.Control | Keys.R;
 
-            // 应用编辑(Ctrl+A 可能与全选冲突，改为 Ctrl+Enter，但 Enter 也不支持，改为在文本显示)
+            // 应用编辑(Ctrl+A 可能与全选冲突, 改为 Ctrl+Enter, 但 Enter 也不支持, 改为在文本显示)
             var menuApply = new ToolStripMenuItem("应用编辑 (Ctrl+A)", null, MenuApply_Click);
 
             menuApply.ShortcutKeys = Keys.Control | Keys.Shift | Keys.A;

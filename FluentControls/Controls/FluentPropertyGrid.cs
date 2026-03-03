@@ -111,7 +111,7 @@ namespace FluentControls.Controls
                 Margin = new Padding(2, 0, 5, 0)
             };
 
-            // 按正确的顺序添加(RightToLeft，所以顺序相反)
+            // 按正确的顺序添加(RightToLeft, 所以顺序相反)
             navigationPanel.Controls.Add(btnNext);
             navigationPanel.Controls.Add(btnPrevious);
             navigationPanel.Controls.Add(indexLabel);
@@ -629,7 +629,7 @@ namespace FluentControls.Controls
         {
             if (hasUnsavedChanges)
             {
-                var result = MessageBox.Show("有未保存的更改，是否继续刷新?", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var result = MessageBox.Show("有未保存的更改, 是否继续刷新?", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
                 if (result != DialogResult.Yes)
                 {
@@ -797,7 +797,7 @@ namespace FluentControls.Controls
                 return value;
             }
 
-            // 对于其他类型，尝试序列化克隆(简化版本)
+            // 对于其他类型, 尝试序列化克隆(简化版本)
             return value;
         }
 
@@ -1798,7 +1798,7 @@ namespace FluentControls.Controls
                 return item.ToString();
             }
 
-            // 对象类型，显示类型名和ToString
+            // 对象类型, 显示类型名和ToString
             return $"[{item.GetType().Name}] {item}";
         }
 
@@ -1819,7 +1819,7 @@ namespace FluentControls.Controls
 
                 if (itemType.IsValueType || itemType == typeof(string))
                 {
-                    // 对于值类型和字符串，提示输入
+                    // 对于值类型和字符串, 提示输入
                     string input = FluentDialog.InputBox(
                         $"输入新的 {itemType.Name}:",
                         "添加项",
@@ -1849,7 +1849,7 @@ namespace FluentControls.Controls
                 }
                 else
                 {
-                    // 对于引用类型，尝试创建实例
+                    // 对于引用类型, 尝试创建实例
                     try
                     {
                         newItem = Activator.CreateInstance(itemType);
@@ -1904,7 +1904,7 @@ namespace FluentControls.Controls
 
             if (itemType.IsValueType || itemType == typeof(string))
             {
-                // 值类型，使用输入框
+                // 值类型, 使用输入框
                 string currentValue = item?.ToString() ?? "";
                 string input = FluentDialog.InputBox($"编辑 {itemType.Name}:", "编辑项", currentValue);
 
@@ -1932,7 +1932,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 对象类型，使用对象编辑器
+                // 对象类型, 使用对象编辑器
                 using (var editor = new ObjectEditorDialog(item, itemType, $"编辑 {itemType.Name}"))
                 {
                     if (editor.ShowDialog(this) == DialogResult.OK)

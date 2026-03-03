@@ -596,14 +596,14 @@ namespace FluentControls.Controls
 
             if (enablePagination && pagination != null)
             {
-                // 启用分页时，设置分页控件的数据源
+                // 启用分页时, 设置分页控件的数据源
                 pagination.DataSource = fullDataList;
                 pagination.Refresh();
                 LoadPageData();
             }
             else
             {
-                // 不启用分页时，加载所有数据
+                // 不启用分页时, 加载所有数据
                 BindDataInternal(fullDataList, false);
             }
 
@@ -795,7 +795,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 如果没有筛选条件，显示全部数据
+            // 如果没有筛选条件, 显示全部数据
             if (columnFilters.Count == 0 || columnFilters.All(kvp => kvp.Value.Count == 0))
             {
                 filteredDataList = null;
@@ -1037,7 +1037,7 @@ namespace FluentControls.Controls
                 contextMenu.Items.Add(menuItemPaste);
             }
 
-            // 如果有复制或粘贴项，并且要显示导出CSV，添加分隔线
+            // 如果有复制或粘贴项, 并且要显示导出CSV, 添加分隔线
             if ((ShowCopyMenuItem || ShowPasteMenuItem) && ShowExportCsvMenuItem)
             {
                 contextMenu.Items.Add(menuSeparator);
@@ -1363,7 +1363,7 @@ namespace FluentControls.Controls
                 return string.Empty;
             }
 
-            // 如果包含逗号、引号或换行符，需要用引号包裹
+            // 如果包含逗号、引号或换行符, 需要用引号包裹
             if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
             {
                 // 将引号替换为两个引号
@@ -1378,7 +1378,7 @@ namespace FluentControls.Controls
         /// 添加自定义右键菜单项
         /// </summary>
         /// <param name="menuItem">菜单项</param>
-        /// <param name="insertIndex">插入位置，-1表示添加到末尾</param>
+        /// <param name="insertIndex">插入位置, -1表示添加到末尾</param>
         public void AddContextMenuItem(ToolStripItem menuItem, int insertIndex = -1)
         {
             if (contextMenu == null)
@@ -1516,7 +1516,7 @@ namespace FluentControls.Controls
         {
             if (fullDataList == null)
             {
-                // 如果没有完整数据列表，只筛选当前显示的行
+                // 如果没有完整数据列表, 只筛选当前显示的行
                 for (int i = 0; i < rows.Count; i++)
                 {
                     if (rows[i].DataBoundItem != null && predicate(rows[i].DataBoundItem, i))
@@ -1529,7 +1529,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 有完整数据列表，遍历所有数据
+                // 有完整数据列表, 遍历所有数据
                 for (int i = 0; i < fullDataList.Count; i++)
                 {
                     var dataItem = fullDataList[i];
@@ -1538,7 +1538,7 @@ namespace FluentControls.Controls
                         // 保存标记
                         rowMarksByDataItem[dataItem] = mark;
 
-                        // 如果该数据项在当前显示的行中，立即应用
+                        // 如果该数据项在当前显示的行中, 立即应用
                         foreach (var row in rows)
                         {
                             if (row.DataBoundItem == dataItem)
@@ -1854,7 +1854,7 @@ namespace FluentControls.Controls
 
             if (newOrder == SortOrder.None)
             {
-                // 清除排序，恢复原始数据
+                // 清除排序, 恢复原始数据
                 column.SortOrder = SortOrder.None;
                 sortedColumn = null;
                 currentSortOrder = SortOrder.None;
@@ -1884,7 +1884,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 清除所有选中的行，并重置其 Selected 状态
+            // 清除所有选中的行, 并重置其 Selected 状态
             foreach (var row in selectedRows.ToList())
             {
                 if (row != null)
@@ -2044,7 +2044,7 @@ namespace FluentControls.Controls
         private Control GetEditingControl(FluentDataGridViewCell cell)
         {
             // 这个方法需要访问cell的私有editingControl字段
-            // 实际实现中，需要在Cell类中提供GetEditingControl方法
+            // 实际实现中, 需要在Cell类中提供GetEditingControl方法
             var field = typeof(FluentDataGridViewCell).GetField("editingControl",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             return field?.GetValue(cell) as Control;
@@ -2138,7 +2138,7 @@ namespace FluentControls.Controls
             int paginationY;
             int paginationWidth = Width;
 
-            // 如果有垂直滚动条，宽度要减去滚动条宽度
+            // 如果有垂直滚动条, 宽度要减去滚动条宽度
             if (vScrollBar != null && vScrollBar.Visible)
             {
                 paginationWidth -= vScrollBar.Width;
@@ -2182,12 +2182,12 @@ namespace FluentControls.Controls
             int top = columnHeaderHeight;
             int height = ClientSize.Height - columnHeaderHeight;
 
-            // 如果启用分页，调整区域
+            // 如果启用分页, 调整区域
             if (enablePagination && pagination != null)
             {
                 if (paginationPosition == PaginationPosition.Top)
                 {
-                    // 分页在顶部：列头下移，内容区域减少
+                    // 分页在顶部：列头下移, 内容区域减少
                     top += paginationHeight;
                     height -= paginationHeight;
                 }
@@ -2368,7 +2368,7 @@ namespace FluentControls.Controls
             if (needVScroll)
             {
                 vScrollBar.Minimum = 0;
-                // 最大值应该是总高度减去可见高度，而不是总高度减1
+                // 最大值应该是总高度减去可见高度, 而不是总高度减1
                 vScrollBar.Maximum = totalHeight - contentArea.Height + vScrollBar.LargeChange - 1;
                 vScrollBar.LargeChange = contentArea.Height;
                 vScrollBar.SmallChange = DefaultRowHeight;
@@ -2468,7 +2468,7 @@ namespace FluentControls.Controls
                 // 2. 计算内容区域
                 var contentArea = GetContentArea();
 
-                // 3. 绘制行头(不裁剪，因为行头在左侧固定区域)
+                // 3. 绘制行头(不裁剪, 因为行头在左侧固定区域)
                 g.ResetClip();
                 if (ShowRowHeader)
                 {
@@ -2509,7 +2509,7 @@ namespace FluentControls.Controls
             x -= hScrollBar.Value;
             int y = 0;
 
-            // 如果分页在顶部，调整Y坐标
+            // 如果分页在顶部, 调整Y坐标
             if (enablePagination && paginationPosition == PaginationPosition.Top && pagination != null)
             {
                 y = paginationHeight;
@@ -2662,7 +2662,7 @@ namespace FluentControls.Controls
 
             try
             {
-                // 设置行头的裁剪区域：从内容区域顶部开始，不包括列头
+                // 设置行头的裁剪区域：从内容区域顶部开始, 不包括列头
                 var rowHeaderClipRect = new Rectangle(0, contentArea.Top, rowHeaderWidth, contentArea.Height);
                 g.SetClip(rowHeaderClipRect);
 
@@ -3261,7 +3261,7 @@ namespace FluentControls.Controls
                     }
                     else
                     {
-                        // 普通点击：清除其他选择，只选中当前单元格
+                        // 普通点击：清除其他选择, 只选中当前单元格
                         SelectCell(cell.ColumnIndex, cell.RowIndex, clearPrevious: true);
                         rangeSelectionAnchor = cell; // 设置新锚点
                     }
@@ -3281,7 +3281,7 @@ namespace FluentControls.Controls
                     }
                     else
                     {
-                        // 普通点击：清除其他选择，只选中当前行
+                        // 普通点击：清除其他选择, 只选中当前行
                         SelectRow(cell.RowIndex, clearPrevious: true);
                         rangeSelectionAnchor = new DataGridViewCellAddress(0, cell.RowIndex);
                     }
@@ -3636,7 +3636,7 @@ namespace FluentControls.Controls
             // 检查是否是多选模式
             bool isMultiSelect = e.Control;
 
-            // 如果正在编辑，某些键由编辑控件处理
+            // 如果正在编辑, 某些键由编辑控件处理
             if (editingCellAddress.ColumnIndex >= 0 && editingCellAddress.RowIndex >= 0)
             {
                 switch (e.KeyCode)
@@ -4403,7 +4403,7 @@ namespace FluentControls.Controls
             // 考虑行头
             int startX = ShowRowHeader ? rowHeaderWidth : 0;
 
-            // 如果点击在行头内，返回-1
+            // 如果点击在行头内, 返回-1
             if (x < startX)
             {
                 return -1;
@@ -4475,7 +4475,7 @@ namespace FluentControls.Controls
 
                 currentY += row.Height;
 
-                // 如果已经超出可见区域，停止查找
+                // 如果已经超出可见区域, 停止查找
                 if (currentY > contentArea.Bottom)
                 {
                     break;
@@ -4661,7 +4661,7 @@ namespace FluentControls.Controls
                 IDesignerHost host = this.Site.GetService(typeof(IDesignerHost)) as IDesignerHost;
                 if (host != null && host.Container != null)
                 {
-                    // 列已经是Component，会自动添加到容器
+                    // 列已经是Component, 会自动添加到容器
                 }
             }
 
@@ -6414,7 +6414,7 @@ namespace FluentControls.Controls
             set
             {
                 base.Value = value;
-                // 如果值是字符串，也更新按钮文本
+                // 如果值是字符串, 也更新按钮文本
                 if (value is string text)
                 {
                     buttonText = text;
@@ -6440,7 +6440,7 @@ namespace FluentControls.Controls
                 g.FillRectangle(brush, bounds);
             }
 
-            // 计算按钮位置(在单元格中居中，留出一些边距)
+            // 计算按钮位置(在单元格中居中, 留出一些边距)
             var padding = 4;
             var buttonBounds = new Rectangle(
                 bounds.X + padding,
@@ -6566,7 +6566,7 @@ namespace FluentControls.Controls
 
         public override Control CreateEditingControl()
         {
-            // 按钮单元格通常不进入编辑模式，而是触发点击事件
+            // 按钮单元格通常不进入编辑模式, 而是触发点击事件
             return null;
         }
 
@@ -6765,7 +6765,7 @@ namespace FluentControls.Controls
                 return string.Empty;
             }
 
-            // 如果设置了DisplayMember，尝试获取显示文本
+            // 如果设置了DisplayMember, 尝试获取显示文本
             if (!string.IsNullOrEmpty(DisplayMember))
             {
                 try
@@ -6962,7 +6962,7 @@ namespace FluentControls.Controls
                 }
                 catch
                 {
-                    // 加载失败，绘制占位符
+                    // 加载失败, 绘制占位符
                 }
             }
             else if (Value is byte[] bytes && bytes.Length > 0)
@@ -7013,7 +7013,7 @@ namespace FluentControls.Controls
             switch (imageLayout)
             {
                 case ImageLayout.None:
-                    // 原始大小，左上角对齐
+                    // 原始大小, 左上角对齐
                     destRect = new Rectangle(bounds.Location, image.Size);
                     break;
 
@@ -7048,13 +7048,13 @@ namespace FluentControls.Controls
                     int width, height;
                     if (imageRatio > boundsRatio)
                     {
-                        // 图像更宽，以宽度为基准
+                        // 图像更宽, 以宽度为基准
                         width = bounds.Width;
                         height = (int)(bounds.Width / imageRatio);
                     }
                     else
                     {
-                        // 图像更高，以高度为基准
+                        // 图像更高, 以高度为基准
                         height = bounds.Height;
                         width = (int)(bounds.Height * imageRatio);
                     }
@@ -7631,7 +7631,7 @@ namespace FluentControls.Controls
             double progressPercentage = (progress - minimum) / (maximum - minimum);
             int progressWidth = (int)(bounds.Width * progressPercentage);
 
-            // 如果文本在进度条外，使用深色
+            // 如果文本在进度条外, 使用深色
             if (textSize.Width / 2 > progressWidth)
             {
                 textColor = DataGridView?.ForeColor ?? Color.Black;
@@ -7812,7 +7812,7 @@ namespace FluentControls.Controls
 
         public FluentDataGridViewProgressColumn()
         {
-            // 进度列通常只读，但也可以允许编辑
+            // 进度列通常只读, 但也可以允许编辑
             ReadOnly = false;
         }
 
@@ -11110,7 +11110,7 @@ namespace FluentControls.Controls
             IDesignerHost host = serviceProvider?.GetService(typeof(IDesignerHost)) as IDesignerHost;
             if (host == null)
             {
-                // 如果没有设计器主机，则直接应用更改
+                // 如果没有设计器主机, 则直接应用更改
                 ApplyChangesWithoutHost();
                 return;
             }
@@ -11129,7 +11129,7 @@ namespace FluentControls.Controls
                 {
                     try
                     {
-                        // 现在column是Component，可以安全地调用DestroyComponent
+                        // 现在column是Component, 可以安全地调用DestroyComponent
                         if (column.Site != null)
                         {
                             host.DestroyComponent(column);

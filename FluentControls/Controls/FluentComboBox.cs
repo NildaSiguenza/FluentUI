@@ -705,7 +705,7 @@ namespace FluentControls.Controls
                 dropDownHost.Size = dropDownList.Size;
                 if (!dropDownAnimationDuration.Equals(0))
                 {
-                    // 如果正在显示且有动画，不要突然改变大小
+                    // 如果正在显示且有动画, 不要突然改变大小
                 }
                 else
                 {
@@ -853,7 +853,7 @@ namespace FluentControls.Controls
             // 计算显示位置
             var screenPoint = PointToScreen(new Point(0, Height));
 
-            // 检查是否超出屏幕底部，如果超出则向上显示
+            // 检查是否超出屏幕底部, 如果超出则向上显示
             var screen = Screen.FromControl(this);
             if (screenPoint.Y + dropHeight > screen.WorkingArea.Bottom)
             {

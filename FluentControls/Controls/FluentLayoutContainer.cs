@@ -12,6 +12,7 @@ using System.Collections;
 using System.ComponentModel.Design;
 using System.Windows.Forms.Design;
 using System.Xml.Linq;
+using FluentControls.Animation;
 
 namespace FluentControls.Controls
 {
@@ -35,6 +36,11 @@ namespace FluentControls.Controls
         private float verticalSplitterDistance = 0.25f;
         private float secondHorizontalSplitterDistance = 0.75f;
         private float secondVerticalSplitterDistance = 0.75f;
+        private int? horizontalSplitterPixelDistance = null;
+        private int? verticalSplitterPixelDistance = null;
+        private int? secondHorizontalSplitterPixelDistance = null;
+        private int? secondVerticalSplitterPixelDistance = null;
+
 
         private bool isDragging = false;
         private int activeSplitter = -1;
@@ -57,6 +63,48 @@ namespace FluentControls.Controls
         private const int GRID_COLUMNS = 24;
         private const int GRID_ROWS = 24;
 
+        // 动画控制
+        private bool enableSplitterAnimation = false;
+        private int splitterAnimationDuration = 100;
+        private Timer splitterAnimationTimer;
+        private bool isAnimatingSplitter = false;
+
+        // 比例值动画
+        private float animationStartH = 0f;
+        private float animationTargetH = 0f;
+        private float animationStartV = 0f;
+        private float animationTargetV = 0f;
+        private float animationStartH2 = 0f;
+        private float animationTargetH2 = 0f;
+        private float animationStartV2 = 0f;
+        private float animationTargetV2 = 0f;
+
+        // 像素值动画
+        private int animationStartHPixel = 0;
+        private int animationTargetHPixel = 0;
+        private int animationStartVPixel = 0;
+        private int animationTargetVPixel = 0;
+        private int animationStartH2Pixel = 0;
+        private int animationTargetH2Pixel = 0;
+        private int animationStartV2Pixel = 0;
+        private int animationTargetV2Pixel = 0;
+
+        // 动画进度
+        private int animationCurrentStep = 0;
+        private int animationTotalSteps = 0;
+
+        // 要动画的分隔条标识
+        private bool animateH = false;
+        private bool animateV = false;
+        private bool animateH2 = false;
+        private bool animateV2 = false;
+
+        // 是否使用像素值动画
+        private bool animateHUsePixel = false;
+        private bool animateVUsePixel = false;
+        private bool animateH2UsePixel = false;
+        private bool animateV2UsePixel = false;
+
 
         #region 构造函数
 
@@ -75,9 +123,16 @@ namespace FluentControls.Controls
 
             // 默认垂直布局
             UpdateLayoutPositions();
+
             Dock = DockStyle.Fill;
             MinimumSize = new Size(200, 160);
             BackColor = Color.Transparent;
+
+            // 初始化动画
+            splitterAnimationTimer = new Timer { Interval = 16 }; // 60fps
+            splitterAnimationTimer.Tick += SplitterAnimationTimer_Tick;
+
+            this.AutoSize = false;
         }
 
         #endregion
@@ -143,9 +198,21 @@ namespace FluentControls.Controls
                 value = Math.Max(0.05f, Math.Min(0.95f, value));
                 if (Math.Abs(horizontalSplitterDistance - value) > 0.001f)
                 {
-                    horizontalSplitterDistance = value;
-                    PerformLayout();
-                    RefreshControl();
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter)
+                    {
+                        AnimateSplitterDistance(
+                            horizontalSplitterDistance, value, null, null,
+                            verticalSplitterDistance, verticalSplitterDistance, null, null,
+                            secondHorizontalSplitterDistance, secondHorizontalSplitterDistance, null, null,
+                            secondVerticalSplitterDistance, secondVerticalSplitterDistance, null, null,
+                            true, false, false, false);
+                    }
+                    else
+                    {
+                        horizontalSplitterDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
                 }
             }
         }
@@ -161,9 +228,21 @@ namespace FluentControls.Controls
                 value = Math.Max(0.05f, Math.Min(0.95f, value));
                 if (Math.Abs(verticalSplitterDistance - value) > 0.001f)
                 {
-                    verticalSplitterDistance = value;
-                    PerformLayout();
-                    RefreshControl();
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter)
+                    {
+                        AnimateSplitterDistance(
+                            horizontalSplitterDistance, horizontalSplitterDistance, null, null,
+                            verticalSplitterDistance, value, null, null,
+                            secondHorizontalSplitterDistance, secondHorizontalSplitterDistance, null, null,
+                            secondVerticalSplitterDistance, secondVerticalSplitterDistance, null, null,
+                            false, true, false, false);
+                    }
+                    else
+                    {
+                        verticalSplitterDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
                 }
             }
         }
@@ -179,9 +258,21 @@ namespace FluentControls.Controls
                 value = Math.Max(horizontalSplitterDistance + 0.05f, Math.Min(0.95f, value));
                 if (Math.Abs(secondHorizontalSplitterDistance - value) > 0.001f)
                 {
-                    secondHorizontalSplitterDistance = value;
-                    PerformLayout();
-                    RefreshControl();
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter)
+                    {
+                        AnimateSplitterDistance(
+                            horizontalSplitterDistance, horizontalSplitterDistance, null, null,
+                            verticalSplitterDistance, verticalSplitterDistance, null, null,
+                            secondHorizontalSplitterDistance, value, null, null,
+                            secondVerticalSplitterDistance, secondVerticalSplitterDistance, null, null,
+                            false, false, true, false);
+                    }
+                    else
+                    {
+                        secondHorizontalSplitterDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
                 }
             }
         }
@@ -197,9 +288,169 @@ namespace FluentControls.Controls
                 value = Math.Max(verticalSplitterDistance + 0.05f, Math.Min(0.95f, value));
                 if (Math.Abs(secondVerticalSplitterDistance - value) > 0.001f)
                 {
-                    secondVerticalSplitterDistance = value;
-                    PerformLayout();
-                    RefreshControl();
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter)
+                    {
+                        AnimateSplitterDistance(
+                            horizontalSplitterDistance, horizontalSplitterDistance, null, null,
+                            verticalSplitterDistance, verticalSplitterDistance, null, null,
+                            secondHorizontalSplitterDistance, secondHorizontalSplitterDistance, null, null,
+                            secondVerticalSplitterDistance, value, null, null,
+                            false, false, false, true);
+                    }
+                    else
+                    {
+                        secondVerticalSplitterDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
+                }
+            }
+        }
+
+        [Category("Layout")]
+        [Description("水平分隔条位置(像素值)")]
+        [DefaultValue(null)]
+        public int? HorizontalSplitterPixelDistance
+        {
+            get => horizontalSplitterPixelDistance;
+            set
+            {
+                if (horizontalSplitterPixelDistance != value)
+                {
+                    if (value.HasValue)
+                    {
+                        ValidatePixelDistance(value.Value, true);
+                    }
+
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter && value.HasValue)
+                    {
+                        int startPixel = horizontalSplitterPixelDistance ??
+                            (int)(horizontalSplitterDistance * (Width - 2 * (showContainerBorder ? containerBorderSize : 0)));
+
+                        AnimateSplitterDistance(
+                            0, 0, startPixel, value.Value,
+                            0, 0, null, null,
+                            0, 0, null, null,
+                            0, 0, null, null,
+                            true, false, false, false);
+                    }
+                    else
+                    {
+                        horizontalSplitterPixelDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
+                }
+            }
+        }
+
+        [Category("Layout")]
+        [Description("垂直分隔条位置(像素值)")]
+        [DefaultValue(null)]
+        public int? VerticalSplitterPixelDistance
+        {
+            get => verticalSplitterPixelDistance;
+            set
+            {
+                if (verticalSplitterPixelDistance != value)
+                {
+                    if (value.HasValue)
+                    {
+                        ValidatePixelDistance(value.Value, false);
+                    }
+
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter && value.HasValue)
+                    {
+                        int startPixel = verticalSplitterPixelDistance ??
+                            (int)(verticalSplitterDistance * (Height - 2 * (showContainerBorder ? containerBorderSize : 0)));
+
+                        AnimateSplitterDistance(
+                            0, 0, null, null,
+                            0, 0, startPixel, value.Value,
+                            0, 0, null, null,
+                            0, 0, null, null,
+                            false, true, false, false);
+                    }
+                    else
+                    {
+                        verticalSplitterPixelDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
+                }
+            }
+        }
+
+        [Category("Layout")]
+        [Description("第二个水平分隔条位置(像素值)")]
+        [DefaultValue(null)]
+        public int? SecondHorizontalSplitterPixelDistance
+        {
+            get => secondHorizontalSplitterPixelDistance;
+            set
+            {
+                if (secondHorizontalSplitterPixelDistance != value)
+                {
+                    if (value.HasValue)
+                    {
+                        ValidatePixelDistance(value.Value, true);
+                    }
+
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter && value.HasValue)
+                    {
+                        int startPixel = secondHorizontalSplitterPixelDistance ??
+                            (int)(secondHorizontalSplitterDistance * (Width - 2 * (showContainerBorder ? containerBorderSize : 0)));
+
+                        AnimateSplitterDistance(
+                            0, 0, null, null,
+                            0, 0, null, null,
+                            0, 0, startPixel, value.Value,
+                            0, 0, null, null,
+                            false, false, true, false);
+                    }
+                    else
+                    {
+                        secondHorizontalSplitterPixelDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
+                }
+            }
+        }
+
+        [Category("Layout")]
+        [Description("第二个垂直分隔条位置(像素值)")]
+        [DefaultValue(null)]
+        public int? SecondVerticalSplitterPixelDistance
+        {
+            get => secondVerticalSplitterPixelDistance;
+            set
+            {
+                if (secondVerticalSplitterPixelDistance != value)
+                {
+                    if (value.HasValue)
+                    {
+                        ValidatePixelDistance(value.Value, false);
+                    }
+
+                    if (enableSplitterAnimation && !isDragging && !isAnimatingSplitter && value.HasValue)
+                    {
+                        int startPixel = secondVerticalSplitterPixelDistance ??
+                            (int)(secondVerticalSplitterDistance * (Height - 2 * (showContainerBorder ? containerBorderSize : 0)));
+
+                        AnimateSplitterDistance(
+                            0, 0, null, null,
+                            0, 0, null, null,
+                            0, 0, null, null,
+                            0, 0, startPixel, value.Value,
+                            false, false, false, true);
+                    }
+                    else
+                    {
+                        secondVerticalSplitterPixelDistance = value;
+                        PerformLayout();
+                        RefreshControl();
+                    }
                 }
             }
         }
@@ -430,6 +681,30 @@ namespace FluentControls.Controls
             }
         }
 
+        /// <summary>
+        /// 是否启用分隔条动画
+        /// </summary>
+        [Category("Splitter")]
+        [Description("分隔条位置变化时是否使用动画效果")]
+        [DefaultValue(true)]
+        public bool EnableSplitterAnimation
+        {
+            get => enableSplitterAnimation;
+            set => enableSplitterAnimation = value;
+        }
+
+        /// <summary>
+        /// 分隔条动画持续时间(ms)
+        /// </summary>
+        [Category("Splitter")]
+        [Description("分隔条动画持续时间(ms)")]
+        [DefaultValue(150)]
+        public int SplitterAnimationDuration
+        {
+            get => splitterAnimationDuration;
+            set => splitterAnimationDuration = Math.Max(50, Math.Min(500, value));
+        }
+
         [Browsable(false)]
         internal FluentGridCell[] GridCells => gridCells;
 
@@ -642,6 +917,74 @@ namespace FluentControls.Controls
 
         #region 布局计算
 
+        /// <summary>
+        /// 验证像素值
+        /// </summary>
+        private void ValidatePixelDistance(int value, bool isHorizontal)
+        {
+            int maxValue = isHorizontal ? Width : Height;
+            if (value < 10 || value > maxValue - 10)
+            {
+                // 可以选择抛出异常或自动修正
+            }
+        }
+
+        /// <summary>
+        /// 获取实际的水平分隔位置
+        /// </summary>
+        private int GetEffectiveHorizontalSplit(int availableWidth, int borderOffset)
+        {
+            if (horizontalSplitterPixelDistance.HasValue)
+            {
+                return Math.Max(borderOffset + 10,
+                       Math.Min(borderOffset + horizontalSplitterPixelDistance.Value,
+                               borderOffset + availableWidth - 10));
+            }
+            return borderOffset + (int)(availableWidth * horizontalSplitterDistance);
+        }
+
+        /// <summary>
+        /// 获取实际的垂直分隔位置
+        /// </summary>
+        private int GetEffectiveVerticalSplit(int availableHeight, int borderOffset)
+        {
+            if (verticalSplitterPixelDistance.HasValue)
+            {
+                return Math.Max(borderOffset + 10,
+                       Math.Min(borderOffset + verticalSplitterPixelDistance.Value,
+                               borderOffset + availableHeight - 10));
+            }
+            return borderOffset + (int)(availableHeight * verticalSplitterDistance);
+        }
+
+        /// <summary>
+        /// 获取实际的第二个水平分隔位置
+        /// </summary>
+        private int GetEffectiveSecondHorizontalSplit(int availableWidth, int borderOffset, int firstSplit)
+        {
+            if (secondHorizontalSplitterPixelDistance.HasValue)
+            {
+                return Math.Max(firstSplit + 20,
+                       Math.Min(borderOffset + secondHorizontalSplitterPixelDistance.Value,
+                               borderOffset + availableWidth - 10));
+            }
+            return borderOffset + (int)(availableWidth * secondHorizontalSplitterDistance);
+        }
+
+        /// <summary>
+        /// 获取实际的第二个垂直分隔位置
+        /// </summary>
+        private int GetEffectiveSecondVerticalSplit(int availableHeight, int borderOffset, int firstSplit)
+        {
+            if (secondVerticalSplitterPixelDistance.HasValue)
+            {
+                return Math.Max(firstSplit + 20,
+                       Math.Min(borderOffset + secondVerticalSplitterPixelDistance.Value,
+                               borderOffset + availableHeight - 10));
+            }
+            return borderOffset + (int)(availableHeight * secondVerticalSplitterDistance);
+        }
+
         private Dictionary<FluentLayoutPosition, Rectangle> CalculateLayoutRectangles()
         {
             var result = new Dictionary<FluentLayoutPosition, Rectangle>();
@@ -651,10 +994,11 @@ namespace FluentControls.Controls
             int availableWidth = Math.Max(0, Width - 2 * borderOffset);
             int availableHeight = Math.Max(0, Height - 2 * borderOffset);
 
-            int hSplit = borderOffset + (int)(availableWidth * horizontalSplitterDistance);
-            int vSplit = borderOffset + (int)(availableHeight * verticalSplitterDistance);
-            int hSplit2 = borderOffset + (int)(availableWidth * secondHorizontalSplitterDistance);
-            int vSplit2 = borderOffset + (int)(availableHeight * secondVerticalSplitterDistance);
+            // 使用新的获取方法, 支持像素值优先
+            int hSplit = GetEffectiveHorizontalSplit(availableWidth, borderOffset);
+            int vSplit = GetEffectiveVerticalSplit(availableHeight, borderOffset);
+            int hSplit2 = GetEffectiveSecondHorizontalSplit(availableWidth, borderOffset, hSplit);
+            int vSplit2 = GetEffectiveSecondVerticalSplit(availableHeight, borderOffset, vSplit);
 
             switch (layoutMode)
             {
@@ -913,10 +1257,11 @@ namespace FluentControls.Controls
             int availableWidth = Math.Max(0, Width - 2 * borderOffset);
             int availableHeight = Math.Max(0, Height - 2 * borderOffset);
 
-            int hSplit = borderOffset + (int)(availableWidth * horizontalSplitterDistance);
-            int vSplit = borderOffset + (int)(availableHeight * verticalSplitterDistance);
-            int hSplit2 = borderOffset + (int)(availableWidth * secondHorizontalSplitterDistance);
-            int vSplit2 = borderOffset + (int)(availableHeight * secondVerticalSplitterDistance);
+            // 使用新的获取方法
+            int hSplit = GetEffectiveHorizontalSplit(availableWidth, borderOffset);
+            int vSplit = GetEffectiveVerticalSplit(availableHeight, borderOffset);
+            int hSplit2 = GetEffectiveSecondHorizontalSplit(availableWidth, borderOffset, hSplit);
+            int vSplit2 = GetEffectiveSecondVerticalSplit(availableHeight, borderOffset, vSplit);
 
             hSplit = Math.Max(borderOffset + 10, Math.Min(Width - borderOffset - 10, hSplit));
             vSplit = Math.Max(borderOffset + 10, Math.Min(Height - borderOffset - 10, vSplit));
@@ -1016,10 +1361,136 @@ namespace FluentControls.Controls
 
         #region 重写方法
 
+        /// <summary>
+        /// 处理大小变化
+        /// </summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            // 强制重新布局
+            if (Width > 0 && Height > 0)
+            {
+                PerformLayout();
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 处理父容器变化
+        /// </summary>
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+
+            // 当父容器变化时, 确保布局正确
+            if (Parent != null)
+            {
+                // 订阅父容器的大小变化事件
+                Parent.Resize -= Parent_Resize;
+                Parent.Resize += Parent_Resize;
+
+                // 执行一次布局
+                this.HandleCreated += (s, he) =>
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        PerformLayout();
+                        Invalidate();
+                    }));
+                };
+
+            }
+        }
+
+        /// <summary>
+        /// 父容器大小变化处理
+        /// </summary>
+        private void Parent_Resize(object sender, EventArgs e)
+        {
+            if (Dock == DockStyle.Fill || Dock == DockStyle.None)
+            {
+                PerformLayout();
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 处理 Dock 变化
+        /// </summary>
+        protected override void OnDockChanged(EventArgs e)
+        {
+            base.OnDockChanged(e);
+            PerformLayout();
+            Invalidate();
+        }
+
+        /// <summary>
+        /// 处理可见性变化
+        /// </summary>
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+
+            if (Visible)
+            {
+                PerformLayout();
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 处理句柄创建
+        /// </summary>
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            // 句柄创建后执行布局
+            BeginInvoke(new Action(() =>
+            {
+                PerformLayout();
+                Invalidate();
+            }));
+        }
+
+        /// <summary>
+        /// 处理客户区大小变化
+        /// </summary>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+
+            if (Width > 0 && Height > 0)
+            {
+                PerformLayout();
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 设置边界
+        /// </summary>
+        protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+        {
+            base.SetBoundsCore(x, y, width, height, specified);
+
+            // 边界变化后重新布局
+            if (width > 0 && height > 0 && IsHandleCreated)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    PerformLayout();
+                    Invalidate();
+                }));
+            }
+        }
+
         protected override void OnLayout(LayoutEventArgs e)
         {
             base.OnLayout(e);
 
+            // 确保有有效尺寸
             if (Width <= 0 || Height <= 0)
             {
                 return;
@@ -1029,28 +1500,51 @@ namespace FluentControls.Controls
 
             foreach (var cell in gridCells)
             {
+                if (cell == null)
+                {
+                    continue;
+                }
+
+                Rectangle targetBounds = Rectangle.Empty;
+                bool shouldBeVisible = false;
+
                 if (cell.Position == FluentLayoutPosition.GridCustom)
                 {
                     // GridCustom 模式使用特殊键
                     var key = (FluentLayoutPosition)((int)FluentLayoutPosition.GridCustom + cell.GridIndex);
-                    if (layoutRects.ContainsKey(key))
+                    if (layoutRects.TryGetValue(key, out targetBounds))
                     {
-                        cell.Bounds = layoutRects[key];
-                        cell.Visible = true;
-                    }
-                    else
-                    {
-                        cell.Visible = false;
+                        shouldBeVisible = true;
                     }
                 }
-                else if (cell.Position != FluentLayoutPosition.None && layoutRects.ContainsKey(cell.Position))
+                else if (cell.Position != FluentLayoutPosition.None)
                 {
-                    cell.Bounds = layoutRects[cell.Position];
-                    cell.Visible = true;
+                    if (layoutRects.TryGetValue(cell.Position, out targetBounds))
+                    {
+                        shouldBeVisible = true;
+                    }
+                }
+
+                // 更新格子
+                if (shouldBeVisible && targetBounds.Width > 0 && targetBounds.Height > 0)
+                {
+                    if (cell.Bounds != targetBounds)
+                    {
+                        //cell.SuspendLayout();
+                        cell.Bounds = targetBounds;
+                        //cell.ResumeLayout(true);
+                    }
+                    if (!cell.Visible)
+                    {
+                        cell.Visible = true;
+                    }
                 }
                 else
                 {
-                    cell.Visible = false;
+                    if (cell.Visible)
+                    {
+                        cell.Visible = false;
+                    }
                 }
             }
         }
@@ -1278,42 +1772,69 @@ namespace FluentControls.Controls
             {
                 case FluentLayoutMode.Vertical:
                     {
-                        // 垂直布局只有横向分隔条
-                        float newDistance = (float)(location.Y - borderOffset) / (Height - 2 * borderOffset);
-                        newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
-
                         if (activeSplitter == 0)
                         {
-                            // 第一个横向分隔条
-                            VerticalSplitterDistance = Math.Min(newDistance, secondVerticalSplitterDistance - 0.05f);
+                            if (verticalSplitterPixelDistance.HasValue)
+                            {
+                                VerticalSplitterPixelDistance = location.Y - borderOffset;
+                            }
+                            else
+                            {
+                                float newDistance = (float)(location.Y - borderOffset) / (Height - 2 * borderOffset);
+                                verticalSplitterDistance = Math.Max(0.05f, Math.Min(newDistance, secondVerticalSplitterDistance - 0.05f));
+                                PerformLayout();
+                                RefreshControl();
+                            }
                         }
                         else if (activeSplitter == 1)
                         {
-                            // 第二个横向分隔条
-                            SecondVerticalSplitterDistance = Math.Max(newDistance, verticalSplitterDistance + 0.05f);
+                            if (secondVerticalSplitterPixelDistance.HasValue)
+                            {
+                                SecondVerticalSplitterPixelDistance = location.Y - borderOffset;
+                            }
+                            else
+                            {
+                                float newDistance = (float)(location.Y - borderOffset) / (Height - 2 * borderOffset);
+                                secondVerticalSplitterDistance = Math.Max(verticalSplitterDistance + 0.05f, Math.Min(0.95f, newDistance));
+                                PerformLayout();
+                                RefreshControl();
+                            }
                         }
                     }
                     break;
 
                 case FluentLayoutMode.Horizontal:
                     {
-                        // 水平布局只有竖向分隔条
-                        float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
-                        newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
-
                         if (activeSplitter == 0)
                         {
-                            // 第一个竖向分隔条
-                            HorizontalSplitterDistance = Math.Min(newDistance, secondHorizontalSplitterDistance - 0.05f);
+                            if (horizontalSplitterPixelDistance.HasValue)
+                            {
+                                HorizontalSplitterPixelDistance = location.X - borderOffset;
+                            }
+                            else
+                            {
+                                float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
+                                horizontalSplitterDistance = Math.Max(0.05f, Math.Min(newDistance, secondHorizontalSplitterDistance - 0.05f));
+                                PerformLayout();
+                                RefreshControl();
+                            }
                         }
                         else if (activeSplitter == 1)
                         {
-                            // 第二个竖向分隔条
-                            SecondHorizontalSplitterDistance = Math.Max(newDistance, horizontalSplitterDistance + 0.05f);
+                            if (secondHorizontalSplitterPixelDistance.HasValue)
+                            {
+                                SecondHorizontalSplitterPixelDistance = location.X - borderOffset;
+                            }
+                            else
+                            {
+                                float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
+                                secondHorizontalSplitterDistance = Math.Max(horizontalSplitterDistance + 0.05f, Math.Min(0.95f, newDistance));
+                                PerformLayout();
+                                RefreshControl();
+                            }
                         }
                     }
                     break;
-
                 case FluentLayoutMode.Grid:
                 case FluentLayoutMode.TopSpan:
                 case FluentLayoutMode.BottomSpan:
@@ -1323,18 +1844,34 @@ namespace FluentControls.Controls
                         // Grid类布局：索引0是横向分隔条, 索引1是竖向分隔条
                         if (activeSplitter == 0)
                         {
-                            // 横向分隔条(水平线), 调整Y方向
-                            float newDistance = (float)(location.Y - borderOffset) / (Height - 2 * borderOffset);
-                            newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
-                            VerticalSplitterDistance = newDistance;
+                            if (verticalSplitterPixelDistance.HasValue)
+                            {
+                                VerticalSplitterPixelDistance = location.Y - borderOffset;
+                            }
+                            else
+                            {
+                                // 横向分隔条(水平线), 调整Y方向
+                                float newDistance = (float)(location.Y - borderOffset) / (Height - 2 * borderOffset);
+                                newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
+                                VerticalSplitterDistance = newDistance;
+                            }
+
                         }
                         else if (activeSplitter == 1)
                         {
-                            // 竖向分隔条(垂直线), 调整X方向
-                            float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
-                            newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
-                            HorizontalSplitterDistance = newDistance;
+                            if (horizontalSplitterPixelDistance.HasValue)
+                            {
+                                HorizontalSplitterPixelDistance = location.X - borderOffset;
+                            }
+                            else
+                            {
+                                // 竖向分隔条(垂直线), 调整X方向
+                                float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
+                                newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
+                                HorizontalSplitterDistance = newDistance;
+                            }
                         }
+
                     }
                     break;
 
@@ -1346,12 +1883,27 @@ namespace FluentControls.Controls
 
                         if (activeSplitter == 0)
                         {
-                            HorizontalSplitterDistance = Math.Min(newDistance, secondHorizontalSplitterDistance - 0.05f);
+                            if (horizontalSplitterPixelDistance.HasValue)
+                            {
+                                HorizontalSplitterPixelDistance = location.X - borderOffset;
+                            }
+                            else
+                            {
+                                HorizontalSplitterDistance = Math.Min(newDistance, secondHorizontalSplitterDistance - 0.05f);
+                            }
                         }
                         else if (activeSplitter == 1)
                         {
-                            SecondHorizontalSplitterDistance = Math.Max(newDistance, horizontalSplitterDistance + 0.05f);
+                            if (secondHorizontalSplitterPixelDistance.HasValue)
+                            {
+                                SecondHorizontalSplitterPixelDistance = location.X - borderOffset;
+                            }
+                            else
+                            {
+                                SecondHorizontalSplitterDistance = Math.Max(newDistance, horizontalSplitterDistance + 0.05f);
+                            }
                         }
+
                     }
                     break;
 
@@ -1364,11 +1916,25 @@ namespace FluentControls.Controls
 
                         if (activeSplitter == 0)
                         {
-                            VerticalSplitterDistance = Math.Min(newDistance, secondVerticalSplitterDistance - 0.05f);
+                            if (verticalSplitterPixelDistance.HasValue)
+                            {
+                                VerticalSplitterPixelDistance = location.Y - borderOffset;
+                            }
+                            else
+                            {
+                                VerticalSplitterDistance = Math.Min(newDistance, secondVerticalSplitterDistance - 0.05f);
+                            }
                         }
                         else if (activeSplitter == 1)
                         {
-                            SecondVerticalSplitterDistance = Math.Max(newDistance, verticalSplitterDistance + 0.05f);
+                            if (secondVerticalSplitterPixelDistance.HasValue)
+                            {
+                                SecondVerticalSplitterPixelDistance = location.Y - borderOffset;
+                            }
+                            else
+                            {
+                                SecondVerticalSplitterDistance = Math.Max(newDistance, verticalSplitterDistance + 0.05f);
+                            }
                         }
                     }
                     break;
@@ -1377,9 +1943,16 @@ namespace FluentControls.Controls
                 case FluentLayoutMode.ReverseSidebar:
                     {
                         // 一个竖向分隔条
-                        float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
-                        newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
-                        HorizontalSplitterDistance = newDistance;
+                        if (horizontalSplitterPixelDistance.HasValue)
+                        {
+                            HorizontalSplitterPixelDistance = location.X - borderOffset;
+                        }
+                        else
+                        {
+                            float newDistance = (float)(location.X - borderOffset) / (Width - 2 * borderOffset);
+                            newDistance = Math.Max(0.05f, Math.Min(0.95f, newDistance));
+                            HorizontalSplitterDistance = newDistance;
+                        }
                     }
                     break;
             }
@@ -1403,6 +1976,49 @@ namespace FluentControls.Controls
         #endregion
 
         #region 公共方法
+
+        /// <summary>
+        /// 强制刷新布局
+        /// </summary>
+        public void RefreshLayout()
+        {
+            SuspendLayout();
+            try
+            {
+                UpdateLayoutPositions();
+                PerformLayout();
+            }
+            finally
+            {
+                ResumeLayout(true);
+            }
+            Invalidate(true);
+        }
+
+        /// <summary>
+        /// 更新所有子面板的布局
+        /// </summary>
+        public void UpdateChildLayouts()
+        {
+            foreach (var cell in gridCells)
+            {
+                if (cell != null && cell.Visible)
+                {
+                    cell.PerformLayout();
+                    foreach (Control child in cell.Controls)
+                    {
+                        if (child is FluentLayoutContainer childLayout)
+                        {
+                            childLayout.RefreshLayout();
+                        }
+                        else
+                        {
+                            child.PerformLayout();
+                        }
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// 设置栅格单元格定义
@@ -1442,6 +2058,417 @@ namespace FluentControls.Controls
             return gridCells[cellIndex - 1].GridDefinition.Clone();
         }
 
+        /// <summary>
+        /// 设置水平分隔条位置(比例值，带动画)
+        /// </summary>
+        public void SetHorizontalSplitterDistance(float distance, bool animate = true)
+        {
+            bool oldEnableAnimation = enableSplitterAnimation;
+            enableSplitterAnimation = animate;
+            HorizontalSplitterDistance = distance;
+            enableSplitterAnimation = oldEnableAnimation;
+        }
+
+        /// <summary>
+        /// 设置垂直分隔条位置(比例值，带动画)
+        /// </summary>
+        public void SetVerticalSplitterDistance(float distance, bool animate = true)
+        {
+            bool oldEnableAnimation = enableSplitterAnimation;
+            enableSplitterAnimation = animate;
+            VerticalSplitterDistance = distance;
+            enableSplitterAnimation = oldEnableAnimation;
+        }
+
+        /// <summary>
+        /// 设置水平分隔条位置(像素值，带动画)
+        /// </summary>
+        public void SetHorizontalSplitterPixelDistance(int? distance, bool animate = true)
+        {
+            bool oldEnableAnimation = enableSplitterAnimation;
+            enableSplitterAnimation = animate;
+            HorizontalSplitterPixelDistance = distance;
+            enableSplitterAnimation = oldEnableAnimation;
+        }
+
+        /// <summary>
+        /// 设置垂直分隔条位置(像素值，带动画)
+        /// </summary>
+        public void SetVerticalSplitterPixelDistance(int? distance, bool animate = true)
+        {
+            bool oldEnableAnimation = enableSplitterAnimation;
+            enableSplitterAnimation = animate;
+            VerticalSplitterPixelDistance = distance;
+            enableSplitterAnimation = oldEnableAnimation;
+        }
+
+        /// <summary>
+        /// 同时设置水平和垂直分隔条位置(比例值，带动画)
+        /// </summary>
+        public void SetSplitterDistances(float horizontal, float vertical, bool animate = true)
+        {
+            if (!animate || !enableSplitterAnimation)
+            {
+                HorizontalSplitterDistance = horizontal;
+                VerticalSplitterDistance = vertical;
+                return;
+            }
+
+            StopSplitterAnimation();
+
+            AnimateSplitterDistance(
+                horizontalSplitterDistance, horizontal, null, null,
+                verticalSplitterDistance, vertical, null, null,
+                secondHorizontalSplitterDistance, secondHorizontalSplitterDistance, null, null,
+                secondVerticalSplitterDistance, secondVerticalSplitterDistance, null, null,
+                true, true, false, false);
+        }
+
+        /// <summary>
+        /// 同时设置水平和垂直分隔条位置(像素值，带动画)
+        /// </summary>
+        public void SetSplitterPixelDistances(int horizontalPixels, int verticalPixels, bool animate = true)
+        {
+            if (!animate || !enableSplitterAnimation)
+            {
+                HorizontalSplitterPixelDistance = horizontalPixels;
+                VerticalSplitterPixelDistance = verticalPixels;
+                return;
+            }
+
+            int borderOffset = showContainerBorder ? containerBorderSize : 0;
+            int startHPixel = horizontalSplitterPixelDistance ??
+                (int)(horizontalSplitterDistance * (Width - 2 * borderOffset));
+            int startVPixel = verticalSplitterPixelDistance ??
+                (int)(verticalSplitterDistance * (Height - 2 * borderOffset));
+
+            StopSplitterAnimation();
+
+            AnimateSplitterDistance(
+                0, 0, startHPixel, horizontalPixels,
+                0, 0, startVPixel, verticalPixels,
+                0, 0, null, null,
+                0, 0, null, null,
+                true, true, false, false);
+        }
+
+        /// <summary>
+        /// 重置分隔条到默认位置(带动画)
+        /// </summary>
+        public void ResetSplitters(bool animate = true)
+        {
+            if (!animate || !enableSplitterAnimation)
+            {
+                HorizontalSplitterDistance = 0.25f;
+                VerticalSplitterDistance = 0.25f;
+                SecondHorizontalSplitterDistance = 0.75f;
+                SecondVerticalSplitterDistance = 0.75f;
+                HorizontalSplitterPixelDistance = null;
+                VerticalSplitterPixelDistance = null;
+                SecondHorizontalSplitterPixelDistance = null;
+                SecondVerticalSplitterPixelDistance = null;
+                return;
+            }
+
+            StopSplitterAnimation();
+
+            // 清除像素值
+            horizontalSplitterPixelDistance = null;
+            verticalSplitterPixelDistance = null;
+            secondHorizontalSplitterPixelDistance = null;
+            secondVerticalSplitterPixelDistance = null;
+
+            AnimateSplitterDistance(
+                horizontalSplitterDistance, 0.25f, null, null,
+                verticalSplitterDistance, 0.25f, null, null,
+                secondHorizontalSplitterDistance, 0.75f, null, null,
+                secondVerticalSplitterDistance, 0.75f, null, null,
+                true, true, true, true);
+        }
+
+        /// <summary>
+        /// 平滑展开/折叠指定面板
+        /// </summary>
+        public void TogglePanel(int panelIndex, bool animate = true)
+        {
+            if (panelIndex < 1 || panelIndex > 4)
+            {
+                throw new ArgumentOutOfRangeException(nameof(panelIndex));
+            }
+
+            bool oldEnableAnimation = enableSplitterAnimation;
+            enableSplitterAnimation = animate;
+
+            try
+            {
+                switch (layoutMode)
+                {
+                    case FluentLayoutMode.Vertical:
+                        if (panelIndex == 1)
+                        {
+                            ShowTopPanel = !ShowTopPanel;
+                        }
+                        else if (panelIndex == 3)
+                        {
+                            ShowBottomPanel = !ShowBottomPanel;
+                        }
+
+                        break;
+
+                    case FluentLayoutMode.Horizontal:
+                        if (panelIndex == 1)
+                        {
+                            ShowLeftPanel = !ShowLeftPanel;
+                        }
+                        else if (panelIndex == 3)
+                        {
+                            ShowRightPanel = !ShowRightPanel;
+                        }
+
+                        break;
+                }
+            }
+            finally
+            {
+                enableSplitterAnimation = oldEnableAnimation;
+            }
+        }
+
+        #endregion
+
+        #region 动画
+
+        /// <summary>
+        /// 启动分隔条位置动画(支持比例和像素值)
+        /// </summary>
+        private void AnimateSplitterDistance(
+            float startH, float targetH, int? startHPixel, int? targetHPixel,
+            float startV, float targetV, int? startVPixel, int? targetVPixel,
+            float startH2, float targetH2, int? startH2Pixel, int? targetH2Pixel,
+            float startV2, float targetV2, int? startV2Pixel, int? targetV2Pixel,
+            bool animH, bool animV, bool animH2, bool animV2)
+        {
+            // 停止现有动画
+            StopSplitterAnimation();
+
+            // 设置比例值动画参数
+            animationStartH = startH;
+            animationTargetH = targetH;
+            animationStartV = startV;
+            animationTargetV = targetV;
+            animationStartH2 = startH2;
+            animationTargetH2 = targetH2;
+            animationStartV2 = startV2;
+            animationTargetV2 = targetV2;
+
+            // 设置像素值动画参数
+            animationStartHPixel = startHPixel ?? 0;
+            animationTargetHPixel = targetHPixel ?? 0;
+            animationStartVPixel = startVPixel ?? 0;
+            animationTargetVPixel = targetVPixel ?? 0;
+            animationStartH2Pixel = startH2Pixel ?? 0;
+            animationTargetH2Pixel = targetH2Pixel ?? 0;
+            animationStartV2Pixel = startV2Pixel ?? 0;
+            animationTargetV2Pixel = targetV2Pixel ?? 0;
+
+            // 设置动画标识
+            animateH = animH;
+            animateV = animV;
+            animateH2 = animH2;
+            animateV2 = animV2;
+
+            // 设置是否使用像素值
+            animateHUsePixel = startHPixel.HasValue && targetHPixel.HasValue;
+            animateVUsePixel = startVPixel.HasValue && targetVPixel.HasValue;
+            animateH2UsePixel = startH2Pixel.HasValue && targetH2Pixel.HasValue;
+            animateV2UsePixel = startV2Pixel.HasValue && targetV2Pixel.HasValue;
+
+            animationCurrentStep = 0;
+            animationTotalSteps = Math.Max(1, splitterAnimationDuration / 16);
+
+            isAnimatingSplitter = true;
+            splitterAnimationTimer.Start();
+        }
+
+        /// <summary>
+        /// 动画定时器回调
+        /// </summary>
+        private void SplitterAnimationTimer_Tick(object sender, EventArgs e)
+        {
+            animationCurrentStep++;
+            float progress = Math.Min(1f, (float)animationCurrentStep / animationTotalSteps);
+
+            // 使用缓动函数
+            float easedProgress = (float)Easing.Linear(progress);
+
+            // 更新分隔条位置
+            if (animateH)
+            {
+                if (animateHUsePixel)
+                {
+                    int currentPixel = LerpInt(animationStartHPixel, animationTargetHPixel, easedProgress);
+                    horizontalSplitterPixelDistance = currentPixel;
+                }
+                else
+                {
+                    horizontalSplitterDistance = Lerp(animationStartH, animationTargetH, easedProgress);
+                }
+            }
+
+            if (animateV)
+            {
+                if (animateVUsePixel)
+                {
+                    int currentPixel = LerpInt(animationStartVPixel, animationTargetVPixel, easedProgress);
+                    verticalSplitterPixelDistance = currentPixel;
+                }
+                else
+                {
+                    verticalSplitterDistance = Lerp(animationStartV, animationTargetV, easedProgress);
+                }
+            }
+
+            if (animateH2)
+            {
+                if (animateH2UsePixel)
+                {
+                    int currentPixel = LerpInt(animationStartH2Pixel, animationTargetH2Pixel, easedProgress);
+                    secondHorizontalSplitterPixelDistance = currentPixel;
+                }
+                else
+                {
+                    secondHorizontalSplitterDistance = Lerp(animationStartH2, animationTargetH2, easedProgress);
+                }
+            }
+
+            if (animateV2)
+            {
+                if (animateV2UsePixel)
+                {
+                    int currentPixel = LerpInt(animationStartV2Pixel, animationTargetV2Pixel, easedProgress);
+                    secondVerticalSplitterPixelDistance = currentPixel;
+                }
+                else
+                {
+                    secondVerticalSplitterDistance = Lerp(animationStartV2, animationTargetV2, easedProgress);
+                }
+            }
+
+            // 更新布局
+            PerformLayout();
+            Invalidate();
+
+            // 检查是否完成
+            if (animationCurrentStep >= animationTotalSteps)
+            {
+                // 确保最终值精确
+                if (animateH)
+                {
+                    if (animateHUsePixel)
+                    {
+                        horizontalSplitterPixelDistance = animationTargetHPixel;
+                    }
+                    else
+                    {
+                        horizontalSplitterDistance = animationTargetH;
+                    }
+                }
+
+                if (animateV)
+                {
+                    if (animateVUsePixel)
+                    {
+                        verticalSplitterPixelDistance = animationTargetVPixel;
+                    }
+                    else
+                    {
+                        verticalSplitterDistance = animationTargetV;
+                    }
+                }
+
+                if (animateH2)
+                {
+                    if (animateH2UsePixel)
+                    {
+                        secondHorizontalSplitterPixelDistance = animationTargetH2Pixel;
+                    }
+                    else
+                    {
+                        secondHorizontalSplitterDistance = animationTargetH2;
+                    }
+                }
+
+                if (animateV2)
+                {
+                    if (animateV2UsePixel)
+                    {
+                        secondVerticalSplitterPixelDistance = animationTargetV2Pixel;
+                    }
+                    else
+                    {
+                        secondVerticalSplitterDistance = animationTargetV2;
+                    }
+                }
+
+                StopSplitterAnimation();
+                PerformLayout();
+                RefreshControl();
+            }
+        }
+
+        /// <summary>
+        /// 停止分隔条动画
+        /// </summary>
+        private void StopSplitterAnimation()
+        {
+            if (splitterAnimationTimer != null && splitterAnimationTimer.Enabled)
+            {
+                splitterAnimationTimer.Stop();
+            }
+            isAnimatingSplitter = false;
+
+            // 重置动画标识
+            animateH = animateV = animateH2 = animateV2 = false;
+            animateHUsePixel = animateVUsePixel = animateH2UsePixel = animateV2UsePixel = false;
+        }
+
+        /// <summary>
+        /// 浮点数线性插值
+        /// </summary>
+        private float Lerp(float start, float end, float progress)
+        {
+            return start + (end - start) * progress;
+        }
+
+        /// <summary>
+        /// 整数线性插值
+        /// </summary>
+        private int LerpInt(int start, int end, float progress)
+        {
+            return start + (int)((end - start) * progress);
+        }
+
+        #endregion
+
+        #region 清理
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // 停止并释放动画定时器
+                StopSplitterAnimation();
+                splitterAnimationTimer?.Dispose();
+
+                // 取消订阅父容器事件
+                if (Parent != null)
+                {
+                    Parent.Resize -= Parent_Resize;
+                }
+            }
+            base.Dispose(disposing);
+        }
+
         #endregion
     }
 
@@ -1458,6 +2485,9 @@ namespace FluentControls.Controls
         private Color cellBackColor = Color.Transparent;
         private bool showCellBorder = false;
         private Color cellBorderColor = Color.LightGray;
+
+        private bool isPerformingLayout = false;
+
 
         public FluentGridCell(int gridIndex)
         {
@@ -1476,6 +2506,7 @@ namespace FluentControls.Controls
             SetStyle(ControlStyles.UserPaint, true);
             SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
         }
 
         #region 属性
@@ -1576,14 +2607,152 @@ namespace FluentControls.Controls
 
         #endregion
 
+        /// <summary>
+        /// 处理大小变化
+        /// </summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            if (!isPerformingLayout)
+            {
+                UpdateChildrenLayout();
+            }
+        }
+
+        protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+        {
+            bool sizeChanged = (width != Width || height != Height);
+
+            base.SetBoundsCore(x, y, width, height, specified);
+
+            // 如果大小发生变化, 强制更新子控件布局
+            if (sizeChanged && !isPerformingLayout)
+            {
+                UpdateChildrenLayout();
+            }
+        }
+
+        protected override void OnLayout(LayoutEventArgs levent)
+        {
+            base.OnLayout(levent);
+
+            // 额外确保 Dock.Fill 的控件正确填充
+            if (!isPerformingLayout && Controls.Count > 0)
+            {
+                foreach (Control child in Controls)
+                {
+                    if (child.Dock == DockStyle.Fill && child.Visible)
+                    {
+                        Rectangle clientRect = ClientRectangle;
+                        if (child.Bounds != clientRect)
+                        {
+                            child.SetBounds(
+                                clientRect.X,
+                                clientRect.Y,
+                                clientRect.Width,
+                                clientRect.Height);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新子控件布局
+        /// </summary>
+        private void UpdateChildrenLayout()
+        {
+            if (isPerformingLayout || Controls.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                isPerformingLayout = true;
+
+                // 先执行标准布局
+                PerformLayout();
+
+                // 然后强制更新每个子控件
+                foreach (Control child in Controls)
+                {
+                    if (!child.Visible)
+                    {
+                        continue;
+                    }
+
+                    if (child is FluentLayoutContainer layoutChild)
+                    {
+                        // FluentLayoutContainer 需要特殊处理
+                        layoutChild.RefreshLayout();
+                    }
+                    else if (child.Dock == DockStyle.Fill)
+                    {
+                        // Dock.Fill 的控件应该填满整个客户区
+                        Rectangle clientRect = ClientRectangle;
+                        if (child.Bounds != clientRect)
+                        {
+                            child.SetBounds(
+                                clientRect.X,
+                                clientRect.Y,
+                                clientRect.Width,
+                                clientRect.Height);
+                        }
+                        child.PerformLayout();
+                    }
+                    else if (child.Dock != DockStyle.None)
+                    {
+                        // 其他 Dock 模式
+                        child.PerformLayout();
+                    }
+                    else if (child.Anchor != (AnchorStyles.Top | AnchorStyles.Left))
+                    {
+                        // 有锚点设置的控件
+                        child.PerformLayout();
+                    }
+                }
+            }
+            finally
+            {
+                isPerformingLayout = false;
+            }
+        }
+
+
+        /// <summary>
+        /// 添加控件时的处理
+        /// </summary>
         protected override void OnControlAdded(ControlEventArgs e)
         {
             base.OnControlAdded(e);
 
             // 设置默认停靠模式
-            if (e.Control.Dock == DockStyle.None)
+            if (e.Control.Dock == DockStyle.None && !(e.Control is FluentLayoutContainer))
             {
                 e.Control.Dock = DockStyle.Fill;
+            }
+
+            // 对于 FluentLayoutContainer, 确保正确填充
+            if (e.Control is FluentLayoutContainer layout)
+            {
+                layout.Dock = DockStyle.Fill;
+                BeginInvoke(new Action(() => layout.RefreshLayout()));
+            }
+
+            // 立即更新新添加控件的布局
+            if (e.Control.Dock == DockStyle.Fill)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    Rectangle clientRect = ClientRectangle;
+                    e.Control.SetBounds(
+                        clientRect.X,
+                        clientRect.Y,
+                        clientRect.Width,
+                        clientRect.Height);
+                }));
             }
         }
 

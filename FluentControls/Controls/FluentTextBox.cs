@@ -56,6 +56,11 @@ namespace FluentControls.Controls
         private int prefixSpacing = 4;
         private int suffixSpacing = 4;
         private int prefixAreaWidth = 0;
+        private bool readOnly = false;
+
+        // 多行模式下滚动条控制
+        private ScrollBars scrollBars = ScrollBars.None;
+        private bool autoScrollBars = true; // 自动控制滚动条
 
         private bool multiline = false;
         private bool wordWrap = true;
@@ -94,7 +99,8 @@ namespace FluentControls.Controls
                 BorderStyle = BorderStyle.None,
                 Font = InnerFont,
                 ForeColor = InnerTextColor,
-                BackColor = InnerBackColor
+                BackColor = InnerBackColor,
+                ScrollBars = ScrollBars.None
             };
 
             // 设置 Anchor 让 TextBox 随控件大小变化
@@ -103,6 +109,7 @@ namespace FluentControls.Controls
             innerTextBox.TextChanged += (s, e) =>
             {
                 UpdatePlaceholderVisibility();
+                UpdateScrollBars(); // 文本变化时更新滚动条
                 OnTextChanged(e);
                 if (enableAutoComplete)
                 {
@@ -141,6 +148,11 @@ namespace FluentControls.Controls
                 {
                     HandleAutoCompleteKeyDown(e);
                 }
+            };
+
+            innerTextBox.SizeChanged += (s, e) =>
+            {
+                UpdateScrollBars();
             };
 
             Controls.Add(innerTextBox);
@@ -582,13 +594,25 @@ namespace FluentControls.Controls
             get => multiline;
             set
             {
-                multiline = value;
-                if (innerTextBox != null)
+                if (multiline != value)
                 {
-                    innerTextBox.Multiline = value;
-                    innerTextBox.ScrollBars = value ? ScrollBars.Vertical : ScrollBars.None;
+                    multiline = value;
+                    if (innerTextBox != null)
+                    {
+                        innerTextBox.Multiline = value;
+
+                        // 根据模式设置滚动条
+                        if (value)
+                        {
+                            UpdateScrollBars();
+                        }
+                        else
+                        {
+                            innerTextBox.ScrollBars = ScrollBars.None;
+                        }
+                    }
+                    UpdateLayout();
                 }
-                UpdateLayout();
             }
         }
 
@@ -599,13 +623,105 @@ namespace FluentControls.Controls
             get => wordWrap;
             set
             {
-                wordWrap = value;
-                if (innerTextBox != null)
+                if (wordWrap != value)
                 {
-                    innerTextBox.WordWrap = value;
+                    wordWrap = value;
+                    if (innerTextBox != null)
+                    {
+                        innerTextBox.WordWrap = value;
+                    }
+
+                    // 换行设置改变时更新滚动条
+                    UpdateScrollBars();
                 }
             }
         }
+
+        /// <summary>
+        /// 是否只读
+        /// </summary>
+        [Category("Fluent")]
+        [Description("是否只读")]
+        [DefaultValue(false)]
+        public bool ReadOnly
+        {
+            get => readOnly;
+            set
+            {
+                if (readOnly != value)
+                {
+                    readOnly = value;
+                    if (innerTextBox != null)
+                    {
+                        innerTextBox.ReadOnly = value;
+
+                        // 设置光标样式
+                        if (value)
+                        {
+                            innerTextBox.Cursor = Cursors.Default;
+                            this.Cursor = Cursors.Default;
+                        }
+                        else
+                        {
+                            innerTextBox.Cursor = Cursors.IBeam;
+                            this.Cursor = Cursors.IBeam;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 滚动条显示模式
+        /// </summary>
+        [Category("Fluent")]
+        [Description("滚动条显示模式（仅在多行模式下有效）")]
+        [DefaultValue(ScrollBars.None)]
+        public ScrollBars ScrollBars
+        {
+            get => scrollBars;
+            set
+            {
+                if (scrollBars != value)
+                {
+                    scrollBars = value;
+
+                    // 如果手动设置了滚动条，禁用自动控制
+                    if (value != ScrollBars.None)
+                    {
+                        autoScrollBars = false;
+                    }
+
+                    if (innerTextBox != null && multiline)
+                    {
+                        innerTextBox.ScrollBars = value;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否自动控制滚动条显示
+        /// </summary>
+        [Category("Fluent")]
+        [Description("是否根据内容自动显示/隐藏滚动条（仅在多行模式下有效）")]
+        [DefaultValue(true)]
+        public bool AutoScrollBars
+        {
+            get => autoScrollBars;
+            set
+            {
+                if (autoScrollBars != value)
+                {
+                    autoScrollBars = value;
+                    if (value)
+                    {
+                        UpdateScrollBars();
+                    }
+                }
+            }
+        }
+
 
         [Category("Fluent")]
         [Description("显示前缀")]
@@ -788,7 +904,6 @@ namespace FluentControls.Controls
 
             int borderOffset = showBorder ? borderSize : 0;
 
-            // 计算 innerTextBox 的位置和大小
             int x = Padding.Left + borderOffset;
             int width = Width - Padding.Horizontal - (borderOffset * 2);
 
@@ -814,16 +929,12 @@ namespace FluentControls.Controls
             innerTextBox.Location = new Point(x, y);
             innerTextBox.Size = new Size(width, height);
 
-            // 更新 placeholderLabel 的位置和大小
             if (placeholderLabel != null)
             {
                 placeholderLabel.Location = innerTextBox.Location;
                 placeholderLabel.Size = innerTextBox.Size;
-
-                // 更新字体和颜色
                 placeholderLabel.Font = InnerFont;
 
-                // 设置 Placeholder 颜色
                 if (UseTheme && Theme != null)
                 {
                     placeholderLabel.ForeColor = Theme.Colors.TextDisabled;
@@ -833,10 +944,7 @@ namespace FluentControls.Controls
                     placeholderLabel.ForeColor = Color.Gray;
                 }
 
-                // 确保在 innerTextBox 上方
                 placeholderLabel.BringToFront();
-
-                // 更新显示状态
                 UpdatePlaceholderVisibility();
             }
 
@@ -848,6 +956,9 @@ namespace FluentControls.Controls
             {
                 innerTextBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             }
+
+            // 布局改变后更新滚动条
+            UpdateScrollBars();
 
             Invalidate();
         }
@@ -889,6 +1000,118 @@ namespace FluentControls.Controls
             {
                 placeholderLabel.Visible = shouldShow;
             }
+        }
+
+        /// <summary>
+        /// 更新滚动条显示状态
+        /// </summary>
+        private void UpdateScrollBars()
+        {
+            if (innerTextBox == null || !multiline || !autoScrollBars)
+            {
+                return;
+            }
+
+            // 在UI线程上执行
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(UpdateScrollBars));
+                return;
+            }
+
+            try
+            {
+                // 检查文本是否溢出
+                bool needScrollBar = IsTextOverflowing();
+
+                // 确定新的滚动条状态
+                ScrollBars newScrollBars = needScrollBar ? ScrollBars.Vertical : ScrollBars.None;
+
+                // 仅在状态改变时更新
+                if (innerTextBox.ScrollBars != newScrollBars)
+                {
+                    innerTextBox.ScrollBars = newScrollBars;
+                    scrollBars = newScrollBars;
+                }
+            }
+            catch
+            {
+                // 忽略错误，避免在某些特殊情况下崩溃
+            }
+        }
+
+        /// <summary>
+        /// 检查文本是否溢出
+        /// </summary>
+        private bool IsTextOverflowing()
+        {
+            if (innerTextBox == null || string.IsNullOrEmpty(innerTextBox.Text))
+            {
+                return false;
+            }
+
+            try
+            {
+                // 使用 TextRenderer 测量文本高度
+                Size proposedSize = new Size(innerTextBox.ClientSize.Width, int.MaxValue);
+
+                TextFormatFlags flags = TextFormatFlags.TextBoxControl;
+                if (wordWrap)
+                {
+                    flags |= TextFormatFlags.WordBreak;
+                }
+
+                Size textSize = TextRenderer.MeasureText(
+                    innerTextBox.Text,
+                    innerTextBox.Font,
+                    proposedSize,
+                    flags);
+
+                // 检查文本高度是否超出控件高度
+                // 添加一些容差以避免频繁切换
+                int tolerance = 5;
+                return textSize.Height > (innerTextBox.ClientSize.Height + tolerance);
+            }
+            catch
+            {
+                // 如果测量失败，使用备用方法
+                return UseAlternativeOverflowCheck();
+            }
+        }
+
+        /// <summary>
+        /// 备用的溢出检查方法
+        /// </summary>
+        private bool UseAlternativeOverflowCheck()
+        {
+            try
+            {
+                // 计算文本行数
+                int lineCount = innerTextBox.GetLineFromCharIndex(innerTextBox.TextLength) + 1;
+
+                // 估算每行高度
+                int lineHeight = innerTextBox.Font.Height;
+
+                // 估算总文本高度
+                int totalTextHeight = lineCount * lineHeight;
+
+                // 比较与控件高度
+                return totalTextHeight > innerTextBox.ClientSize.Height;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 重置滚动条为自动模式
+        /// </summary>
+        public void ResetScrollBarsToAuto()
+        {
+            autoScrollBars = true;
+            scrollBars = ScrollBars.None;
+            UpdateScrollBars();
         }
 
         private bool ValidateKeyPress(char keyChar)

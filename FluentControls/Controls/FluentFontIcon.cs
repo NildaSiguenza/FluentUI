@@ -68,7 +68,7 @@ namespace FluentControls.Controls
 
                     if (isDesignMode)
                     {
-                        // 设计时清空图像，等待选择新的 IconChar
+                        // 设计时清空图像, 等待选择新的 IconChar
                         iconImage?.Dispose();
                         iconImage = null;
                         Invalidate();
@@ -287,13 +287,13 @@ namespace FluentControls.Controls
                     }
                     else
                     {
-                        // 如果解析失败，尝试通过名称获取
+                        // 如果解析失败, 尝试通过名称获取
                         generatedImage = provider.GetIcon(iconCharName, iconSize, iconColor, rotation);
                     }
                 }
                 else
                 {
-                    // 没有枚举类型，直接通过名称获取
+                    // 没有枚举类型, 直接通过名称获取
                     generatedImage = provider.GetIcon(iconCharName, iconSize, iconColor, rotation);
                 }
 
@@ -325,7 +325,7 @@ namespace FluentControls.Controls
 
                     Debug.WriteLine($"图标生成成功: {fontFamily} - {iconCharName}");
 
-                    // 通知设计器属性已更改，触发序列化
+                    // 通知设计器属性已更改, 触发序列化
                     if (isDesignMode)
                     {
                         var host = GetService(typeof(IDesignerHost)) as IDesignerHost;

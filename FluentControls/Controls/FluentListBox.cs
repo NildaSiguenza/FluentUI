@@ -98,7 +98,6 @@ namespace FluentControls.Controls
                 vScrollBar = new VScrollBar
                 {
                     Visible = false,
-                    Dock = DockStyle.Right,
                     Width = SystemInformation.VerticalScrollBarWidth
                 };
                 vScrollBar.Scroll += OnVerticalScroll;
@@ -115,7 +114,6 @@ namespace FluentControls.Controls
                 hScrollBar = new HScrollBar
                 {
                     Visible = false,
-                    Dock = DockStyle.Bottom,
                     Height = SystemInformation.HorizontalScrollBarHeight
                 };
                 hScrollBar.Scroll += OnHorizontalScroll;
@@ -132,8 +130,7 @@ namespace FluentControls.Controls
                 scrollCorner = new Panel
                 {
                     Visible = false,
-                    Size = new Size(SystemInformation.VerticalScrollBarWidth,
-                                   SystemInformation.HorizontalScrollBarHeight),
+                    Size = new Size(SystemInformation.VerticalScrollBarWidth, SystemInformation.HorizontalScrollBarHeight),
                     BackColor = ContainerBackColor
                 };
                 Controls.Add(scrollCorner);
@@ -157,7 +154,6 @@ namespace FluentControls.Controls
         #endregion
 
         #region 属性
-
 
         [Category("Data")]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
@@ -491,7 +487,7 @@ namespace FluentControls.Controls
         [Description("悬停项背景色")]
         public Color HoverBackColor
         {
-            get => GetThemeColor(c => c.SurfaceHover, hoverBackColor ?? Color.LightGray); 
+            get => GetThemeColor(c => c.SurfaceHover, hoverBackColor ?? Color.LightGray);
             set
             {
                 hoverBackColor = value;
@@ -507,7 +503,7 @@ namespace FluentControls.Controls
         [Description("悬停项前景色")]
         public Color HoverForeColor
         {
-            get => GetThemeColor(c => c.TextPrimary, hoverForeColor ?? Color.Black); 
+            get => GetThemeColor(c => c.TextPrimary, hoverForeColor ?? Color.Black);
             set
             {
                 hoverForeColor = value;
@@ -1003,11 +999,7 @@ namespace FluentControls.Controls
             }
 
             // 计算边框偏移
-            int borderOffset = 0;
-            if (borderStyle != FluentBorderStyle.None)
-            {
-                borderOffset = borderStyle == FluentBorderStyle.Fixed3D ? 2 : borderWidth;
-            }
+            int borderOffset = GetBorderOffset();
 
             // 计算可视区域
             int visibleHeight = Height - (borderOffset * 2);
@@ -1020,22 +1012,18 @@ namespace FluentControls.Controls
             switch (scrollBarMode)
             {
                 case ScrollBarMode.Auto:
-                    // 先检查垂直滚动条
                     if (maxScrollY > 0)
                     {
                         needVScroll = true;
                         visibleWidth -= SystemInformation.VerticalScrollBarWidth;
-                        // 重新计算水平滚动需求
                         maxScrollX = Math.Max(0, GetMaxItemWidth() - visibleWidth);
                     }
-                    // 再检查水平滚动条
                     if (maxScrollX > 0)
                     {
                         needHScroll = true;
                         if (!needVScroll)
                         {
                             visibleHeight -= SystemInformation.HorizontalScrollBarHeight;
-                            // 重新计算垂直滚动需求
                             maxScrollY = Math.Max(0, GetTotalHeight() - visibleHeight);
                             needVScroll = maxScrollY > 0;
                         }
@@ -1048,7 +1036,6 @@ namespace FluentControls.Controls
                     {
                         visibleWidth -= SystemInformation.VerticalScrollBarWidth;
                     }
-
                     break;
 
                 case ScrollBarMode.Horizontal:
@@ -1057,7 +1044,6 @@ namespace FluentControls.Controls
                     {
                         visibleHeight -= SystemInformation.HorizontalScrollBarHeight;
                     }
-
                     break;
 
                 case ScrollBarMode.Both:
@@ -1067,12 +1053,10 @@ namespace FluentControls.Controls
                     {
                         visibleWidth -= SystemInformation.VerticalScrollBarWidth;
                     }
-
                     if (needHScroll)
                     {
                         visibleHeight -= SystemInformation.HorizontalScrollBarHeight;
                     }
-
                     break;
             }
 
@@ -1081,7 +1065,6 @@ namespace FluentControls.Controls
             {
                 visibleHeight = Height - (borderOffset * 2) - SystemInformation.HorizontalScrollBarHeight;
             }
-
             if (needVScroll)
             {
                 visibleWidth = Width - (borderOffset * 2) - SystemInformation.VerticalScrollBarWidth;
@@ -1098,11 +1081,10 @@ namespace FluentControls.Controls
                 if (needVScroll)
                 {
                     vScrollBar.Minimum = 0;
-                    vScrollBar.SmallChange = 5;// itemHeight;
+                    vScrollBar.SmallChange = 5;
                     vScrollBar.LargeChange = Math.Max(1, visibleHeight);
                     vScrollBar.Maximum = Math.Max(0, maxScrollY + vScrollBar.LargeChange - 1);
 
-                    // 确保当前值在有效范围内
                     int maxValue = Math.Max(0, vScrollBar.Maximum - vScrollBar.LargeChange + 1);
                     vScrollBar.Value = Math.Min(scrollOffsetY, maxValue);
                     scrollOffsetY = vScrollBar.Value;
@@ -1120,25 +1102,14 @@ namespace FluentControls.Controls
                     hScrollBar.LargeChange = Math.Max(1, visibleWidth);
                     hScrollBar.Maximum = Math.Max(0, maxScrollX + hScrollBar.LargeChange - 1);
 
-                    // 确保当前值在有效范围内
                     int maxValue = Math.Max(0, hScrollBar.Maximum - hScrollBar.LargeChange + 1);
                     hScrollBar.Value = Math.Min(scrollOffsetX, maxValue);
                     scrollOffsetX = hScrollBar.Value;
                 }
             }
 
-            // 设置滚动条角落
-            if (scrollCorner != null)
-            {
-                scrollCorner.Visible = needVScroll && needHScroll;
-                if (scrollCorner.Visible)
-                {
-                    scrollCorner.Location = new Point(
-                        Width - SystemInformation.VerticalScrollBarWidth,
-                        Height - SystemInformation.HorizontalScrollBarHeight);
-                    scrollCorner.BackColor = ContainerBackColor;
-                }
-            }
+            // 定位滚动条
+            PositionScrollBars();
 
             // 更新内容边界
             contentBounds = new Rectangle(
@@ -1146,6 +1117,72 @@ namespace FluentControls.Controls
                 borderOffset,
                 Width - (needVScroll ? SystemInformation.VerticalScrollBarWidth : 0) - (borderOffset * 2),
                 Height - (needHScroll ? SystemInformation.HorizontalScrollBarHeight : 0) - (borderOffset * 2));
+        }
+
+        /// <summary>
+        /// 获取当前边框偏移量
+        /// </summary>
+        private int GetBorderOffset()
+        {
+            if (borderStyle == FluentBorderStyle.None)
+            {
+                return 0;
+            }
+
+            if (borderStyle == FluentBorderStyle.Fixed3D)
+            {
+                return 2;
+            }
+
+            if (borderStyle == FluentBorderStyle.FocusOnly && (!Focused || !showFocusBorder))
+            {
+                return 0;
+            }
+
+            return borderWidth;
+        }
+
+        /// <summary>
+        /// 定位滚动条
+        /// </summary>
+        private void PositionScrollBars()
+        {
+            if (!isInitialized || DesignMode)
+            {
+                return;
+            }
+
+            int borderOffset = GetBorderOffset();
+            bool needVScroll = vScrollBar?.Visible == true;
+            bool needHScroll = hScrollBar?.Visible == true;
+
+            // 定位垂直滚动条
+            if (vScrollBar != null)
+            {
+                vScrollBar.Left = Width - vScrollBar.Width - borderOffset;
+                vScrollBar.Top = borderOffset;
+                vScrollBar.Height = Height - (borderOffset * 2) - (needHScroll ? hScrollBar.Height : 0);
+            }
+
+            // 定位水平滚动条
+            if (hScrollBar != null)
+            {
+                hScrollBar.Left = borderOffset;
+                hScrollBar.Top = Height - hScrollBar.Height - borderOffset;
+                hScrollBar.Width = Width - (borderOffset * 2) - (needVScroll ? vScrollBar.Width : 0);
+            }
+
+            // 定位角落填充块
+            if (scrollCorner != null)
+            {
+                scrollCorner.Visible = needVScroll && needHScroll;
+                if (scrollCorner.Visible)
+                {
+                    scrollCorner.Left = Width - vScrollBar.Width - borderOffset;
+                    scrollCorner.Top = Height - hScrollBar.Height - borderOffset;
+                    scrollCorner.BackColor = ContainerBackColor;
+                }
+            }
         }
 
         private Size GetIconSize()
@@ -1268,6 +1305,27 @@ namespace FluentControls.Controls
         #endregion
 
         #region 事件处理
+
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            if (isInitialized && borderStyle == FluentBorderStyle.FocusOnly)
+            {
+                PositionScrollBars();
+                Invalidate();
+            }
+        }
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            base.OnLostFocus(e);
+            if (isInitialized && borderStyle == FluentBorderStyle.FocusOnly)
+            {
+                // 焦点变化时需要重新定位滚动条并重绘
+                PositionScrollBars();
+                Invalidate();
+            }
+        }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
@@ -1515,6 +1573,7 @@ namespace FluentControls.Controls
             if (isInitialized)
             {
                 RecalculateLayout();
+                PositionScrollBars(); // 确保滚动条位置正确
             }
         }
 
@@ -1873,7 +1932,7 @@ namespace FluentControls.Controls
                     {
                         shouldDrawBorder = true;
                         currentBorderColor = FocusedBorderColor;
-                        currentBorderWidth = Math.Max(2, borderWidth); // 聚焦时至少2像素宽
+                        currentBorderWidth = Math.Max(1, borderWidth);
                     }
                     break;
             }
@@ -2320,6 +2379,47 @@ namespace FluentControls.Controls
 
     #endregion
 
+    #region 枚举和辅助类
+
+    /// <summary>
+    /// 滚动条模式
+    /// </summary>
+    public enum ScrollBarMode
+    {
+        Auto,
+        Vertical,
+        Horizontal,
+        Both,
+        None
+    }
+
+
+    /// <summary>
+    /// 边框样式枚举
+    /// </summary>
+    public enum FluentBorderStyle
+    {
+        None,           // 无边框
+        FixedSingle,    // 单线边框
+        Fixed3D,        // 3D边框
+        FocusOnly       // 仅聚焦时显示
+    }
+
+
+    /// <summary>
+    /// 图标缩放模式
+    /// </summary>
+    public enum IconSizeMode
+    {
+        None,           // 不缩放, 原始大小
+        AutoSize,       // 自动适应(保持比例)
+        CenterImage,    // 居中显示原始大小
+        StretchImage,   // 拉伸填充(可能变形)
+        Zoom            // 缩放填充(保持比例, 可能有空白)
+    }
+
+    #endregion
+
     #region 设计器
 
     public class FluentListBoxDesigner : ControlDesigner
@@ -2656,41 +2756,6 @@ namespace FluentControls.Controls
 
     #endregion
 
-    /// <summary>
-    /// 滚动条模式
-    /// </summary>
-    public enum ScrollBarMode
-    {
-        Auto,
-        Vertical,
-        Horizontal,
-        Both,
-        None
-    }
 
-
-    /// <summary>
-    /// 边框样式枚举
-    /// </summary>
-    public enum FluentBorderStyle
-    {
-        None,           // 无边框
-        FixedSingle,    // 单线边框
-        Fixed3D,        // 3D边框
-        FocusOnly       // 仅聚焦时显示
-    }
-
-
-    /// <summary>
-    /// 图标缩放模式
-    /// </summary>
-    public enum IconSizeMode
-    {
-        None,           // 不缩放, 原始大小
-        AutoSize,       // 自动适应(保持比例)
-        CenterImage,    // 居中显示原始大小
-        StretchImage,   // 拉伸填充(可能变形)
-        Zoom           // 缩放填充(保持比例, 可能有空白)
-    }
 
 }

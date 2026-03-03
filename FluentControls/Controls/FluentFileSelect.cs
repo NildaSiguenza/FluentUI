@@ -51,29 +51,32 @@ namespace FluentControls.Controls
             this.Size = new Size(400, 36);
             this.Padding = new Padding(6);
 
-            // 创建标签 - 设置AutoSize为true
+            // 创建标签
             labelText = new Label
             {
                 Text = labelTextValue,
-                AutoSize = true, // 自动调整大小
+                AutoSize = true,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Microsoft YaHei UI", 9F)
             };
             this.Controls.Add(labelText);
 
             // 创建文件列表
+            bool isMultiLine = selectLayout == FileSelectLayout.MultiLine;
             fileListRepeater = new FluentRepeater
             {
                 BorderWidth = 1,
                 BorderColor = Color.FromArgb(200, 200, 200),
                 Padding = new Padding(4),
-                AutoScroll = true,
+                AutoScroll = isMultiLine,
                 LayoutMode = RepeaterLayoutMode.Auto,
                 ItemDefaultSize = fileItemSize,
                 DeleteIconSize = 20,
-                ItemPadding = new Padding(2),
+                ItemPadding = new Padding(0),
                 ShowAddButton = false,
-                AutoSizeItems = false
+                AutoSizeItems = isMultiLine,
+                Margin = new Padding(0),
+                DeleteIconPosition = ItemDeleteIconPosition.CenterRight
             };
             fileListRepeater.SetItemFactory<FileItemInfo>(CreateFileItemControl);
             fileListRepeater.SetItemSizeCalculator(CalculateFileItemSize);
@@ -87,7 +90,8 @@ namespace FluentControls.Controls
                 Size = new Size(100, 30),
                 ButtonStyle = ButtonStyle.Primary,
                 CornerRadius = 0,
-                Font = buttonFont
+                Font = buttonFont,
+                ImageTextSpacing = 4
             };
             selectButton.Click += SelectButton_Click;
             this.Controls.Add(selectButton);
@@ -212,10 +216,10 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 文件项大小（当AutoSizeFileItems为false时使用）
+        /// 文件项大小(当AutoSizeFileItems为false时使用)
         /// </summary>
         [Category("Fluent")]
-        [Description("文件列表中每个文件项的大小（自适应模式下仅高度生效）")]
+        [Description("文件列表中每个文件项的大小(自适应模式下仅高度生效)")]
         public Size FileItemSize
         {
             get => fileItemSize;
@@ -356,6 +360,9 @@ namespace FluentControls.Controls
             }
         }
 
+        [Browsable(false)]
+        public FluentButton SelectButton => selectButton;
+
         /// <summary>
         /// 当前文件数量
         /// </summary>
@@ -443,7 +450,7 @@ namespace FluentControls.Controls
             fileItems.Add(fileInfo);
             filePathSet.Add(filePath);
 
-            // 在Repeater中添加控件，直接传入fileInfo
+            // 在Repeater中添加控件, 直接传入fileInfo
             var control = fileListRepeater.AddItem(fileInfo);
 
             UpdateButtonState();
@@ -590,7 +597,7 @@ namespace FluentControls.Controls
             // 标签
             if (showLabel)
             {
-                labelText.MaximumSize = new Size(0, 0); // 不限制，让其自动调整
+                labelText.MaximumSize = new Size(0, 0); // 不限制, 让其自动调整
                 labelText.AutoSize = true;
 
                 var labelSize = labelText.PreferredSize;
@@ -608,7 +615,7 @@ namespace FluentControls.Controls
                 labelText.Visible = false;
             }
 
-            // 选择按钮（在右侧）
+            // 选择按钮(在右侧)
             int buttonWidth = selectButton.Width;
             int buttonHeight = selectButton.Height;
             selectButton.Bounds = new Rectangle(
@@ -630,8 +637,12 @@ namespace FluentControls.Controls
                 Math.Max(100, repeaterWidth),
                 Math.Max(fileItemSize.Height + 4, repeaterHeight)
             );
-            fileListRepeater.Padding = new Padding(2);
-            ListBoxMargin = new Padding(listBoxMargin.Left, ListBoxSpacing.Top * (-1) + 1, listBoxMargin.Right, listBoxMargin.Bottom);
+
+            int repeaterMargin = Math.Max(0, (this.Height - fileListRepeater.Height) / 2);
+            int repeaterPadding = Math.Max(0, (fileListRepeater.Height - FileItemSize.Height) / 2);
+            fileListRepeater.Margin = new Padding(repeaterMargin);
+            fileListRepeater.Padding = new Padding(repeaterPadding);
+            //ListBoxMargin = new Padding(listBoxMargin.Left, ListBoxSpacing.Top * (-1) + 1, listBoxMargin.Right, listBoxMargin.Bottom);
         }
 
         private void LayoutMultiLine()
@@ -642,7 +653,7 @@ namespace FluentControls.Controls
             int currentX = padding;
             int currentY = padding;
 
-            // 计算第一行高度（标签和按钮中的较大者）
+            // 计算第一行高度(标签和按钮中的较大者)
             int buttonHeight = selectButton.Height;
             int labelHeight = 0;
 
@@ -833,7 +844,7 @@ namespace FluentControls.Controls
                                    panel.Padding.Left + panel.Padding.Right +
                                    fileListRepeater.DeleteIconSize + 8 + 20;
 
-                        // 返回已经在创建时设置的大小，或重新计算
+                        // 返回已经在创建时设置的大小, 或重新计算
                         return new Size(width, fileItemSize.Height);
                     }
                 }
@@ -875,7 +886,7 @@ namespace FluentControls.Controls
                 {
                     if (dialog.FileNames.Length > 0)
                     {
-                        if(SelectLayout == FileSelectLayout.SingleLine)
+                        if (SelectLayout == FileSelectLayout.SingleLine)
                         {
                             fileListRepeater.ClearItems();
                         }
@@ -1040,7 +1051,7 @@ namespace FluentControls.Controls
         public string FileName { get; }
 
         /// <summary>
-        /// 文件大小（字节）
+        /// 文件大小(字节)
         /// </summary>
         public long FileSize { get; }
 

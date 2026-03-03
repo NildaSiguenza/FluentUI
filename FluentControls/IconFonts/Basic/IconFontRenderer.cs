@@ -107,7 +107,7 @@ namespace FluentControls.IconFonts
         public static Dictionary<string, string> ParseFontFile(string fontFilePath)
         {
             // 这里需要使用第三方库如 Typography.OpenFont 来解析字体文件
-            // 简化实现，返回空字典
+            // 简化实现, 返回空字典
             var mapping = new Dictionary<string, string>();
 
             // TODO: 实现实际的字体文件解析逻辑

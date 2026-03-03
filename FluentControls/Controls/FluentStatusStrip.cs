@@ -731,7 +731,7 @@ namespace FluentControls.Controls
             item.Owner = owner;
             base.Add(item);
 
-            // 如果是控件宿主，添加控件到容器
+            // 如果是控件宿主, 添加控件到容器
             if (item is FluentToolStripControlHost controlHost && controlHost.Control != null)
             {
                 if (!owner.Controls.Contains(controlHost.Control))

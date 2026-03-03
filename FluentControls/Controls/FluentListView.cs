@@ -977,7 +977,7 @@ namespace FluentControls.Controls
                     foreach (var column in columns.Where(c => c.Visible))
                     {
                         x += column.Width;
-                        // 绘制列分隔线，与网格线位置完全一致
+                        // 绘制列分隔线, 与网格线位置完全一致
                         g.DrawLine(borderPen, x, 0, x, headerHeight);
                     }
                 }
@@ -1023,7 +1023,7 @@ namespace FluentControls.Controls
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // 绘制阴影(可选，增加立体感)
+            // 绘制阴影(可选, 增加立体感)
             var shadowPoints = points.Select(p => new Point(p.X + 1, p.Y + 1)).ToArray();
             using (var shadowBrush = new SolidBrush(shadowColor))
             {
@@ -1162,7 +1162,7 @@ namespace FluentControls.Controls
                     cellBounds.Width -= offset;
                 }
 
-                // 使用子项的前景色(如果有)，否则使用项的前景色，最后使用默认色
+                // 使用子项的前景色(如果有), 否则使用项的前景色, 最后使用默认色
                 Color textColor;
                 if (!subItem.ForeColor.IsEmpty)
                 {
@@ -1358,7 +1358,7 @@ namespace FluentControls.Controls
                     }
                     catch
                     {
-                        // 如果图标绘制失败，绘制占位符
+                        // 如果图标绘制失败, 绘制占位符
                         using (var pen = new Pen(Color.Gray, 1))
                         {
                             g.DrawRectangle(pen, iconRect);
@@ -1811,7 +1811,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 如果正在或刚完成列宽调整，不处理点击
+            // 如果正在或刚完成列宽调整, 不处理点击
             if (isResizingColumn)
             {
                 return;
@@ -3008,7 +3008,7 @@ namespace FluentControls.Controls
         [Description("添加示例数据")]
         public void AddSampleData()
         {
-            // 如果没有列，先添加列
+            // 如果没有列, 先添加列
             if (listView.Columns.Count == 0)
             {
                 listView.Columns.Add(new FluentListViewColumn { Text = "名称", Width = 150 });

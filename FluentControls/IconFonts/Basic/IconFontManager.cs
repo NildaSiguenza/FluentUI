@@ -28,11 +28,16 @@ namespace FluentControls.IconFonts
         private string configFilePath;
 
 
-        private IconFontManager()
+        private IconFontManager() : this(GetDefaultIconFontsFolder())
+        {
+
+        }
+
+        private IconFontManager(string iconFontsFolder)
         {
             providers = new Dictionary<string, IIconFontProvider>();
             enumTypes = new Dictionary<string, Type>();
-            configFilePath = Path.Combine(GetDefaultIconFontsFolder(), "config.json");
+            configFilePath = Path.Combine(iconFontsFolder, "config.json");
 
             LoadConfiguration();
         }
@@ -55,7 +60,7 @@ namespace FluentControls.IconFonts
             }
         }
 
-        public string GetDefaultIconFontsFolder()
+        public static string GetDefaultIconFontsFolder()
         {
             return Path.Combine(Application.StartupPath, "IconFonts");
         }
@@ -108,6 +113,15 @@ namespace FluentControls.IconFonts
             return null;
         }
 
+        public IIconFontProvider GetProvider(IconFontProviderType providerType)
+        {
+            if (providers.TryGetValue(providerType.ToString(), out var provider))
+            {
+                return provider;
+            }
+            return null;
+        }
+
         /// <summary>
         /// 获取枚举类型
         /// </summary>
@@ -143,6 +157,18 @@ namespace FluentControls.IconFonts
         public Image GetIcon(string fontFamily, string iconName, float size, Color color, float rotation = 0)
         {
             var provider = GetProvider(fontFamily);
+            return provider?.GetIcon(iconName, size, color, rotation);
+        }
+
+        public Image GetIcon(IconFontProviderType providerType, Enum iconEnum, float size, Color color, float rotation = 0)
+        {
+            var provider = GetProvider(providerType);
+            return provider?.GetIcon(iconEnum, size, color, rotation);
+        }
+
+        public Image GetIcon(IconFontProviderType providerType, string iconName, float size, Color color, float rotation = 0)
+        {
+            var provider = GetProvider(providerType);
             return provider?.GetIcon(iconName, size, color, rotation);
         }
 
@@ -316,4 +342,22 @@ namespace FluentControls.IconFonts
         }
     }
 
+    public enum IconFontProviderType
+    {
+        bootstrap_icons,
+        boxicons,
+        coolicons,
+        Eva_Icons,
+        FontAwesome7FreeSolid,
+        FontAwesome7Free,
+        FontAwesome7Brands,
+        MaterialIconsOutlined,
+        MaterialIconsRound,
+        MaterialIconsSharp,
+        MaterialIconsTwoTone,
+        mynaui,
+        mynaui_solid,
+        remixicon,
+
+    }
 }

@@ -38,6 +38,7 @@ namespace FluentControls.Controls
         private const int ICON_SPACING = 4;
         private const int SCROLLBAR_SIZE = 17;
         private int deleteIconSize = 24; // 删除按钮大小
+        private ItemDeleteIconPosition deleteIconPosition = ItemDeleteIconPosition.TopRight;
 
 
         private bool autoScroll = true;
@@ -133,7 +134,7 @@ namespace FluentControls.Controls
             hoverTimer.Tick += HoverTimer_Tick;
 
             // 事件订阅
-            this.SizeChanged += FluentRepeater_SizeChanged;
+            //this.SizeChanged += FluentRepeater_SizeChanged;
             this.MouseMove += FluentRepeater_MouseMove;
             this.MouseLeave += FluentRepeater_MouseLeave;
             this.MouseWheel += FluentRepeater_MouseWheel;
@@ -206,6 +207,22 @@ namespace FluentControls.Controls
             {
                 maxItemCount = value;
                 UpdateAddButtonVisibility();
+            }
+        }
+
+        [Category("Repeater")]
+        [Description("控件的布局模式")]
+        [DefaultValue(RepeaterLayoutMode.Auto)]
+        public ItemDeleteIconPosition DeleteIconPosition
+        {
+            get => deleteIconPosition;
+            set
+            {
+                if (deleteIconPosition != value)
+                {
+                    deleteIconPosition = value;
+                    UpdateLayout();
+                }
             }
         }
 
@@ -628,7 +645,7 @@ namespace FluentControls.Controls
 
         private void AddItemInternal(Control control)
         {
-            var wrapper = new RepeaterItemWrapper(control, ICON_SIZE, deleteIconSize);
+            var wrapper = new RepeaterItemWrapper(control, ICON_SIZE, deleteIconSize, deleteIconPosition: DeleteIconPosition);
             wrapper.DeleteButton.Click += (s, e) => RemoveItemInternal(wrapper);
             wrapper.MouseEnter += ItemWrapper_MouseEnter;
             wrapper.MouseLeave += ItemWrapper_MouseLeave;
@@ -695,6 +712,76 @@ namespace FluentControls.Controls
         #endregion
 
         #region 布局
+
+        protected override void OnPaddingChanged(EventArgs e)
+        {
+            base.OnPaddingChanged(e);
+            UpdateInternalLayout();
+        }
+
+        /// <summary>
+        /// 当控件大小变化时更新布局
+        /// </summary>
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            UpdateInternalLayout();
+        }
+
+        /// <summary>
+        /// 更新内部面板布局
+        /// </summary>
+        private void UpdateInternalLayout()
+        {
+            if (scrollablePanel == null || containerPanel == null)
+            {
+                return;
+            }
+
+            SuspendLayout();
+
+            try
+            {
+                // 计算可视区域大小(需要先估算是否需要滚动条)
+                int width = this.ClientSize.Width - this.Padding.Left - this.Padding.Right;
+                int height = this.ClientSize.Height - this.Padding.Top - this.Padding.Bottom;
+
+                // 更新滚动面板位置和大小
+                scrollablePanel.Location = new Point(this.Padding.Left, this.Padding.Top);
+                scrollablePanel.Size = new Size(Math.Max(0, width), Math.Max(0, height));
+
+                // 更新滚动条
+                UpdateScrollBars();
+
+                // 重新布局所有项
+                if (items.Count > 0)
+                {
+                    switch (layoutMode)
+                    {
+                        case RepeaterLayoutMode.Horizontal:
+                            LayoutHorizontal();
+                            break;
+                        case RepeaterLayoutMode.Vertical:
+                            LayoutVertical();
+                            break;
+                        case RepeaterLayoutMode.Auto:
+                            LayoutAuto();
+                            break;
+                    }
+                }
+                else
+                {
+                    containerPanel.Size = GetViewportSize();
+                }
+
+                // 再次更新滚动条(布局后内容大小可能变化)
+                UpdateScrollBars();
+            }
+            finally
+            {
+                ResumeLayout(true);
+            }
+        }
 
         public void RefreshLayout()
         {
@@ -824,7 +911,7 @@ namespace FluentControls.Controls
                 }
                 catch
                 {
-                    // 如果计算失败，使用默认大小
+                    // 如果计算失败, 使用默认大小
                 }
             }
 
@@ -991,7 +1078,7 @@ namespace FluentControls.Controls
 
         private void ContainerPanel_MouseLeave(object sender, EventArgs e)
         {
-            // 不立即隐藏，等待鼠标真正离开
+            // 不立即隐藏, 等待鼠标真正离开
         }
 
         private void CheckEmptySpaceHover(Point location)
@@ -1014,7 +1101,7 @@ namespace FluentControls.Controls
 
             if (!isOverItem && isInScrollableArea)
             {
-                // 在空白区域，记录鼠标位置
+                // 在空白区域, 记录鼠标位置
                 addButtonTargetPosition = location;
                 StartHoverTimer(null, true);
             }
@@ -1048,7 +1135,7 @@ namespace FluentControls.Controls
 
         private void ItemControl_MouseEnter(object sender, EventArgs e)
         {
-            // 当鼠标进入内部控件时，也触发显示删除按钮
+            // 当鼠标进入内部控件时, 也触发显示删除按钮
             var control = sender as Control;
             if (control != null)
             {
@@ -1096,7 +1183,7 @@ namespace FluentControls.Controls
 
             if (items.Count == 0)
             {
-                // 没有项时，使用鼠标位置或默认位置
+                // 没有项时, 使用鼠标位置或默认位置
                 if (addButtonTargetPosition != Point.Empty)
                 {
                     position = addButtonTargetPosition;
@@ -1111,7 +1198,7 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 有项时，在鼠标位置附近显示，但避免与现有项重叠
+                // 有项时, 在鼠标位置附近显示, 但避免与现有项重叠
                 position = FindNearestEmptyPosition(addButtonTargetPosition);
             }
 
@@ -1124,7 +1211,7 @@ namespace FluentControls.Controls
         /// </summary>
         private Point FindNearestEmptyPosition(Point targetPosition)
         {
-            // 如果目标位置为空，返回默认位置
+            // 如果目标位置为空, 返回默认位置
             if (targetPosition == Point.Empty)
             {
                 return new Point(this.Padding.Left + 10, this.Padding.Top + 10);
@@ -1143,11 +1230,11 @@ namespace FluentControls.Controls
 
             if (!overlaps)
             {
-                // 不重叠，直接使用目标位置
+                // 不重叠, 直接使用目标位置
                 return targetPosition;
             }
 
-            // 重叠了，寻找附近的空位
+            // 重叠了, 寻找附近的空位
             // 尝试的偏移方向：右、下、左、上、右下、右上、左下、左上
             var offsets = new[]
             {
@@ -1176,7 +1263,7 @@ namespace FluentControls.Controls
                 bool testOverlaps = items.Any(w => IsOverlapping(testRect, w.Bounds));
                 if (!testOverlaps)
                 {
-                    // 找到合适位置，转换回控件坐标
+                    // 找到合适位置, 转换回控件坐标
                     return new Point(
                         testPoint.X + containerPanel.Left + this.Padding.Left,
                         testPoint.Y + containerPanel.Top + this.Padding.Top
@@ -1184,7 +1271,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 如果所有方向都重叠，使用默认策略：放在最后一项的后面
+            // 如果所有方向都重叠, 使用默认策略：放在最后一项的后面
             return GetPositionAfterLastItem();
         }
 
@@ -1193,7 +1280,7 @@ namespace FluentControls.Controls
         /// </summary>
         private bool IsOverlapping(Rectangle rect1, Rectangle rect2)
         {
-            // 添加一些边距，避免太靠近
+            // 添加一些边距, 避免太靠近
             int margin = 5;
             rect2.Inflate(margin, margin);
             return rect1.IntersectsWith(rect2);
@@ -1312,7 +1399,7 @@ namespace FluentControls.Controls
         {
             AddItem();
 
-            // 清除目标位置，避免重复使用
+            // 清除目标位置, 避免重复使用
             addButtonTargetPosition = Point.Empty;
 
             // 隐藏添加按钮
@@ -1456,12 +1543,14 @@ namespace FluentControls.Controls
         private int deleteIconSize;
         private RepeaterLayoutMode currentLayoutMode;
         private const int ICON_MARGIN = 4; // 图标边距
+        private ItemDeleteIconPosition deleteIconPos;
 
-        public RepeaterItemWrapper(Control itemControl, int iconSize, int deleteIconSize, Padding? padding = null)
+        public RepeaterItemWrapper(Control itemControl, int iconSize, int deleteIconSize, Padding? padding = null, ItemDeleteIconPosition deleteIconPosition = ItemDeleteIconPosition.TopRight)
         {
             ItemControl = itemControl;
             this.iconSize = iconSize;
             this.deleteIconSize = deleteIconSize;
+            this.deleteIconPos = deleteIconPosition;
 
             this.BackColor = Color.White;
             this.Padding = padding ?? new Padding(0);
@@ -1500,15 +1589,47 @@ namespace FluentControls.Controls
             LayoutIcons(currentLayoutMode);
         }
 
+        //public void LayoutIcons(RepeaterLayoutMode layoutMode)
+        //{
+        //    currentLayoutMode = layoutMode;
+
+        //    // 删除按钮始终在右上角
+        //    DeleteButton.Location = new Point(
+        //        this.Width - deleteIconSize - ICON_MARGIN,
+        //        ICON_MARGIN
+        //    );
+        //}
+
         public void LayoutIcons(RepeaterLayoutMode layoutMode)
         {
             currentLayoutMode = layoutMode;
 
-            // 删除按钮始终在右上角
-            DeleteButton.Location = new Point(
-                this.Width - deleteIconSize - ICON_MARGIN,
-                ICON_MARGIN
-            );
+            if (deleteIconPos == ItemDeleteIconPosition.CenterRight)
+            {
+                DeleteButton.Location = new Point(
+                    this.Width - deleteIconSize - ICON_MARGIN,
+                    (this.Height - deleteIconSize) / 2
+                );
+            }
+            else
+            {
+                DeleteButton.Location = new Point(
+                    this.Width - deleteIconSize - ICON_MARGIN,
+                    ICON_MARGIN
+                );
+            }
+
+            // 根据布局模式调整删除按钮位置
+            //if (layoutMode == RepeaterLayoutMode.Horizontal)
+            //{
+            //    // 水平布局模式：删除按钮在右侧垂直居中
+
+            //}
+            //else
+            //{
+            //    // 其他模式：删除按钮在右上角
+
+            //}
         }
 
         public void ShowDeleteIcon()
@@ -1634,6 +1755,12 @@ namespace FluentControls.Controls
         Auto,
         Horizontal,
         Vertical
+    }
+
+    public enum ItemDeleteIconPosition
+    {
+        TopRight,
+        CenterRight
     }
 
     public class RepeaterItemEventArgs : EventArgs

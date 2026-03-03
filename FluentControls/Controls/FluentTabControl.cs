@@ -788,12 +788,12 @@ namespace FluentControls.Controls
                     break;
                 case TabAlignment.Left:
                     // 左侧时, 宽度应该更大以容纳垂直文本
-                    int leftWidth = Math.Max(tabHeight, 100); // 至少100像素宽
+                    int leftWidth = Math.Max(tabHeight, TabMinWidth);
                     tabStripBounds = new Rectangle(0, 0, leftWidth, availableHeight);
                     break;
                 case TabAlignment.Right:
                     // 右侧时, 宽度应该更大以容纳垂直文本
-                    int rightWidth = Math.Max(tabHeight, 100); // 至少100像素宽
+                    int rightWidth = Math.Max(tabHeight, TabMinWidth); 
                     tabStripBounds = new Rectangle(availableWidth - rightWidth, 0, rightWidth, availableHeight);
                     break;
             }
@@ -1346,7 +1346,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 计算Fill模式下的可用边界，排除同级Dock控件占用的空间
+        /// 计算Fill模式下的可用边界, 排除同级Dock控件占用的空间
         /// </summary>
         private Rectangle CalculateFillBounds(Rectangle parentClient)
         {
@@ -1355,7 +1355,7 @@ namespace FluentControls.Controls
             int right = parentClient.Right;
             int bottom = parentClient.Bottom;
 
-            // 遍历同级控件，计算它们占用的空间
+            // 遍历同级控件, 计算它们占用的空间
             foreach (Control sibling in Parent.Controls)
             {
                 // 跳过自己
@@ -1374,22 +1374,22 @@ namespace FluentControls.Controls
                 switch (sibling.Dock)
                 {
                     case DockStyle.Left:
-                        // 左侧控件占用的空间，从左边界向右推
+                        // 左侧控件占用的空间, 从左边界向右推
                         left = Math.Max(left, sibling.Right);
                         break;
 
                     case DockStyle.Right:
-                        // 右侧控件占用的空间，从右边界向左推
+                        // 右侧控件占用的空间, 从右边界向左推
                         right = Math.Min(right, sibling.Left);
                         break;
 
                     case DockStyle.Top:
-                        // 顶部控件占用的空间，从上边界向下推
+                        // 顶部控件占用的空间, 从上边界向下推
                         top = Math.Max(top, sibling.Bottom);
                         break;
 
                     case DockStyle.Bottom:
-                        // 底部控件占用的空间，从下边界向上推
+                        // 底部控件占用的空间, 从下边界向上推
                         bottom = Math.Min(bottom, sibling.Top);
                         break;
 
@@ -2060,6 +2060,11 @@ namespace FluentControls.Controls
                     ControlStyles.OptimizedDoubleBuffer, true);
             DoubleBuffered = true;
             Padding = new Padding(3);
+        }
+
+        public FluentTabPage(string text) : this()
+        {
+            TabText = text;
         }
 
         [Category("Appearance")]

@@ -10,7 +10,7 @@ namespace FluentControls.IconFonts
     {
         private static readonly Dictionary<string, string> iconMapping = InitializeMapping();
 
-        public override string FontFamilyName => "Font Awesome 7 Free Solid";
+        public override string FontFamilyName => "FontAwesome7FreeSolid";
         public override string DisplayName => "FontAwesome Free Solid";
 
         public FontAwesomeFreeSolidIconProvider(string fontFilePath)
@@ -50,7 +50,7 @@ namespace FluentControls.IconFonts
     {
         private static readonly Dictionary<string, string> iconMapping = InitializeMapping();
 
-        public override string FontFamilyName => "Font Awesome 7 Free";
+        public override string FontFamilyName => "FontAwesome7Free";
         public override string DisplayName => "FontAwesome Free";
 
         public FontAwesomeFreeIconProvider(string fontFilePath)
@@ -90,7 +90,7 @@ namespace FluentControls.IconFonts
     {
         private static readonly Dictionary<string, string> iconMapping = InitializeMapping();
 
-        public override string FontFamilyName => "Font Awesome 7 Brands";
+        public override string FontFamilyName => "FontAwesome7Brands";
         public override string DisplayName => "FontAwesome Brands";
 
         public FontAwesomeBrandsIconProvider(string fontFilePath)

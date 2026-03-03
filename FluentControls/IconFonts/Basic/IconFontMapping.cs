@@ -36,7 +36,7 @@ namespace FluentControls.IconFonts
     public class IconFontProviderConfig
     {
         /// <summary>
-        /// 完整类型名称，如 "MyApp.Icons.FontAwesomeIconProvider"
+        /// 完整类型名称, 如 "MyApp.Icons.FontAwesomeIconProvider"
         /// </summary>
         public string ProviderTypeName { get; set; } 
 

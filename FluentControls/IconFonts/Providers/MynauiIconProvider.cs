@@ -52,7 +52,7 @@ namespace FluentControls.IconFonts
     {
         private static readonly Dictionary<string, string> iconMapping = InitializeMapping();
 
-        public override string FontFamilyName => "mynaui-solid";
+        public override string FontFamilyName => "mynaui_solid";
         public override string DisplayName => "MynauiSolid";
 
         public MynauiSolidIconProvider(string fontFilePath)

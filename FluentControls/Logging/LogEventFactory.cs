@@ -40,7 +40,7 @@ namespace FluentControls.Logging
                 return new NLogEventAdapter(logEvent);
             }
 
-            // 未知类型，尝试作为默认类型
+            // 未知类型, 尝试作为默认类型
             return new DefaultLogEvent
             {
                 Message = logEvent.ToString(),

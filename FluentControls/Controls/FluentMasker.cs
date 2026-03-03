@@ -26,7 +26,7 @@ namespace FluentControls.Controls
 
         private bool showCloseButton = false;
         private bool confirmBeforeClose = true;
-        private string closeConfirmMessage = "操作正在进行中，确定要关闭吗？";
+        private string closeConfirmMessage = "操作正在进行中, 确定要关闭吗？";
 
         private bool autoClose = false;
         private int autoCloseDelay = 3000;
@@ -58,7 +58,6 @@ namespace FluentControls.Controls
 
         private void InitializeComponent()
         {
-            // 关键：设置正确的样式
             this.SetStyle(
                 ControlStyles.Opaque |
                 ControlStyles.UserPaint |
@@ -255,7 +254,7 @@ namespace FluentControls.Controls
 
         [Category("Fluent Masker")]
         [Description("关闭确认对话框显示的消息")]
-        [DefaultValue("操作正在进行中，确定要关闭吗？")]
+        [DefaultValue("操作正在进行中, 确定要关闭吗？")]
         public string CloseConfirmMessage
         {
             get => closeConfirmMessage;
@@ -272,7 +271,7 @@ namespace FluentControls.Controls
         }
 
         [Category("Fluent Masker")]
-        [Description("自动关闭的延迟时间（毫秒）")]
+        [Description("自动关闭的延迟时间(毫秒)")]
         [DefaultValue(3000)]
         public int AutoCloseDelay
         {
@@ -643,7 +642,7 @@ namespace FluentControls.Controls
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            // 不调用基类，完全自己控制
+            // 不调用基类, 完全自己控制
         }
 
         protected override void OnVisibleChanged(EventArgs e)

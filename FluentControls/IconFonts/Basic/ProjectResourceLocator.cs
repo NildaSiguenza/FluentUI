@@ -52,7 +52,7 @@ namespace FluentControls.IconFonts
                 return path;
             }
 
-            Debug.WriteLine("所有方法均失败，无法获取项目路径");
+            Debug.WriteLine("所有方法均失败, 无法获取项目路径");
             return null;
         }
 
@@ -68,7 +68,7 @@ namespace FluentControls.IconFonts
                     return null;
                 }
 
-                // 获取完整类名，如 "MyApp.Forms.MainForm"
+                // 获取完整类名, 如 "MyApp.Forms.MainForm"
                 var fullClassName = designerHost.RootComponentClassName;
 
                 Debug.WriteLine($"完整类名: {fullClassName}");
@@ -88,7 +88,7 @@ namespace FluentControls.IconFonts
                     var namespaceStr = fullClassName.Substring(0, lastDotIndex);
                     simpleClassName = fullClassName.Substring(lastDotIndex + 1);
 
-                    // 将命名空间转换为路径，如 "MyApp.Forms" -> "MyApp\\Forms"
+                    // 将命名空间转换为路径, 如 "MyApp.Forms" -> "MyApp\\Forms"
                     namespacePath = namespaceStr.Replace('.', Path.DirectorySeparatorChar);
 
                     Debug.WriteLine($"命名空间路径: {namespacePath}");
