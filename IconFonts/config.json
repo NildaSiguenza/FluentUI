@@ -41,6 +41,48 @@
       "AssemblyName": "FluentControls",
       "FontFilePath": "Fonts/FontAwesome/Font Awesome 7 Brands-Regular-400.otf",
       "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.BootstrapIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Bootstrap/bootstrap-icons.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.CooliConsIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Coolicons/coolicons.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.EvaIconsIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Evaicons/Eva-Icons.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.MaterialIconsOutlinedIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Material-icons/material-icons-outlined.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.MaterialIconsRoundIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Material-icons/material-icons-round.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.MaterialIconsSharpIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Material-icons/material-icons-sharp.ttf",
+      "Enabled": true
+    },
+    {
+      "ProviderTypeName": "FluentControls.IconFonts.MaterialIconsTwoToneIconProvider",
+      "AssemblyName": "FluentControls",
+      "FontFilePath": "Fonts/Material-icons/material-icons-two-tone.ttf",
+      "Enabled": true
     }
   ]
 }
