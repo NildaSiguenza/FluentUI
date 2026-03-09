@@ -7,10 +7,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace FluentControls.Controls
 {
-    public class FluentMasker : Control
+    /// <summary>
+    /// Fluent遮罩控件
+    /// </summary>
+    public class FluentMasker : Form
     {
         #region 字段
 
@@ -34,9 +38,11 @@ namespace FluentControls.Controls
 
         private Padding maskPadding = new Padding(0);
 
-        private Timer animationTimer;
-        private Timer autoCloseTimer;
-        private Timer countdownTimer;
+        private System.Windows.Forms.Timer animationTimer;
+        private System.Windows.Forms.Timer autoCloseTimer;
+        private System.Windows.Forms.Timer countdownTimer;
+        private System.Windows.Forms.Timer delayShowTimer;
+
         private float animationProgress = 0f;
         private int remainingSeconds = 0;
 
@@ -45,7 +51,34 @@ namespace FluentControls.Controls
         private Rectangle textRect;
 
         private bool isShowing = false;
-        private Timer delayShowTimer;
+        private bool isClosing = false;
+
+        // 事件
+        public event EventHandler<CancelEventArgs> Showing;
+        public event EventHandler Shown;
+        public event EventHandler<CancelEventArgs> Closing;
+        public event EventHandler Closed;
+        public event EventHandler<CancelEventArgs> Canceled;
+
+        // 导入API
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+            int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        private static readonly IntPtr HWND_TOP = IntPtr.Zero;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_SHOWWINDOW = 0x0040;
 
         #endregion
 
@@ -53,39 +86,53 @@ namespace FluentControls.Controls
 
         public FluentMasker()
         {
-            InitializeComponent();
+            InitializeForm();
+            InitializeTimers();
+            InitializeCloseButton();
         }
 
-        private void InitializeComponent()
+        public FluentMasker(Control target) : this()
         {
+            targetControl = target;
+        }
+
+        private void InitializeForm()
+        {
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.ShowInTaskbar = false;
+            this.StartPosition = FormStartPosition.Manual;
+            this.TopMost = false;
+            this.KeyPreview = true;
+
+            this.DoubleBuffered = true;
             this.SetStyle(
-                ControlStyles.Opaque |
                 ControlStyles.UserPaint |
                 ControlStyles.AllPaintingInWmPaint |
-                ControlStyles.ResizeRedraw,
+                ControlStyles.OptimizedDoubleBuffer,
                 true);
+        }
 
-            this.BackColor = Color.Black;
-            this.Visible = false;
-            this.Dock = DockStyle.None;
-
-            // 创建动画定时器
-            animationTimer = new Timer { Interval = 50 };
+        private void InitializeTimers()
+        {
+            // 动画定时器
+            animationTimer = new System.Windows.Forms.Timer { Interval = 50 };
             animationTimer.Tick += AnimationTimer_Tick;
 
-            // 创建自动关闭定时器
-            autoCloseTimer = new Timer();
+            // 自动关闭定时器
+            autoCloseTimer = new System.Windows.Forms.Timer();
             autoCloseTimer.Tick += AutoCloseTimer_Tick;
 
-            // 创建倒计时定时器
-            countdownTimer = new Timer { Interval = 1000 };
+            // 倒计时定时器
+            countdownTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             countdownTimer.Tick += CountdownTimer_Tick;
 
-            // 创建延迟显示定时器
-            delayShowTimer = new Timer();
+            // 延迟显示定时器
+            delayShowTimer = new System.Windows.Forms.Timer();
             delayShowTimer.Tick += DelayShowTimer_Tick;
+        }
 
-            // 创建关闭按钮
+        private void InitializeCloseButton()
+        {
             closeButton = new Button
             {
                 Size = new Size(32, 32),
@@ -105,38 +152,19 @@ namespace FluentControls.Controls
             this.Controls.Add(closeButton);
         }
 
-        // 关键：重写 CreateParams 添加透明扩展样式
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x00000020; // WS_EX_TRANSPARENT
-                return cp;
-            }
-        }
-
         #endregion
 
         #region 属性
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("要遮罩的目标控件")]
         public Control TargetControl
         {
             get => targetControl;
-            set
-            {
-                if (targetControl != value)
-                {
-                    DetachFromTarget();
-                    targetControl = value;
-                    AttachToTarget();
-                }
-            }
+            set => targetControl = value;
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("遮罩背景的透明度 (0.0 - 1.0)")]
         [DefaultValue(0.5f)]
         public float BackgroundOpacity
@@ -149,7 +177,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("遮罩的背景颜色")]
         public Color MaskBackColor
         {
@@ -157,12 +185,11 @@ namespace FluentControls.Controls
             set
             {
                 maskBackColor = value;
-                BackColor = value;
                 Invalidate();
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("是否显示加载动画")]
         [DefaultValue(true)]
         public bool ShowAnimation
@@ -175,7 +202,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("加载动画的样式")]
         [DefaultValue(MaskAnimationStyle.Spinner)]
         public MaskAnimationStyle AnimationStyle
@@ -188,7 +215,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("是否显示提示文本")]
         [DefaultValue(true)]
         public bool ShowText
@@ -201,7 +228,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("显示的提示文本")]
         [DefaultValue("加载中...")]
         public string MaskText
@@ -214,7 +241,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("动画和文本的布局方式")]
         [DefaultValue(MaskContentLayout.Vertical)]
         public MaskContentLayout ContentLayout
@@ -227,7 +254,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("是否显示右上角的关闭按钮")]
         [DefaultValue(false)]
         public bool ShowCloseButton
@@ -236,14 +263,11 @@ namespace FluentControls.Controls
             set
             {
                 showCloseButton = value;
-                if (closeButton != null)
-                {
-                    closeButton.Visible = value && isShowing;
-                }
+                UpdateCloseButtonVisibility();
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("点击关闭按钮时是否需要确认")]
         [DefaultValue(true)]
         public bool ConfirmBeforeClose
@@ -252,7 +276,7 @@ namespace FluentControls.Controls
             set => confirmBeforeClose = value;
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("关闭确认对话框显示的消息")]
         [DefaultValue("操作正在进行中, 确定要关闭吗？")]
         public string CloseConfirmMessage
@@ -261,7 +285,7 @@ namespace FluentControls.Controls
             set => closeConfirmMessage = value;
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("是否在指定时间后自动关闭")]
         [DefaultValue(false)]
         public bool AutoClose
@@ -270,7 +294,7 @@ namespace FluentControls.Controls
             set => autoClose = value;
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("自动关闭的延迟时间(毫秒)")]
         [DefaultValue(3000)]
         public int AutoCloseDelay
@@ -279,7 +303,7 @@ namespace FluentControls.Controls
             set => autoCloseDelay = Math.Max(0, value);
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("是否启用倒计时关闭模式")]
         [DefaultValue(false)]
         public bool CountdownMode
@@ -292,7 +316,7 @@ namespace FluentControls.Controls
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("遮罩区域相对于目标控件的内边距")]
         public Padding MaskPadding
         {
@@ -300,57 +324,107 @@ namespace FluentControls.Controls
             set
             {
                 maskPadding = value;
-                UpdateBounds();
+                UpdatePositionAndSize();
             }
         }
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("动画区域的大小")]
         [DefaultValue(typeof(Size), "60, 60")]
         public Size AnimationSize { get; set; } = new Size(60, 60);
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("提示文本的字体")]
         public Font TextFont { get; set; } = new Font("Microsoft YaHei UI", 10F);
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("提示文本的颜色")]
         public Color TextColor { get; set; } = Color.White;
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("加载动画的颜色")]
         public Color AnimationColor { get; set; } = Color.White;
 
-        [Category("Fluent Masker")]
+        [Category("Mask")]
         [Description("动画和文本之间的间距")]
         [DefaultValue(16)]
         public int ContentSpacing { get; set; } = 16;
 
+        /// <summary>
+        /// 是否正在显示
+        /// </summary>
+        [Browsable(false)]
+        public bool IsShowing => isShowing;
+
         #endregion
 
-        #region 事件
+        #region 重写
 
-        [Category("Fluent Masker")]
-        public event EventHandler<CancelEventArgs> Showing;
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
 
-        [Category("Fluent Masker")]
-        public event EventHandler Shown;
+            // ESC 键关闭
+            if (e.KeyCode == Keys.Escape && showCloseButton)
+            {
+                Close();
+            }
+        }
 
-        [Category("Fluent Masker")]
-        public event EventHandler<CancelEventArgs> Closing;
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-        [Category("Fluent Masker")]
-        public event EventHandler Closed;
+            g.Clear(maskBackColor);
+
+            // 绘制半透明背景
+            //using (var brush = new SolidBrush(Color.FromArgb((int)(255 * backgroundOpacity), maskBackColor)))
+            //{
+            //    g.FillRectangle(brush, ClientRectangle);
+            //}
+
+            if (!isShowing)
+            {
+                return;
+            }
+
+            CalculateLayout();
+
+            if (showAnimation)
+            {
+                DrawAnimation(g, animationRect);
+            }
+
+            if (showText)
+            {
+                DrawText(g, textRect);
+            }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            StopAllTimers();
+            base.OnFormClosing(e);
+        }
 
         #endregion
 
         #region 公共方法
 
+        /// <summary>
+        /// 显示遮罩
+        /// </summary>
         public new void Show()
         {
             Show(0);
         }
 
+        /// <summary>
+        /// 延迟显示遮罩
+        /// </summary>
+        /// <param name="delayMilliseconds">延迟毫秒数</param>
         public void Show(int delayMilliseconds)
         {
             if (isShowing)
@@ -374,14 +448,37 @@ namespace FluentControls.Controls
             }
         }
 
+        /// <summary>
+        /// 关闭遮罩
+        /// </summary>
         public new void Close()
         {
-            Close(false);
+            CloseInternal(false);
         }
 
+        /// <summary>
+        /// 强制关闭遮罩
+        /// </summary>
         public void ForceClose()
         {
-            Close(true);
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => CloseInternal(true)));
+            }
+            else
+            {
+                CloseInternal(true);
+            }
+        }
+
+        /// <summary>
+        /// 刷新配置
+        /// </summary>
+        public void RefreshConfiguration()
+        {
+            UpdatePositionAndSize();
+            UpdateCloseButtonVisibility();
+            Invalidate();
         }
 
         #endregion
@@ -398,20 +495,26 @@ namespace FluentControls.Controls
             }
 
             isShowing = true;
-            UpdateBounds();
+            isClosing = false;
 
-            this.Visible = true;
-            this.BringToFront();
+            UpdatePositionAndSize();
+            AttachTargetEvents();
 
-            closeButton.Visible = showCloseButton;
-            if (showCloseButton)
+            // 获取目标控件所在的窗体
+            var parentForm = targetControl.FindForm();
+            if (parentForm != null)
             {
-                closeButton.Location = new Point(
-                    this.Width - closeButton.Width - 16,
-                    16
-                );
-                closeButton.BringToFront();
+                AttachParentFormEvents(parentForm);
+                this.Owner = parentForm;
             }
+
+            this.Opacity = backgroundOpacity;
+            this.BackColor = maskBackColor;
+
+            base.Show();
+
+            UpdateCloseButtonVisibility();
+            UpdateCloseButtonPosition();
 
             if (showAnimation)
             {
@@ -434,16 +537,20 @@ namespace FluentControls.Controls
             OnShown();
         }
 
-        private void Close(bool force)
+        private void CloseInternal(bool force, bool byCloseButton = false)
         {
-            if (!isShowing)
+            if (!isShowing || isClosing)
             {
                 return;
             }
 
+            // 保存父窗口引用
+            var parentForm = this.Owner;
+
             if (!force && confirmBeforeClose && showCloseButton)
             {
                 var result = MessageBox.Show(
+                    this,
                     closeConfirmMessage,
                     "确认",
                     MessageBoxButtons.YesNo,
@@ -463,69 +570,152 @@ namespace FluentControls.Controls
                 return;
             }
 
+            // 如果是由关闭按钮触发的关闭,触发 Canceled 事件
+            if(byCloseButton)
+            {
+                Canceled?.Invoke(this, closingArgs);
+            }
+
+            isClosing = true;
+            StopAllTimers();
+            DetachTargetEvents();
+            DetachParentFormEvents();
+
             isShowing = false;
 
-            animationTimer.Stop();
-            autoCloseTimer.Stop();
-            countdownTimer.Stop();
-            delayShowTimer.Stop();
+            // 先激活父窗口，再隐藏遮罩
+            if (parentForm != null && !parentForm.IsDisposed && parentForm.IsHandleCreated)
+            {
+                // 使用 Win32 API 确保父窗口在最前面
+                SetWindowPos(parentForm.Handle, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                SetForegroundWindow(parentForm.Handle);
+                BringWindowToTop(parentForm.Handle);
+            }
 
-            this.Visible = false;
-            closeButton.Visible = false;
-            //backgroundDrawn = false;
+            this.Hide();
+
+            // 确保父窗口激活
+            if (parentForm != null && !parentForm.IsDisposed)
+            {
+                parentForm.Activate();
+                parentForm.Focus();
+            }
 
             OnClosed();
         }
 
-        private void AttachToTarget()
+        private void StopAllTimers()
         {
-            if (targetControl == null)
-            {
-                return;
-            }
-
-            if (!targetControl.Controls.Contains(this))
-            {
-                targetControl.Controls.Add(this);
-            }
-
-            targetControl.SizeChanged += TargetControl_SizeChanged;
-            targetControl.LocationChanged += TargetControl_LocationChanged;
-            targetControl.ControlAdded += TargetControl_ControlAdded;
-
-            UpdateBounds();
+            animationTimer?.Stop();
+            autoCloseTimer?.Stop();
+            countdownTimer?.Stop();
+            delayShowTimer?.Stop();
         }
 
-        private void DetachFromTarget()
+        private void AttachTargetEvents()
         {
             if (targetControl == null)
             {
                 return;
             }
 
-            targetControl.SizeChanged -= TargetControl_SizeChanged;
-            targetControl.LocationChanged -= TargetControl_LocationChanged;
-            targetControl.ControlAdded -= TargetControl_ControlAdded;
+            targetControl.LocationChanged += TargetControl_Changed;
+            targetControl.SizeChanged += TargetControl_Changed;
+            targetControl.ParentChanged += TargetControl_ParentChanged;
+            targetControl.VisibleChanged += TargetControl_VisibleChanged;
+        }
 
-            if (targetControl.Controls.Contains(this))
+        private void DetachTargetEvents()
+        {
+            if (targetControl == null)
             {
-                targetControl.Controls.Remove(this);
+                return;
+            }
+
+            targetControl.LocationChanged -= TargetControl_Changed;
+            targetControl.SizeChanged -= TargetControl_Changed;
+            targetControl.ParentChanged -= TargetControl_ParentChanged;
+            targetControl.VisibleChanged -= TargetControl_VisibleChanged;
+        }
+
+        private void AttachParentFormEvents(Form parentForm)
+        {
+            if (parentForm == null)
+            {
+                return;
+            }
+
+            parentForm.LocationChanged += ParentForm_LocationChanged;
+            parentForm.SizeChanged += ParentForm_SizeChanged;
+            parentForm.Activated += ParentForm_Activated;
+            parentForm.Deactivate += ParentForm_Deactivate;
+        }
+
+        private void DetachParentFormEvents()
+        {
+            var parentForm = this.Owner;
+            if (parentForm == null)
+            {
+                return;
+            }
+
+            parentForm.LocationChanged -= ParentForm_LocationChanged;
+            parentForm.SizeChanged -= ParentForm_SizeChanged;
+            parentForm.Activated -= ParentForm_Activated;
+            parentForm.Deactivate -= ParentForm_Deactivate;
+        }
+
+        /// <summary>
+        /// 更新位置和大小
+        /// </summary>
+        public void UpdatePositionAndSize()
+        {
+            if (targetControl == null || !targetControl.IsHandleCreated)
+            {
+                return;
+            }
+
+            try
+            {
+                Point screenLocation = targetControl.PointToScreen(Point.Empty);
+
+                this.Location = new Point(
+                    screenLocation.X + maskPadding.Left,
+                    screenLocation.Y + maskPadding.Top
+                );
+                this.Size = new Size(
+                    targetControl.Width - maskPadding.Left - maskPadding.Right,
+                    targetControl.Height - maskPadding.Top - maskPadding.Bottom
+                );
+
+                UpdateCloseButtonPosition();
+            }
+            catch
+            {
+                // 忽略可能的异常
             }
         }
 
-        private void UpdateBounds()
+        private void UpdateCloseButtonVisibility()
         {
-            if (targetControl == null)
+            if (closeButton != null)
+            {
+                closeButton.Visible = showCloseButton && isShowing;
+            }
+        }
+
+        private void UpdateCloseButtonPosition()
+        {
+            if (closeButton == null)
             {
                 return;
             }
 
-            this.Bounds = new Rectangle(
-                maskPadding.Left,
-                maskPadding.Top,
-                targetControl.Width - maskPadding.Left - maskPadding.Right,
-                targetControl.Height - maskPadding.Top - maskPadding.Bottom
+            closeButton.Location = new Point(
+                this.Width - closeButton.Width - 16,
+                16
             );
+            closeButton.BringToFront();
         }
 
         private void CalculateLayout()
@@ -584,7 +774,7 @@ namespace FluentControls.Controls
                     );
                 }
             }
-            else
+            else // Horizontal
             {
                 int totalWidth = 0;
                 if (showAnimation)
@@ -638,93 +828,33 @@ namespace FluentControls.Controls
 
         #endregion
 
-        #region 重写方法
-
-        protected override void OnPaintBackground(PaintEventArgs e)
-        {
-            // 不调用基类, 完全自己控制
-        }
-
-        protected override void OnVisibleChanged(EventArgs e)
-        {
-            base.OnVisibleChanged(e);
-            if (this.Visible)
-            {
-                this.BringToFront();
-            }
-        }
-
-        protected override void OnParentChanged(EventArgs e)
-        {
-            base.OnParentChanged(e);
-            if (this.Parent != null)
-            {
-                // 设置在父控件中的Z-Order, 使其总是在最上层
-                this.Parent.Controls.SetChildIndex(this, 0);
-            }
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-            // 绘制半透明背景
-            var bgColor = Color.FromArgb((int)(255 * backgroundOpacity), maskBackColor);
-
-            using (var brush = new SolidBrush(bgColor))
-            {
-                g.FillRectangle(brush, this.ClientRectangle);
-            }
-
-            if (!isShowing)
-            {
-                return;
-            }
-
-            CalculateLayout();
-
-            if (showAnimation)
-            {
-                DrawAnimation(g, animationRect);
-            }
-
-            if (showText)
-            {
-                DrawText(g, textRect);
-            }
-        }
-
-        #endregion
-
         #region 绘制
 
-        private void DrawAnimation(Graphics g, Rectangle rect)
-        {
-            switch (animationStyle)
-            {
-                case MaskAnimationStyle.Spinner:
-                    DrawSpinnerAnimation(g, rect);
-                    break;
-                case MaskAnimationStyle.Dots:
-                    DrawDotsAnimation(g, rect);
-                    break;
-                case MaskAnimationStyle.Circle:
-                    DrawCircleAnimation(g, rect);
-                    break;
-                case MaskAnimationStyle.Ring:
-                    DrawRingAnimation(g, rect);
-                    break;
-            }
-        }
-
-        private void DrawSpinnerAnimation(Graphics g, Rectangle rect)
+        protected virtual void DrawAnimation(Graphics g, Rectangle rect)
         {
             int centerX = rect.X + rect.Width / 2;
             int centerY = rect.Y + rect.Height / 2;
             int radius = Math.Min(rect.Width, rect.Height) / 2 - 4;
 
+            switch (animationStyle)
+            {
+                case MaskAnimationStyle.Spinner:
+                    DrawSpinnerAnimation(g, centerX, centerY, radius);
+                    break;
+                case MaskAnimationStyle.Dots:
+                    DrawDotsAnimation(g, rect);
+                    break;
+                case MaskAnimationStyle.Circle:
+                    DrawCircleAnimation(g, centerX, centerY, radius);
+                    break;
+                case MaskAnimationStyle.Ring:
+                    DrawRingAnimation(g, centerX, centerY, radius);
+                    break;
+            }
+        }
+
+        private void DrawSpinnerAnimation(Graphics g, int centerX, int centerY, int radius)
+        {
             for (int i = 0; i < 12; i++)
             {
                 float angle = i * 30f + animationProgress * 360f;
@@ -736,8 +866,7 @@ namespace FluentControls.Controls
                 int x2 = centerX + (int)(radius * Math.Cos(radians));
                 int y2 = centerY + (int)(radius * Math.Sin(radians));
 
-                using (var pen = new Pen(Color.FromArgb(
-                    (int)(255 * alpha), AnimationColor), 3))
+                using (var pen = new Pen(Color.FromArgb((int)(255 * alpha), AnimationColor), 3))
                 {
                     pen.StartCap = LineCap.Round;
                     pen.EndCap = LineCap.Round;
@@ -767,12 +896,8 @@ namespace FluentControls.Controls
             }
         }
 
-        private void DrawCircleAnimation(Graphics g, Rectangle rect)
+        private void DrawCircleAnimation(Graphics g, int centerX, int centerY, int radius)
         {
-            int centerX = rect.X + rect.Width / 2;
-            int centerY = rect.Y + rect.Height / 2;
-            int radius = Math.Min(rect.Width, rect.Height) / 2 - 4;
-
             float startAngle = animationProgress * 360f;
             float sweepAngle = 270f;
 
@@ -780,49 +905,31 @@ namespace FluentControls.Controls
             {
                 pen.StartCap = LineCap.Round;
                 pen.EndCap = LineCap.Round;
-
-                g.DrawArc(pen,
-                    centerX - radius,
-                    centerY - radius,
-                    radius * 2,
-                    radius * 2,
-                    startAngle,
-                    sweepAngle);
+                g.DrawArc(pen, centerX - radius, centerY - radius, radius * 2, radius * 2,
+                    startAngle, sweepAngle);
             }
         }
 
-        private void DrawRingAnimation(Graphics g, Rectangle rect)
+        private void DrawRingAnimation(Graphics g, int centerX, int centerY, int radius)
         {
-            int centerX = rect.X + rect.Width / 2;
-            int centerY = rect.Y + rect.Height / 2;
-            int radius = Math.Min(rect.Width, rect.Height) / 2 - 4;
-
+            // 背景圆环
             using (var pen = new Pen(Color.FromArgb(50, AnimationColor), 4))
             {
-                g.DrawEllipse(pen,
-                    centerX - radius,
-                    centerY - radius,
-                    radius * 2,
-                    radius * 2);
+                g.DrawEllipse(pen, centerX - radius, centerY - radius, radius * 2, radius * 2);
             }
 
+            // 进度圆环
             float sweepAngle = animationProgress * 360f;
             using (var pen = new Pen(AnimationColor, 4))
             {
                 pen.StartCap = LineCap.Round;
                 pen.EndCap = LineCap.Round;
-
-                g.DrawArc(pen,
-                    centerX - radius,
-                    centerY - radius,
-                    radius * 2,
-                    radius * 2,
-                    -90,
-                    sweepAngle);
+                g.DrawArc(pen, centerX - radius, centerY - radius, radius * 2, radius * 2,
+                    -90, sweepAngle);
             }
         }
 
-        private void DrawText(Graphics g, Rectangle rect)
+        protected virtual void DrawText(Graphics g, Rectangle rect)
         {
             string displayText = GetDisplayText();
 
@@ -855,7 +962,7 @@ namespace FluentControls.Controls
         private void AutoCloseTimer_Tick(object sender, EventArgs e)
         {
             autoCloseTimer.Stop();
-            Close(true);
+            CloseInternal(true);
         }
 
         private void CountdownTimer_Tick(object sender, EventArgs e)
@@ -876,25 +983,64 @@ namespace FluentControls.Controls
 
         private void CloseButton_Click(object sender, EventArgs e)
         {
-            Close(false);
+            CloseInternal(false, true);
         }
 
-        private void TargetControl_SizeChanged(object sender, EventArgs e)
+        private void TargetControl_Changed(object sender, EventArgs e)
         {
-            UpdateBounds();
+            if (!isClosing && isShowing)
+            {
+                UpdatePositionAndSize();
+            }
         }
 
-        private void TargetControl_LocationChanged(object sender, EventArgs e)
+        private void TargetControl_ParentChanged(object sender, EventArgs e)
         {
-            UpdateBounds();
+            if (!isClosing && isShowing)
+            {
+                UpdatePositionAndSize();
+            }
         }
 
-        private void TargetControl_ControlAdded(object sender, ControlEventArgs e)
+        private void TargetControl_VisibleChanged(object sender, EventArgs e)
         {
-            if (isShowing && e.Control != this)
+            if (targetControl != null && !targetControl.Visible && isShowing)
+            {
+                this.Hide();
+            }
+            else if (targetControl != null && targetControl.Visible && isShowing)
+            {
+                this.Show();
+            }
+        }
+
+        private void ParentForm_LocationChanged(object sender, EventArgs e)
+        {
+            if (!isClosing && isShowing)
+            {
+                UpdatePositionAndSize();
+            }
+        }
+
+        private void ParentForm_SizeChanged(object sender, EventArgs e)
+        {
+            if (!isClosing && isShowing)
+            {
+                UpdatePositionAndSize();
+            }
+        }
+
+        private void ParentForm_Activated(object sender, EventArgs e)
+        {
+            if (isShowing && !isClosing)
             {
                 this.BringToFront();
             }
+        }
+
+        private void ParentForm_Deactivate(object sender, EventArgs e)
+        {
+            // 可选：当父窗体失去焦点时的处理
         }
 
         protected virtual void OnShowing(CancelEventArgs e)
@@ -919,13 +1065,15 @@ namespace FluentControls.Controls
 
         #endregion
 
-        #region 清理
+        #region 释放资源
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                DetachFromTarget();
+                StopAllTimers();
+                DetachTargetEvents();
+                DetachParentFormEvents();
 
                 animationTimer?.Dispose();
                 autoCloseTimer?.Dispose();

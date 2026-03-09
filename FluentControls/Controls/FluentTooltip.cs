@@ -35,12 +35,12 @@ namespace FluentControls.Controls
         private int hideDelay = 5000;
         private int fadeInDuration = 150;
         private int fadeOutDuration = 100;
-        private Color backgroundColor = Color.FromArgb(45, 45, 45);
-        private Color foreColor = Color.White;
-        private Color titleColor = Color.White;
-        private Color titleBackgroundColor = Color.FromArgb(55, 55, 55);
+        private Color backgroundColor = Color.WhiteSmoke;
+        private Color foreColor = Color.DimGray;
+        private Color titleColor = Color.Black;
+        private Color titleBackgroundColor = Color.FromArgb(210, 210, 210);
         private Padding titlePadding = new Padding(0, 2, 0, 2);
-        private Color borderColor = Color.FromArgb(60, 60, 60);
+        private Color borderColor = Color.Gray;
         private int borderRadius = 6;
         private int maxWidth = 350;
         private Padding contentPadding = new Padding(12, 10, 12, 10);
@@ -1175,8 +1175,8 @@ namespace FluentControls.Controls
                 }
 
                 width = Math.Min(width, owner.MaxWidth);
-                width = Math.Max(width, 60);
                 height = Math.Max(height, 24);
+                width = Math.Max(width, height);
 
                 // 添加阴影空间
                 if (owner.ShowShadow)

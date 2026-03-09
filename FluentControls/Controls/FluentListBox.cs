@@ -1577,7 +1577,7 @@ namespace FluentControls.Controls
             }
         }
 
-        private int GetItemIndexAt(Point location)
+        public int GetItemIndexAt(Point location)
         {
             if (!isInitialized)
             {

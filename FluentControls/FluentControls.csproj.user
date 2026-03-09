@@ -72,7 +72,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentMasker.cs">
-      <SubType>Component</SubType>
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Controls\FluentMenuStrip.cs">
       <SubType>Component</SubType>
@@ -91,6 +91,9 @@
     </Compile>
     <Compile Update="Controls\FluentProgess.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\FluentProgressMasker.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Controls\FluentPropertyGrid.cs">
       <SubType>Component</SubType>

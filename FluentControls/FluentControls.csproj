@@ -26,9 +26,6 @@
 		<DebugType>portable</DebugType>
 		<Configurations>Debug;Release;UseProjectReferences</Configurations>
 	</PropertyGroup>
-	<ItemGroup>
-	  <Compile Remove="AutoFitDPI\DPIUsage.cs" />
-	</ItemGroup>
 	<!-- 包含 Readme 文档 -->
 	<ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="\" />
@@ -39,7 +36,7 @@
 	</ItemGroup>
 	<!-- 包引用 -->
 	<ItemGroup Condition="'$(UseProjectReferences)' != 'true'">
-		<PackageReference Include="FluentUI.Infrastructure" Version="$(Version)" />
+		<PackageReference Include="FluentUI.Infrastructure"  Version="$(Version)"  />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4.0" />

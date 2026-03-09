@@ -32,13 +32,13 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (41)
+## Control List (42)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
 - FluentContainerBase: The base class for container controls, supporting child control layout and management.
 
-### Basic Controls (17)
+### Basic Controls (18)
 - FluentButton: A button control supporting lighting effects and animations. 
 - FluentTextBox: A text input box supporting input type control and prefixes/suffixes. 
 - FluentLabel: A label control supporting multiple display modes. 
@@ -55,7 +55,8 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 - FluentSplitButton: A button control that supports splitting.
 - FluentFontIcon: An icon control that supports font icon display.
 - FluentMasker: A control that supports masking effects.
-- ✨FluentDropdown: A dropdown menu control that supports grouping and status selection.
+- FluentDropdown: A dropdown menu control that supports grouping and status selection.
+- ✨FluentProgressMasker: A control that supports progress masking effects.
 
 ### Container Controls (3)
 - FluentPanel: A panel control that supports various layout methods.
@@ -95,7 +96,7 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 
 ### Components (2)
 - FluentImageList: A component that supports image list management.
-- ✨FluentTooltip: A tooltip control that supports rich content display.
+- FluentTooltip: A tooltip control that supports rich content display.
 
 ## Links
 [Nuget](https://www.nuget.org/packages/FluentControls/)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -1205,7 +1206,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 显示成功消息
         /// </summary>
-        public FluentMessage Success(string content, string title = null,MessagePosition position = MessagePosition.BottomRight, int duration = 3000)
+        public FluentMessage Success(string content, string title = null,MessagePosition position = MessagePosition.BottomRight, int duration = 3000, MessageDisplayMode displayMode = MessageDisplayMode.Application)
         {
             return Show(new MessageOptions
             {
@@ -1213,6 +1214,7 @@ namespace FluentControls.Controls
                 Content = content,
                 Type = MessageType.Success,
                 Duration = duration,
+                DisplayMode = displayMode,
                 Position = position,
                 LogMessage = false // 成功消息默认不记录日志
             });
@@ -1221,7 +1223,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 显示警告消息
         /// </summary>
-        public FluentMessage Warning(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 4000)
+        public FluentMessage Warning(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 4000, MessageDisplayMode displayMode = MessageDisplayMode.Application)
         {
             return Show(new MessageOptions
             {
@@ -1229,6 +1231,7 @@ namespace FluentControls.Controls
                 Content = content,
                 Type = MessageType.Warning,
                 Duration = duration,
+                DisplayMode = displayMode,
                 Position = position,
                 LogMessage = true // 警告消息默认记录日志
             });
@@ -1237,7 +1240,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 显示信息消息
         /// </summary>
-        public FluentMessage Info(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 3000)
+        public FluentMessage Info(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 3000, MessageDisplayMode displayMode = MessageDisplayMode.Application)
         {
             return Show(new MessageOptions
             {
@@ -1245,6 +1248,7 @@ namespace FluentControls.Controls
                 Content = content,
                 Type = MessageType.Info,
                 Duration = duration,
+                DisplayMode = displayMode,
                 Position = position,
                 LogMessage = false // 信息消息默认不记录日志
             });
@@ -1253,7 +1257,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 显示错误消息
         /// </summary>
-        public FluentMessage Error(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 5000, Exception exception = null)
+        public FluentMessage Error(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 5000, MessageDisplayMode displayMode = MessageDisplayMode.Application, Exception exception = null)
         {
             var options = new MessageOptions
             {
@@ -1261,6 +1265,7 @@ namespace FluentControls.Controls
                 Content = content,
                 Type = MessageType.Error,
                 Duration = duration,
+                DisplayMode = displayMode,
                 Position = position,
                 LogMessage = true // 错误默认记录日志
             };

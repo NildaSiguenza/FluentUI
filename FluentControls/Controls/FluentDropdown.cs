@@ -1032,7 +1032,10 @@ namespace FluentControls.Controls
 
             public void ApplyTheme(IFluentTheme theme)
             {
-                if (theme == null) return;
+                if (theme == null)
+                {
+                    return;
+                }
 
                 surfaceColor = theme.Colors.Surface;
                 selectedBackColor = theme.Colors.GetColorWithOpacity(theme.Colors.Primary, 0.2f);
