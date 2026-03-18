@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -94,6 +95,15 @@ namespace FluentControls.Themes
         public static IEnumerable<IFluentTheme> GetAvailableThemes()
         {
             return themes.Values;
+        }
+
+        public static Color GetThemeColor(Func<IColorPalette, Color> colorSelector, Color defaultColor)
+        {
+            if (CurrentTheme != null)
+            {
+                return colorSelector(CurrentTheme.Colors);
+            }
+            return defaultColor;
         }
 
         private static void OnThemeChanged()

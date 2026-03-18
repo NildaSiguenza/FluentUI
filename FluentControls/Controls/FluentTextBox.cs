@@ -39,7 +39,11 @@ namespace FluentControls.Controls
         private Color innerTextColor = Color.Black;
         private Color innerBackColor = Color.White;
         private Font innerFont;
-        // private bool autoHeight = true;
+
+        // 值范围控制
+        private decimal? minimum = null;
+        private decimal? maximum = null;
+        private bool isValidatingRange = false;
 
         // 边框
         private int borderSize = 1;
@@ -71,6 +75,11 @@ namespace FluentControls.Controls
         private List<string> autoCompleteSource;
         private bool enableAutoComplete = false;
         private bool isAutoCompleteVisible = false;
+        private bool backcolorForced = false; // 是否强制使用设置背景色
+
+        // 事件
+        public event EventHandler<ValueOutOfRangeEventArgs> ValueOutOfRange; // 值超出范围事件
+        public event EventHandler ValueChanged; // 值变更事件
 
         #endregion
 
@@ -111,6 +120,7 @@ namespace FluentControls.Controls
                 UpdatePlaceholderVisibility();
                 UpdateScrollBars(); // 文本变化时更新滚动条
                 OnTextChanged(e);
+                OnValueChanged();
                 if (enableAutoComplete)
                 {
                     UpdateAutoComplete();
@@ -139,6 +149,10 @@ namespace FluentControls.Controls
                 UpdatePlaceholderVisibility();
                 State = ControlState.Normal;
                 HideAutoComplete();
+
+                // 失去焦点时验证范围
+                ValidateAndClampValue();
+
                 Invalidate();
             };
 
@@ -617,6 +631,18 @@ namespace FluentControls.Controls
         }
 
         [Category("Fluent")]
+        [Description("是否显示滚动条")]
+        public bool BackcolorForced
+        {
+            get => backcolorForced;
+            set
+            {
+                backcolorForced = value;
+                Invalidate();
+            }
+        }
+
+        [Category("Fluent")]
         [Description("自动换行")]
         public bool WordWrap
         {
@@ -675,7 +701,7 @@ namespace FluentControls.Controls
         /// 滚动条显示模式
         /// </summary>
         [Category("Fluent")]
-        [Description("滚动条显示模式（仅在多行模式下有效）")]
+        [Description("滚动条显示模式(仅在多行模式下有效)")]
         [DefaultValue(ScrollBars.None)]
         public ScrollBars ScrollBars
         {
@@ -704,7 +730,7 @@ namespace FluentControls.Controls
         /// 是否自动控制滚动条显示
         /// </summary>
         [Category("Fluent")]
-        [Description("是否根据内容自动显示/隐藏滚动条（仅在多行模式下有效）")]
+        [Description("是否根据内容自动显示/隐藏滚动条(仅在多行模式下有效)")]
         [DefaultValue(true)]
         public bool AutoScrollBars
         {
@@ -745,6 +771,93 @@ namespace FluentControls.Controls
                 showSuffix = value;
                 UpdateLayout();
             }
+        }
+
+        /// <summary>
+        /// 获取当前值(根据 InputFormat 返回适当类型)
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public object Value
+        {
+            get => GetTypedValue();
+            set => SetTypedValue(value);
+        }
+
+        /// <summary>
+        /// 最小值(InputFormat 为 Integer 或 Decimal 时有效)
+        /// </summary>
+        [Category("Fluent")]
+        [Description("允许输入的最小值(仅对数值类型有效)")]
+        [DefaultValue(null)]
+        public decimal? Minimum
+        {
+            get => minimum;
+            set
+            {
+                if (minimum != value)
+                {
+                    minimum = value;
+
+                    // 验证 Minimum <= Maximum
+                    if (minimum.HasValue && maximum.HasValue && minimum.Value > maximum.Value)
+                    {
+                        throw new ArgumentException("Minimum 不能大于 Maximum");
+                    }
+
+                    // 验证当前值是否在范围内
+                    ValidateAndClampValue();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 最大值(InputFormat 为 Integer 或 Decimal 时有效)
+        /// </summary>
+        [Category("Fluent")]
+        [Description("允许输入的最大值(仅对数值类型有效)")]
+        [DefaultValue(null)]
+        public decimal? Maximum
+        {
+            get => maximum;
+            set
+            {
+                if (maximum != value)
+                {
+                    maximum = value;
+
+                    // 验证 Minimum <= Maximum
+                    if (minimum.HasValue && maximum.HasValue && minimum.Value > maximum.Value)
+                    {
+                        throw new ArgumentException("Maximum 不能小于 Minimum");
+                    }
+
+                    // 验证当前值是否在范围内
+                    ValidateAndClampValue();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 整数类型的最小值
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int? MinimumInt
+        {
+            get => minimum.HasValue ? (int?)Convert.ToInt32(minimum.Value) : null;
+            set => Minimum = value.HasValue ? (decimal?)value.Value : null;
+        }
+
+        /// <summary>
+        /// 整数类型的最大值
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int? MaximumInt
+        {
+            get => maximum.HasValue ? (int?)Convert.ToInt32(maximum.Value) : null;
+            set => Maximum = value.HasValue ? (decimal?)value.Value : null;
         }
 
         [Category("Fluent")]
@@ -811,6 +924,20 @@ namespace FluentControls.Controls
 
         #endregion
 
+        #region 事件
+
+        protected virtual void OnValueOutOfRange(ValueOutOfRangeEventArgs e)
+        {
+            ValueOutOfRange?.Invoke(this, e);
+        }
+
+        protected virtual void OnValueChanged()
+        {
+            ValueChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        #endregion
+
         #region 样式
 
         protected override void OnThemeChanged()
@@ -860,6 +987,39 @@ namespace FluentControls.Controls
             {
                 innerTextBox.SelectAll();
             }
+        }
+
+        /// <summary>
+        /// 设置数值范围
+        /// </summary>
+        public void SetRange(decimal? min, decimal? max)
+        {
+            if (min.HasValue && max.HasValue && min.Value > max.Value)
+            {
+                throw new ArgumentException("min 不能大于 max");
+            }
+
+            minimum = min;
+            maximum = max;
+            ValidateAndClampValue();
+        }
+
+        /// <summary>
+        /// 设置整数范围
+        /// </summary>
+        public void SetRange(int? min, int? max)
+        {
+            SetRange(min.HasValue ? (decimal?)min.Value : null,
+                     max.HasValue ? (decimal?)max.Value : null);
+        }
+
+        /// <summary>
+        /// 清除范围限制
+        /// </summary>
+        public void ClearRange()
+        {
+            minimum = null;
+            maximum = null;
         }
 
         private void UpdateLayout()
@@ -957,9 +1117,7 @@ namespace FluentControls.Controls
                 innerTextBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             }
 
-            // 布局改变后更新滚动条
             UpdateScrollBars();
-
             Invalidate();
         }
 
@@ -1326,6 +1484,264 @@ namespace FluentControls.Controls
             }
         }
 
+        /// <summary>
+        /// 根据 InputFormat 获取类型化的值
+        /// </summary>
+        private object GetTypedValue()
+        {
+            if (innerTextBox == null || string.IsNullOrEmpty(innerTextBox.Text))
+            {
+                return null;
+            }
+
+            string text = innerTextBox.Text;
+
+            switch (inputFormat)
+            {
+                case InputFormat.Integer:
+                    if (long.TryParse(text, out long longVal))
+                    {
+                        // 如果在 int 范围内返回 int，否则返回 long
+                        if (longVal >= int.MinValue && longVal <= int.MaxValue)
+                        {
+                            return (int)longVal;
+                        }
+                        return longVal;
+                    }
+                    return null;
+
+                case InputFormat.Decimal:
+                    if (decimal.TryParse(text, out decimal decVal))
+                    {
+                        return decVal;
+                    }
+                    return null;
+
+                case InputFormat.Date:
+                    if (DateTime.TryParse(text, out DateTime dateVal))
+                    {
+                        return dateVal;
+                    }
+                    return null;
+
+                case InputFormat.Email:
+                case InputFormat.Text:
+                case InputFormat.Custom:
+                default:
+                    return text;
+            }
+        }
+
+        /// <summary>
+        /// 设置类型化的值
+        /// </summary>
+        private void SetTypedValue(object value)
+        {
+            if (value == null)
+            {
+                Text = string.Empty;
+                return;
+            }
+
+            switch (inputFormat)
+            {
+                case InputFormat.Integer:
+                    if (value is int intVal)
+                    {
+                        Text = intVal.ToString();
+                    }
+                    else if (value is long longVal)
+                    {
+                        Text = longVal.ToString();
+                    }
+                    else
+                    {
+                        Text = Convert.ToInt64(value).ToString();
+                    }
+                    break;
+
+                case InputFormat.Decimal:
+                    if (value is decimal decVal)
+                    {
+                        Text = decVal.ToString($"F{decimalPlaces}");
+                    }
+                    else if (value is double dblVal)
+                    {
+                        Text = dblVal.ToString($"F{decimalPlaces}");
+                    }
+                    else if (value is float fltVal)
+                    {
+                        Text = fltVal.ToString($"F{decimalPlaces}");
+                    }
+                    else
+                    {
+                        Text = Convert.ToDecimal(value).ToString($"F{decimalPlaces}");
+                    }
+                    break;
+
+                case InputFormat.Date:
+                    if (value is DateTime dateVal)
+                    {
+                        Text = dateVal.ToShortDateString();
+                    }
+                    else
+                    {
+                        Text = Convert.ToDateTime(value).ToShortDateString();
+                    }
+                    break;
+
+                default:
+                    Text = value.ToString();
+                    break;
+            }
+
+            // 设置值后验证范围
+            ValidateAndClampValue();
+        }
+
+        /// <summary>
+        /// 验证并约束当前值到有效范围
+        /// </summary>
+        private void ValidateAndClampValue()
+        {
+            // 防止递归调用
+            if (isValidatingRange || innerTextBox == null)
+            {
+                return;
+            }
+
+            // 仅对数值类型进行范围验证
+            if (inputFormat != InputFormat.Integer && inputFormat != InputFormat.Decimal)
+            {
+                return;
+            }
+
+            // 空文本不需要验证
+            if (string.IsNullOrEmpty(innerTextBox.Text))
+            {
+                return;
+            }
+
+            // 如果没有设置范围限制，不需要验证
+            if (!minimum.HasValue && !maximum.HasValue)
+            {
+                return;
+            }
+
+            isValidatingRange = true;
+
+            try
+            {
+                if (decimal.TryParse(innerTextBox.Text, out decimal currentValue))
+                {
+                    decimal? clampedValue = null;
+                    bool wasOutOfRange = false;
+                    decimal originalValue = currentValue;
+
+                    // 检查最小值
+                    if (minimum.HasValue && currentValue < minimum.Value)
+                    {
+                        clampedValue = minimum.Value;
+                        wasOutOfRange = true;
+                    }
+
+                    // 检查最大值
+                    if (maximum.HasValue && currentValue > maximum.Value)
+                    {
+                        clampedValue = maximum.Value;
+                        wasOutOfRange = true;
+                    }
+
+                    // 如果值超出范围
+                    if (wasOutOfRange && clampedValue.HasValue)
+                    {
+                        // 触发事件
+                        var args = new ValueOutOfRangeEventArgs(originalValue, clampedValue.Value, minimum, maximum);
+                        OnValueOutOfRange(args);
+
+                        // 如果事件没有取消，则修正值
+                        if (!args.Cancel)
+                        {
+                            if (inputFormat == InputFormat.Integer)
+                            {
+                                innerTextBox.Text = ((long)clampedValue.Value).ToString();
+                            }
+                            else
+                            {
+                                innerTextBox.Text = clampedValue.Value.ToString($"F{decimalPlaces}");
+                            }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                isValidatingRange = false;
+            }
+        }
+
+        /// <summary>
+        /// 检查值是否在有效范围内
+        /// </summary>
+        public bool IsValueInRange()
+        {
+            if (inputFormat != InputFormat.Integer && inputFormat != InputFormat.Decimal)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(innerTextBox?.Text))
+            {
+                return true;
+            }
+
+            if (!minimum.HasValue && !maximum.HasValue)
+            {
+                return true;
+            }
+
+            if (decimal.TryParse(innerTextBox.Text, out decimal currentValue))
+            {
+                if (minimum.HasValue && currentValue < minimum.Value)
+                {
+                    return false;
+                }
+
+                if (maximum.HasValue && currentValue > maximum.Value)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 获取范围验证错误信息
+        /// </summary>
+        public string GetRangeValidationMessage()
+        {
+            if (IsValueInRange())
+            {
+                return null;
+            }
+
+            if (minimum.HasValue && maximum.HasValue)
+            {
+                return $"值必须在 {minimum.Value} 和 {maximum.Value} 之间";
+            }
+            else if (minimum.HasValue)
+            {
+                return $"值不能小于 {minimum.Value}";
+            }
+            else if (maximum.HasValue)
+            {
+                return $"值不能大于 {maximum.Value}";
+            }
+
+            return null;
+        }
+
         #endregion
 
         #region 重写方法
@@ -1348,7 +1764,11 @@ namespace FluentControls.Controls
             var rect = ClientRectangle;
 
             Color bgColor;
-            if (UseTheme && Theme != null)
+            if (BackcolorForced)
+            {
+                bgColor = BackColor;
+            }
+            else if (UseTheme && Theme != null)
             {
                 bgColor = isFocused ? Theme.Colors.Surface : Theme.Colors.BackgroundSecondary;
             }
@@ -1544,6 +1964,8 @@ namespace FluentControls.Controls
         #endregion
     }
 
+    #region 枚举和辅助类
+
     public enum IconPosition
     {
         Left,
@@ -1567,4 +1989,45 @@ namespace FluentControls.Controls
         Custom
     }
 
+    /// <summary>
+    /// 值超出范围事件参数
+    /// </summary>
+    public class ValueOutOfRangeEventArgs : EventArgs
+    {
+        /// <summary>
+        /// 原始值(超出范围的值)
+        /// </summary>
+        public decimal OriginalValue { get; }
+
+        /// <summary>
+        /// 修正后的值
+        /// </summary>
+        public decimal ClampedValue { get; }
+
+        /// <summary>
+        /// 最小值限制
+        /// </summary>
+        public decimal? Minimum { get; }
+
+        /// <summary>
+        /// 最大值限制
+        /// </summary>
+        public decimal? Maximum { get; }
+
+        /// <summary>
+        /// 是否取消自动修正(设为 true 将保留原始值)
+        /// </summary>
+        public bool Cancel { get; set; }
+
+        public ValueOutOfRangeEventArgs(decimal originalValue, decimal clampedValue, decimal? minimum, decimal? maximum)
+        {
+            OriginalValue = originalValue;
+            ClampedValue = clampedValue;
+            Minimum = minimum;
+            Maximum = maximum;
+            Cancel = false;
+        }
+    }
+
+    #endregion
 }

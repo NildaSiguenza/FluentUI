@@ -29,8 +29,20 @@ namespace FluentControls.Controls
         private bool autoScroll;
         private bool showItemAnimation;
 
+        private bool isUpdating = false;
+
         public FluentCheckBoxList()
         {
+            SetStyle(
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint |
+                ControlStyles.ResizeRedraw |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.SupportsTransparentBackColor,
+                true);
+
+            DoubleBuffered = true;
+
             checkBoxControls = new List<FluentCheckBox>();
             designTimeItems = new FluentCheckBoxItemCollection(this);
             orientation = ListOrientation.Vertical;
@@ -227,6 +239,12 @@ namespace FluentControls.Controls
         /// </summary>
         internal void OnItemsChanged()
         {
+            // 防止重复调用
+            if (isUpdating)
+            {
+                return;
+            }
+
             RecreateControls();
         }
 
@@ -235,24 +253,38 @@ namespace FluentControls.Controls
         /// </summary>
         private void RecreateControls()
         {
-            // 清除现有控件
-            foreach (FluentCheckBox control in checkBoxControls)
+            if (isUpdating)
             {
-                containerPanel.Controls.Remove(control);
-                control.Dispose();
-            }
-            checkBoxControls.Clear();
-
-            // 根据设计时数据创建控件
-            for (int i = 0; i < designTimeItems.Count; i++)
-            {
-                FluentCheckBoxItem item = designTimeItems[i];
-                FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
-                checkBoxControls.Add(checkBox);
-                containerPanel.Controls.Add(checkBox);
+                return;
             }
 
-            LayoutControls();
+            isUpdating = true;
+
+            try
+            {
+                // 清除现有控件
+                foreach (FluentCheckBox control in checkBoxControls)
+                {
+                    containerPanel.Controls.Remove(control);
+                    control.Dispose();
+                }
+                checkBoxControls.Clear();
+
+                // 根据设计时数据创建控件
+                for (int i = 0; i < designTimeItems.Count; i++)
+                {
+                    FluentCheckBoxItem item = designTimeItems[i];
+                    FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
+                    checkBoxControls.Add(checkBox);
+                    containerPanel.Controls.Add(checkBox);
+                }
+
+                LayoutControls();
+            }
+            finally
+            {
+                isUpdating = false;
+            }
         }
 
         /// <summary>
@@ -264,6 +296,7 @@ namespace FluentControls.Controls
             checkBox.Text = item.Text;
             checkBox.Checked = item.Checked;
             checkBox.CheckBoxStyle = item.Style;
+            checkBox.IndependentClickMode = item.IsIndependentMode;
 
             // 如果列表启用了主题, 则应用主题到子控件
             if (UseTheme && Theme != null)
@@ -583,21 +616,63 @@ namespace FluentControls.Controls
         /// <summary>
         /// 添加复选框项(运行时)
         /// </summary>
-        public FluentCheckBox AddItem(string text, bool isChecked = false)
+        public FluentCheckBox AddItem(string text, bool isChecked = false, bool isIndependentMode = false)
         {
-            FluentCheckBoxItem item = new FluentCheckBoxItem();
-            item.Text = text;
-            item.Checked = isChecked;
+            // 设置更新标志, 防止OnItemsChanged触发RecreateControls
+            isUpdating = true;
 
-            designTimeItems.Add(item);
+            try
+            {
+                FluentCheckBoxItem item = new FluentCheckBoxItem();
+                item.Text = text;
+                item.Checked = isChecked;
+                item.IsIndependentMode = isIndependentMode;
 
-            FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
-            checkBoxControls.Add(checkBox);
-            containerPanel.Controls.Add(checkBox);
+                designTimeItems.Add(item);
 
-            LayoutControls();
+                FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
+                checkBoxControls.Add(checkBox);
+                containerPanel.Controls.Add(checkBox);
 
-            return checkBox;
+                LayoutControls();
+
+                return checkBox;
+            }
+            finally
+            {
+                isUpdating = false;
+            }
+        }
+
+        /// <summary>
+        /// 添加复选框项(带样式)
+        /// </summary>
+        public FluentCheckBox AddItem(FluentCheckBoxItem item)
+        {
+            if (item == null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
+            // 设置更新标志, 防止OnItemsChanged触发RecreateControls
+            isUpdating = true;
+
+            try
+            {
+                designTimeItems.Add(item);
+
+                FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
+                checkBoxControls.Add(checkBox);
+                containerPanel.Controls.Add(checkBox);
+
+                LayoutControls();
+
+                return checkBox;
+            }
+            finally
+            {
+                isUpdating = false;
+            }
         }
 
         /// <summary>
@@ -608,11 +683,19 @@ namespace FluentControls.Controls
             int index = checkBoxControls.IndexOf(control);
             if (index >= 0)
             {
-                designTimeItems.RemoveAt(index);
-                checkBoxControls.RemoveAt(index);
-                containerPanel.Controls.Remove(control);
-                control.Dispose();
-                LayoutControls();
+                isUpdating = true;
+                try
+                {
+                    designTimeItems.RemoveAt(index);
+                    checkBoxControls.RemoveAt(index);
+                    containerPanel.Controls.Remove(control);
+                    control.Dispose();
+                    LayoutControls();
+                }
+                finally
+                {
+                    isUpdating = false;
+                }
             }
         }
 
@@ -633,14 +716,22 @@ namespace FluentControls.Controls
         /// </summary>
         public void Clear()
         {
-            designTimeItems.Clear();
-            foreach (FluentCheckBox control in checkBoxControls)
+            isUpdating = true;
+            try
             {
-                containerPanel.Controls.Remove(control);
-                control.Dispose();
+                designTimeItems.Clear();
+                foreach (FluentCheckBox control in checkBoxControls)
+                {
+                    containerPanel.Controls.Remove(control);
+                    control.Dispose();
+                }
+                checkBoxControls.Clear();
+                LayoutControls();
             }
-            checkBoxControls.Clear();
-            LayoutControls();
+            finally
+            {
+                isUpdating = false;
+            }
         }
 
         /// <summary>
@@ -688,6 +779,67 @@ namespace FluentControls.Controls
             foreach (FluentCheckBox control in checkBoxControls)
             {
                 control.Checked = isChecked;
+            }
+        }
+
+        /// <summary>
+        /// 批量添加项(性能优化)
+        /// </summary>
+        public void AddItems(IEnumerable<string> texts, bool isChecked = false, bool isIndependentMode = false)
+        {
+            isUpdating = true;
+            containerPanel.SuspendLayout();
+
+            try
+            {
+                foreach (string text in texts)
+                {
+                    FluentCheckBoxItem item = new FluentCheckBoxItem();
+                    item.Text = text;
+                    item.Checked = isChecked;
+                    item.IsIndependentMode = isIndependentMode;
+
+                    designTimeItems.Add(item);
+
+                    FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
+                    checkBoxControls.Add(checkBox);
+                    containerPanel.Controls.Add(checkBox);
+                }
+
+                LayoutControls();
+            }
+            finally
+            {
+                containerPanel.ResumeLayout();
+                isUpdating = false;
+            }
+        }
+
+        /// <summary>
+        /// 批量添加项
+        /// </summary>
+        public void AddItems(IEnumerable<FluentCheckBoxItem> items)
+        {
+            isUpdating = true;
+            containerPanel.SuspendLayout();
+
+            try
+            {
+                foreach (FluentCheckBoxItem item in items)
+                {
+                    designTimeItems.Add(item);
+
+                    FluentCheckBox checkBox = CreateCheckBoxFromItem(item);
+                    checkBoxControls.Add(checkBox);
+                    containerPanel.Controls.Add(checkBox);
+                }
+
+                LayoutControls();
+            }
+            finally
+            {
+                containerPanel.ResumeLayout();
+                isUpdating = false;
             }
         }
 
@@ -746,7 +898,6 @@ namespace FluentControls.Controls
 
         #endregion
     }
-
     #region 子项
 
     /// <summary>
@@ -843,6 +994,7 @@ namespace FluentControls.Controls
     {
         private string text;
         private bool isChecked;
+        private bool isIndependentMode;
         private CheckBoxStyle style;
         private Font font;
         private Color foreColor;
@@ -851,6 +1003,7 @@ namespace FluentControls.Controls
         {
             text = "CheckBox Item";
             isChecked = false;
+            IsIndependentMode = false;
             style = CheckBoxStyle.Standard;
             font = null;
             foreColor = Color.Empty;
@@ -872,6 +1025,16 @@ namespace FluentControls.Controls
             get { return isChecked; }
             set { isChecked = value; }
         }
+
+        [Category("Behavior")]
+        [Description("是否独立选择模式")]
+        [DefaultValue(false)]
+        public bool IsIndependentMode
+        {
+            get { return isIndependentMode; }
+            set { isIndependentMode = value; }
+        }
+
 
         [Category("Appearance")]
         [Description("复选框样式")]
@@ -970,6 +1133,7 @@ namespace FluentControls.Controls
 
             // 布局
             items.Add(new DesignerActionHeaderItem("布局"));
+            items.Add(new DesignerActionPropertyItem("Dock", "Dock", "布局", "设置控件Docking模式"));
             items.Add(new DesignerActionPropertyItem("Orientation", "排列方向", "布局", "控件的排列方向"));
             items.Add(new DesignerActionPropertyItem("ItemSpacing", "项目间距", "布局", "各项目之间的间距"));
             items.Add(new DesignerActionPropertyItem("AutoSizeItems", "自动调整尺寸", "布局", "是否自动调整项目宽度"));
@@ -982,6 +1146,12 @@ namespace FluentControls.Controls
         }
 
         #region 属性
+
+        public DockStyle Dock
+        {
+            get => control.Dock;
+            set => SetProperty("Dock", value);
+        }
 
         public ListOrientation Orientation
         {

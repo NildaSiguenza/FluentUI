@@ -83,6 +83,18 @@
             "AssemblyName": "FluentControls",
             "FontFilePath": "Fonts/Material-icons/material-icons-two-tone.ttf",
             "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.FluentSystemIconsRegularIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/FluentSystemIcons/FluentSystemIcons-Regular.ttf",
+            "Enabled": true
+        },
+        {
+            "ProviderTypeName": "FluentControls.IconFonts.FluentSystemIconsResizableIconProvider",
+            "AssemblyName": "FluentControls",
+            "FontFilePath": "Fonts/FluentSystemIcons/FluentSystemIcons-Resizable.ttf",
+            "Enabled": true
         }
     ]
 }

@@ -5368,10 +5368,22 @@ namespace FluentControls.Controls
 
         #endregion
 
-        protected FluentDataGridViewColumn()
+        public FluentDataGridViewColumn()
         {
             DefaultCellStyle = new DataGridViewCellStyle();
             HeaderStyle = new DataGridViewCellStyle();
+        }
+
+        public FluentDataGridViewColumn(string name, string headerText, string dataPropertyName, int width = 100) : this()
+        {
+            Name = name;
+            HeaderText = headerText;
+            DataPropertyName = dataPropertyName;
+            Width = width;
+        }
+
+        public FluentDataGridViewColumn(string name, string headerText, int width = 100) : this(name, headerText, name, width)
+        {
         }
 
         #region 抽象方法
@@ -6100,6 +6112,19 @@ namespace FluentControls.Controls
     /// </summary>
     public class FluentDataGridViewTextBoxColumn : FluentDataGridViewColumn
     {
+
+        public FluentDataGridViewTextBoxColumn() : base()
+        {
+        }
+
+        public FluentDataGridViewTextBoxColumn(string name, string headerText, string dataPropertyName, int width = 100) : base(name, headerText, dataPropertyName, width)
+        {
+        }
+
+        public FluentDataGridViewTextBoxColumn(string name, string headerText, int width = 100) : this(name, headerText, name, width)
+        {
+        }
+
         /// <summary>
         /// 最大长度
         /// </summary>

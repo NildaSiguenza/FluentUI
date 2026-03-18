@@ -1019,11 +1019,15 @@ namespace FluentControls.Controls
     {
         private FluentRadioList control;
         private DesignerActionUIService designerService;
+        private IDesignerHost designerHost;
+        private IComponentChangeService changeService;
 
         public FluentRadioListActionList(IComponent component) : base(component)
         {
             control = component as FluentRadioList;
             designerService = GetService(typeof(DesignerActionUIService)) as DesignerActionUIService;
+            designerHost = GetService(typeof(IDesignerHost)) as IDesignerHost;
+            changeService = GetService(typeof(IComponentChangeService)) as IComponentChangeService;
         }
 
         public override DesignerActionItemCollection GetSortedActionItems()
@@ -1036,6 +1040,7 @@ namespace FluentControls.Controls
             items.Add(new DesignerActionMethodItem(this, "ClearItems", "清空所有项目", "项目管理", true));
 
             items.Add(new DesignerActionHeaderItem("布局"));
+            items.Add(new DesignerActionPropertyItem("Dock", "Dock", "布局", "设置控件Docking模式"));
             items.Add(new DesignerActionPropertyItem("Orientation", "排列方向", "布局"));
             items.Add(new DesignerActionPropertyItem("ItemSpacing", "项目间距", "布局"));
             items.Add(new DesignerActionPropertyItem("AutoSizeItems", "自动调整尺寸", "布局"));
@@ -1046,7 +1051,12 @@ namespace FluentControls.Controls
             return items;
         }
 
-        // 属性访问器
+        public DockStyle Dock
+        {
+            get => control.Dock;
+            set => SetProperty("Dock", value);
+        }
+
         public ListOrientation Orientation
         {
             get { return control.Orientation; }
@@ -1149,6 +1159,37 @@ namespace FluentControls.Controls
                 }
             }
         }
+
+        private void SetProperty(string propertyName, object value)
+        {
+            PropertyDescriptor property = TypeDescriptor.GetProperties(control)[propertyName];
+            if (property != null && designerHost != null)
+            {
+                DesignerTransaction transaction = designerHost.CreateTransaction("设置 " + propertyName);
+                try
+                {
+                    if (changeService != null)
+                    {
+                        changeService.OnComponentChanging(control, property);
+                    }
+
+                    property.SetValue(control, value);
+
+                    if (changeService != null)
+                    {
+                        changeService.OnComponentChanged(control, property, null, null);
+                    }
+
+                    transaction.Commit();
+                }
+                catch
+                {
+                    transaction.Cancel();
+                    throw;
+                }
+            }
+        }
+
     }
 
     #endregion

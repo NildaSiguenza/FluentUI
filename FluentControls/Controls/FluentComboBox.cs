@@ -102,6 +102,13 @@ namespace FluentControls.Controls
                     isSearching = false;
                 }
             };
+            textBox.MouseDown += (s, e) =>
+            {
+                if (onlySelection && e.Button == MouseButtons.Left)
+                {
+                    // 阻止文本框获得编辑焦点的默认行为
+                }
+            };
 
             // 下拉按钮
             dropButton = new Button
@@ -252,12 +259,29 @@ namespace FluentControls.Controls
             set
             {
                 onlySelection = value;
-                textBox.ReadOnly = value;
 
-                if (searchable)
+                if (value)
                 {
-                    onlySelection = false;
+                    // DropDownList 模式
+                    textBox.ReadOnly = true;
+                    textBox.Cursor = Cursors.Arrow;
+                    textBox.BackColor = BackColor;
+
+                    // 禁用搜索
+                    searchable = false;
+
+                    // 点击文本框也能打开下拉列表
+                    textBox.Click -= OnTextBoxClick;
+                    textBox.Click += OnTextBoxClick;
                 }
+                else
+                {
+                    textBox.ReadOnly = false;
+                    textBox.Cursor = Cursors.IBeam;
+                    textBox.Click -= OnTextBoxClick;
+                }
+
+                Invalidate();
             }
         }
 
@@ -994,6 +1018,21 @@ namespace FluentControls.Controls
 
         #region 事件处理
 
+        private void OnTextBoxClick(object sender, EventArgs e)
+        {
+            if (onlySelection)
+            {
+                if (isDroppedDown)
+                {
+                    HideDropDown();
+                }
+                else
+                {
+                    ShowDropDownInternal();
+                }
+            }
+        }
+
         private void OnDropButtonClick(object sender, EventArgs e)
         {
             if (isDroppedDown)
@@ -1227,6 +1266,11 @@ namespace FluentControls.Controls
                         ControlStyles.ResizeRedraw |
                         ControlStyles.OptimizedDoubleBuffer, true);
 
+                // 设置默认样式
+                BackColor = Color.White;
+                ForeColor = Color.FromArgb(32, 32, 32);
+                Font = new Font("Microsoft YaHei", 9f);
+
                 scrollBar = new VScrollBar
                 {
                     Width = 12,
@@ -1273,12 +1317,18 @@ namespace FluentControls.Controls
             {
                 if (theme == null)
                 {
-                    return;
+                    // 默认样式
+                    BackColor = Color.White;
+                    ForeColor = Color.FromArgb(32, 32, 32);
+                    Font = new Font("Microsoft YaHei", 9f);
+                }
+                else
+                {
+                    BackColor = theme.Colors.Surface;
+                    ForeColor = theme.Colors.TextPrimary;
+                    Font = theme.Typography.Body;
                 }
 
-                BackColor = theme.Colors.Background;
-                ForeColor = theme.Colors.TextPrimary;
-                Font = theme.Typography.Body;
                 Invalidate();
             }
 
@@ -1306,10 +1356,15 @@ namespace FluentControls.Controls
             protected override void OnPaint(PaintEventArgs e)
             {
                 var g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.SmoothingMode = SmoothingMode.HighQuality;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
                 // 背景
-                using (var brush = new SolidBrush(BackColor))
+                var bgColor = parent.UseTheme && parent.Theme != null
+                                ? parent.Theme.Colors.Surface
+                                : Color.White;
+
+                using (var brush = new SolidBrush(bgColor))
                 {
                     g.FillRectangle(brush, ClientRectangle);
                 }
@@ -1323,12 +1378,11 @@ namespace FluentControls.Controls
                 g.SetClip(clipRect);
 
                 // 绘制项
-                var y = 1 - scrollOffset; // 从边框内开始
+                var y = 1 - scrollOffset;
                 for (int i = 0; i < items.Count; i++)
                 {
-                    var itemBounds = new Rectangle(Padding.Left, y, clipRect.Width, ItemHeight);
+                    var itemBounds = new Rectangle(1, y, clipRect.Width, ItemHeight);
 
-                    // 只绘制可见的项
                     if (itemBounds.Bottom > 0 && itemBounds.Top < Height)
                     {
                         DrawItem(g, i, itemBounds);
@@ -1336,20 +1390,18 @@ namespace FluentControls.Controls
 
                     y += ItemHeight;
 
-                    // 如果已经超出可见区域底部, 停止绘制
                     if (y > Height)
                     {
                         break;
                     }
                 }
 
-                // 重置裁剪
                 g.ResetClip();
 
-                // 边框
+                // 边框 - 使用阴影效果
                 var borderColor = parent.UseTheme && parent.Theme != null
                     ? parent.Theme.Colors.Border
-                    : SystemColors.ActiveBorder;
+                    : Color.FromArgb(218, 220, 224);
 
                 using (var pen = new Pen(borderColor))
                 {
@@ -1363,47 +1415,75 @@ namespace FluentControls.Controls
                 var isHovered = index == hoveredIndex;
                 var isSelected = index == selectedIndex;
 
-                // 获取主题颜色
-                Color hoverColor, selectedColor, textColor, borderColor; // 添加 borderColor 定义
+                // 获取主题颜色 - 优化配色
+                Color backColor, hoverColor, selectedColor, textColor, selectedTextColor;
+
                 if (parent.UseTheme && parent.Theme != null)
                 {
+                    backColor = parent.Theme.Colors.Surface;
                     hoverColor = parent.Theme.Colors.SurfaceHover;
-                    selectedColor = parent.Theme.Colors.GetColorWithOpacity(parent.Theme.Colors.Primary, 0.1f);
+                    selectedColor = parent.Theme.Colors.Primary;
                     textColor = parent.Theme.Colors.TextPrimary;
-                    borderColor = parent.Theme.Colors.Border; // 设置边框颜色
+                    selectedTextColor = parent.Theme.Colors.TextOnPrimary;
                 }
                 else
                 {
-                    hoverColor = SystemColors.ControlLight;
-                    selectedColor = Color.FromArgb(25, SystemColors.Highlight);
-                    textColor = SystemColors.ControlText;
-                    borderColor = SystemColors.ActiveBorder; // 设置默认边框颜色
+                    // 优化默认配色
+                    backColor = Color.White;
+                    hoverColor = Color.FromArgb(245, 247, 250);  // 浅灰蓝色悬停
+                    selectedColor = Color.FromArgb(0, 120, 212); // 微软蓝
+                    textColor = Color.FromArgb(32, 32, 32);      // 深灰色文本
+                    selectedTextColor = Color.White;
                 }
 
-                // 背景
-                if (isHovered)
+                // 确定当前项的背景和文本颜色
+                Color currentBackColor;
+                Color currentTextColor;
+
+                if (isSelected && parent.SelectionStyle == ComboBoxSelectionStyle.Single)
                 {
-                    using (var brush = new SolidBrush(hoverColor))
-                    {
-                        g.FillRectangle(brush, bounds);
-                    }
+                    // 单选模式下选中项使用高亮背景
+                    currentBackColor = selectedColor;
+                    currentTextColor = selectedTextColor;
                 }
-                else if (isSelected)
+                else if (isHovered)
                 {
-                    using (var brush = new SolidBrush(selectedColor))
+                    currentBackColor = hoverColor;
+                    currentTextColor = textColor;
+                }
+                else
+                {
+                    currentBackColor = backColor;
+                    currentTextColor = textColor;
+                }
+
+                // 绘制背景
+                using (var brush = new SolidBrush(currentBackColor))
+                {
+                    g.FillRectangle(brush, bounds);
+                }
+
+                // 多选模式下，选中项添加左侧指示条
+                if (item.IsSelected && parent.SelectionStyle == ComboBoxSelectionStyle.Multiple)
+                {
+                    var indicatorColor = parent.UseTheme && parent.Theme != null
+                        ? parent.Theme.Colors.Primary
+                        : Color.FromArgb(0, 120, 212);
+
+                    using (var brush = new SolidBrush(indicatorColor))
                     {
-                        g.FillRectangle(brush, bounds);
+                        g.FillRectangle(brush, bounds.X, bounds.Y + 4, 3, bounds.Height - 8);
                     }
                 }
 
                 var currentX = bounds.X + 8;
 
                 // 复选框
-                if (SelectionStyle == ComboBoxSelectionStyle.Multiple)
+                if (parent.SelectionStyle == ComboBoxSelectionStyle.Multiple)
                 {
                     var checkBoxRect = new Rectangle(currentX, bounds.Y + (bounds.Height - 16) / 2, 16, 16);
                     DrawCheckBox(g, checkBoxRect, item.IsSelected);
-                    currentX = checkBoxRect.Right + 6;
+                    currentX = checkBoxRect.Right + 8;
                 }
 
                 // 图标
@@ -1418,18 +1498,19 @@ namespace FluentControls.Controls
                     }
                     catch
                     {
-                        // 图标绘制失败时使用边框颜色绘制占位符
-                        using (var pen = new Pen(borderColor))
+                        using (var pen = new Pen(Color.FromArgb(200, 200, 200)))
                         {
                             g.DrawRectangle(pen, iconRect);
                         }
                     }
 
-                    currentX = iconRect.Right + 6;
+                    currentX = iconRect.Right + 8;
                 }
 
                 // 文本
-                using (var brush = new SolidBrush(textColor))
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                using (var brush = new SolidBrush(currentTextColor))
                 {
                     var textRect = new Rectangle(currentX, bounds.Y, bounds.Right - currentX - 8, bounds.Height);
 

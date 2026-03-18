@@ -22,6 +22,12 @@ namespace FluentControls.Controls
         private float switchAnimationProgress;
         private Timer switchAnimationTimer;
 
+        // 独立点击模式
+        private bool independentClickMode = false;
+        private Rectangle currentCheckBoxRect;
+        private Rectangle currentTextRect;
+
+        public event EventHandler TextClicked;
         public event EventHandler CheckedChanged;
 
         public FluentCheckBox()
@@ -144,6 +150,25 @@ namespace FluentControls.Controls
             }
         }
 
+        /// <summary>
+        /// 独立点击模式
+        /// </summary>
+        [Category("Fluent")]
+        [Description("启用独立点击模式")]
+        [DefaultValue(false)]
+        public bool IndependentClickMode
+        {
+            get { return independentClickMode; }
+            set
+            {
+                if (independentClickMode != value)
+                {
+                    independentClickMode = value;
+                    Invalidate();
+                }
+            }
+        }
+
         #endregion
 
         #region 事件
@@ -154,6 +179,14 @@ namespace FluentControls.Controls
             {
                 CheckedChanged.Invoke(this, e);
             }
+        }
+
+        /// <summary>
+        /// 触发文本点击事件
+        /// </summary>
+        protected virtual void OnTextClicked(EventArgs e)
+        {
+            TextClicked?.Invoke(this, e);
         }
 
         #endregion
@@ -193,7 +226,25 @@ namespace FluentControls.Controls
 
             if (e.Button == MouseButtons.Left && ClientRectangle.Contains(e.Location))
             {
-                Checked = !Checked;
+                if (independentClickMode)
+                {
+                    // 独立点击模式：根据点击位置决定行为
+                    if (IsPointInCheckBox(e.Location))
+                    {
+                        // 点击复选框区域 - 切换选中状态
+                        Checked = !Checked;
+                    }
+                    else if (IsPointInText(e.Location))
+                    {
+                        // 点击文本区域 - 触发文本点击事件
+                        OnTextClicked(EventArgs.Empty);
+                    }
+                }
+                else
+                {
+                    // 普通模式：点击任意位置都切换状态
+                    Checked = !Checked;
+                }
             }
         }
 
@@ -257,20 +308,18 @@ namespace FluentControls.Controls
         private void DrawStandard(Graphics g)
         {
             // 计算复选框和文本位置
-            Rectangle checkBoxRect;
-            Rectangle textRect;
-
             bool checkOnLeft = IsCheckOnLeft(checkAlign);
 
+            // 计算并保存复选框和文本位置
             if (checkOnLeft)
             {
-                checkBoxRect = new Rectangle(0, (Height - checkBoxSize) / 2, checkBoxSize, checkBoxSize);
-                textRect = new Rectangle(checkBoxSize + spacing, 0, Width - checkBoxSize - spacing, Height);
+                currentCheckBoxRect = new Rectangle(0, (Height - checkBoxSize) / 2, checkBoxSize, checkBoxSize);
+                currentTextRect = new Rectangle(checkBoxSize + spacing, 0, Width - checkBoxSize - spacing, Height);
             }
             else
             {
-                textRect = new Rectangle(0, 0, Width - checkBoxSize - spacing, Height);
-                checkBoxRect = new Rectangle(Width - checkBoxSize, (Height - checkBoxSize) / 2, checkBoxSize, checkBoxSize);
+                currentTextRect = new Rectangle(0, 0, Width - checkBoxSize - spacing, Height);
+                currentCheckBoxRect = new Rectangle(Width - checkBoxSize, (Height - checkBoxSize) / 2, checkBoxSize, checkBoxSize);
             }
 
             // 获取颜色
@@ -281,7 +330,7 @@ namespace FluentControls.Controls
             using (SolidBrush brush = new SolidBrush(boxColor))
             using (Pen pen = new Pen(borderColor, 2f))
             {
-                GraphicsPath boxPath = GetRoundedRectangle(checkBoxRect, Theme.Elevation.CornerRadiusSmall);
+                GraphicsPath boxPath = GetRoundedRectangle(currentCheckBoxRect, Theme.Elevation.CornerRadiusSmall);
                 g.FillPath(brush, boxPath);
                 g.DrawPath(pen, boxPath);
             }
@@ -289,7 +338,7 @@ namespace FluentControls.Controls
             // 绘制勾选标记
             if (isChecked)
             {
-                DrawCheckMark(g, checkBoxRect);
+                DrawCheckMark(g, currentCheckBoxRect);
             }
 
             // 绘制文本
@@ -299,7 +348,7 @@ namespace FluentControls.Controls
                 TextFormatFlags flags = TextFormatFlags.VerticalCenter;
                 flags |= checkOnLeft ? TextFormatFlags.Left : TextFormatFlags.Right;
 
-                TextRenderer.DrawText(g, Text, Font, textRect, textColor, flags);
+                TextRenderer.DrawText(g, Text, Font, currentTextRect, textColor, flags);
             }
         }
 
@@ -312,12 +361,15 @@ namespace FluentControls.Controls
             int switchHeight = 24;
             int thumbSize = 18;
 
-            // 开关位置(居中)
-            Rectangle switchRect = new Rectangle(
+            // 开关位置(保存为复选框区域)
+            currentCheckBoxRect = new Rectangle(
                 (Width - switchWidth) / 2,
                 (Height - switchHeight) / 2,
                 switchWidth,
                 switchHeight);
+
+            // 文本区域
+            currentTextRect = new Rectangle(0, 0, Width, Height);
 
             // 绘制开关轨道
             Color trackColor = GetSwitchTrackColor();
@@ -325,7 +377,7 @@ namespace FluentControls.Controls
             using (SolidBrush brush = new SolidBrush(trackColor))
             using (Pen pen = new Pen(Theme.Colors.Border, 1.5f))
             {
-                GraphicsPath trackPath = GetRoundedRectangle(switchRect, switchHeight / 2);
+                GraphicsPath trackPath = GetRoundedRectangle(currentCheckBoxRect, switchHeight / 2);
                 g.FillPath(brush, trackPath);
 
                 if (!isChecked || State == ControlState.Normal)
@@ -336,9 +388,9 @@ namespace FluentControls.Controls
 
             // 计算滑块位置
             int thumbPadding = 3;
-            float thumbX = switchRect.X + thumbPadding +
-                          (switchAnimationProgress * (switchRect.Width - thumbSize - thumbPadding * 2));
-            int thumbY = switchRect.Y + (switchRect.Height - thumbSize) / 2;
+            float thumbX = currentCheckBoxRect.X + thumbPadding +
+                          (switchAnimationProgress * (currentCheckBoxRect.Width - thumbSize - thumbPadding * 2));
+            int thumbY = currentCheckBoxRect.Y + (currentCheckBoxRect.Height - thumbSize) / 2;
 
             // 绘制滑块阴影
             using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(40, 0, 0, 0)))
@@ -368,9 +420,9 @@ namespace FluentControls.Controls
                 // 勾选标记路径
                 Point[] checkPoints = new Point[]
                 {
-                new Point(rect.X + rect.Width / 4, rect.Y + rect.Height / 2),
-                new Point(rect.X + rect.Width / 2 - 1, rect.Y + rect.Height * 2 / 3),
-                new Point(rect.X + rect.Width * 3 / 4, rect.Y + rect.Height / 3)
+                    new Point(rect.X + rect.Width / 4, rect.Y + rect.Height / 2),
+                    new Point(rect.X + rect.Width / 2 - 1, rect.Y + rect.Height * 2 / 3),
+                    new Point(rect.X + rect.Width * 3 / 4, rect.Y + rect.Height / 3)
                 };
 
                 g.DrawLines(pen, checkPoints);
@@ -380,6 +432,31 @@ namespace FluentControls.Controls
         #endregion
 
         #region 辅助方法
+
+        /// <summary>
+        /// 判断点是否在复选框区域内
+        /// </summary>
+        private bool IsPointInCheckBox(Point point)
+        {
+            // 稍微扩大点击区域以提升用户体验
+            Rectangle expandedRect = currentCheckBoxRect;
+            int expandSize = 4;
+            expandedRect.Inflate(expandSize, expandSize);
+            return expandedRect.Contains(point);
+        }
+
+        /// <summary>
+        /// 判断点是否在文本区域内
+        /// </summary>
+        private bool IsPointInText(Point point)
+        {
+            if (checkBoxStyle == CheckBoxStyle.Switch)
+            {
+                // Switch 样式下，非开关区域都是文本区域
+                return !IsPointInCheckBox(point) && currentTextRect.Contains(point);
+            }
+            return currentTextRect.Contains(point);
+        }
 
         /// <summary>
         /// 获取复选框背景色

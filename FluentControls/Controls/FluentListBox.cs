@@ -2638,7 +2638,6 @@ namespace FluentControls.Controls
     {
         private IComponent component;
         private IDesignerHost host;
-
         private PropertyDescriptor propertyDescriptor;
 
 
@@ -2755,7 +2754,5 @@ namespace FluentControls.Controls
 
 
     #endregion
-
-
 
 }

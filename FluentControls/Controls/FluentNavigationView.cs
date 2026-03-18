@@ -34,6 +34,7 @@ namespace FluentControls.Controls
         private Rectangle footerBounds;
         private Rectangle toggleButtonBounds;
         private Rectangle navIconBounds;
+        private bool showNavigationArea = true;
 
         // 集合
         private NavigationItemCollection menuItems;
@@ -203,6 +204,23 @@ namespace FluentControls.Controls
                 if (showSearchBar != value)
                 {
                     showSearchBar = value;
+                    UpdateLayout();
+                    Invalidate();
+                }
+            }
+        }
+
+        [Category("Navigation")]
+        [Description("是否显示导航标题区域")]
+        [DefaultValue(true)]
+        public bool ShowNavigationArea
+        {
+            get => showNavigationArea;
+            set
+            {
+                if (showNavigationArea != value)
+                {
+                    showNavigationArea = value;
                     UpdateLayout();
                     Invalidate();
                 }

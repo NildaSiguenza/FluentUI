@@ -2685,6 +2685,32 @@ namespace FluentControls.Controls
 
     #endregion
 
+    #region 枚举和辅助类
+
+    /// <summary>
+    /// 标签页状态
+    /// </summary>
+    public enum TabPageState
+    {
+        Normal,     // 正常
+        Hidden,     // 隐藏
+        Locked,     // 锁定
+        NoCloseButton
+    }
+
+    /// <summary>
+    /// 标签页位置
+    /// </summary>
+    public enum TabAlignment
+    {
+        Top,
+        Bottom,
+        Left,
+        Right
+    }
+
+    #endregion
+
     #region 设计器
 
     /// <summary>
@@ -3197,26 +3223,5 @@ namespace FluentControls.Controls
 
     #endregion
 
-    /// <summary>
-    /// 标签页状态
-    /// </summary>
-    public enum TabPageState
-    {
-        Normal,     // 正常
-        Hidden,     // 隐藏
-        Locked,     // 锁定
-        NoCloseButton
-    }
-
-    /// <summary>
-    /// 标签页位置
-    /// </summary>
-    public enum TabAlignment
-    {
-        Top,
-        Bottom,
-        Left,
-        Right
-    }
 
 }

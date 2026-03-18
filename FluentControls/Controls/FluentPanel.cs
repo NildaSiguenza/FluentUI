@@ -1459,7 +1459,7 @@ namespace FluentControls.Controls
 
         #region 内部类
 
-        private class DoubleBufferedPanel : Panel
+        public class DoubleBufferedPanel : Panel
         {
             public DoubleBufferedPanel()
             {

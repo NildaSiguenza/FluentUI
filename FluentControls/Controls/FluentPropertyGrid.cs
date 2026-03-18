@@ -3,14 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Printing;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using FluentControls.IconFonts;
 using FluentControls.Themes;
 using Infrastructure;
+using static FluentControls.Controls.FluentPanel;
 
 namespace FluentControls.Controls
 {
@@ -19,6 +24,7 @@ namespace FluentControls.Controls
         private object selectedObject;
         private IList selectedObjects;
         private int currentObjectIndex = 0;
+        private int lastContentWidth = 0;
 
         private List<PropertyItem> propertyItems;
         private Dictionary<string, List<PropertyItem>> categorizedItems;
@@ -35,7 +41,12 @@ namespace FluentControls.Controls
         private FluentButton btnSave;
         private FluentButton btnRefresh;
 
+        private bool isRefreshingEditors = false; // 是否正在从控件刷新值到编辑器
         private bool hasUnsavedChanges = false;
+        private bool isRendering = false;
+
+        // 事件
+        public event EventHandler PropertyValueEdited; // 用户通过编辑器修改了属性值时触发
 
         #region 构造函数
 
@@ -265,6 +276,7 @@ namespace FluentControls.Controls
                 }
 
                 var propertyItem = new PropertyItem(prop, targetObject);
+                propertyItem.ValueChanged += OnPropertyItemValueChanged; // 订阅 ValueChanged事件, 当用户通过编辑器修改值时标记为脏状态
                 propertyItems.Add(propertyItem);
 
                 // 分类
@@ -279,93 +291,292 @@ namespace FluentControls.Controls
             RenderProperties();
         }
 
-        private void RenderProperties()
+        private void OnPropertyItemValueChanged(object sender, EventArgs e)
         {
-            contentPanel.SuspendLayout();
-
-            int y = 5; // 减少顶部边距
-            const int ROW_HEIGHT = 28; // 减少行高
-            const int LABEL_WIDTH = 140; // 稍微减少标签宽度
-            const int EDITOR_WIDTH = 210; // 增加编辑器宽度
-            const int PADDING = 8; // 减少边距
-            const int CATEGORY_SPACING = 8; // 减少分类间距
-
-            if (GroupByCategory)
+            if (isRefreshingEditors)
             {
-                foreach (var category in categorizedItems.Keys.OrderBy(k => k))
-                {
-                    // 分类标题 - 使用更紧凑的样式
-                    var categoryLabel = new Label
-                    {
-                        Text = category,
-                        Location = new Point(PADDING, y),
-                        Size = new Size(LABEL_WIDTH + EDITOR_WIDTH + 10, 22), // 减少高度
-                        Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), // 减小字体
-                        BackColor = Color.FromArgb(235, 235, 235),
-                        ForeColor = Color.FromArgb(60, 60, 60),
-                        TextAlign = ContentAlignment.MiddleLeft,
-                        Padding = new Padding(5, 0, 0, 0)
-                    };
-                    contentPanel.Controls.Add(categoryLabel);
-                    y += 24; // 减少间距
-
-                    // 分类下的属性
-                    foreach (var item in categorizedItems[category])
-                    {
-                        RenderPropertyItem(item, y, LABEL_WIDTH, EDITOR_WIDTH, PADDING);
-                        y += ROW_HEIGHT + 2;
-                    }
-
-                    y += CATEGORY_SPACING; // 分类间距
-                }
-            }
-            else
-            {
-                foreach (var item in propertyItems)
-                {
-                    RenderPropertyItem(item, y, LABEL_WIDTH, EDITOR_WIDTH, PADDING);
-                    y += ROW_HEIGHT + 2;
-                }
+                return;
             }
 
-            // 设置自动滚动最小尺寸
-            if (y > contentPanel.Height)
+            if (sender is PropertyItem item)
             {
-                contentPanel.AutoScrollMinSize = new Size(0, y + 10);
+                item.IsDirtyFromEditor = true;
             }
-
-            contentPanel.ResumeLayout();
+            // 通知用户编辑属性状态
+            PropertyValueEdited?.Invoke(this, EventArgs.Empty);
         }
 
-        private void RenderPropertyItem(PropertyItem item, int y, int labelWidth, int editorWidth, int padding)
+        private void RenderProperties()
         {
-            // 属性名标签 - 使用更小的字体
+            if (isRendering)
+            {
+                return;
+            }
+
+            if (propertyItems == null || categorizedItems == null)
+            {
+                return;
+            }
+
+            isRendering = true;
+
+            try
+            {
+                contentPanel.SuspendLayout();
+
+                // 重置滚动状态
+                contentPanel.AutoScrollPosition = new Point(0, 0);
+                contentPanel.AutoScrollMinSize = Size.Empty;
+                contentPanel.Controls.Clear();
+
+                // 计算布局参数
+                int currentPadding = 10;
+                int currentLabelWidth = 140;
+                int currentRowHeight = 32;
+                int currentCategorySpacing = 12;
+                int currentGap = 5;
+
+                // 动态计算可用宽度
+                int availableWidth = contentPanel.ClientSize.Width;
+                if (availableWidth <= 0)
+                {
+                    availableWidth = contentPanel.Width;
+                }
+
+                // 编辑器宽度 = 总宽度 - 左边距 - 标签宽 - 间距 - 右边距
+                int editorLeft = currentPadding + currentLabelWidth + currentGap;
+                int currentEditorWidth = Math.Max(80, availableWidth - editorLeft - currentPadding);
+
+                // 分类标题宽度 = 总宽度 - 两侧边距
+                int categoryWidth = Math.Max(80, availableWidth - currentPadding * 2);
+
+                int y = currentPadding / 2;
+
+                if (GroupByCategory)
+                {
+                    foreach (var category in categorizedItems.Keys.OrderBy(k => k))
+                    {
+                        // 分类标题 
+                        var categoryPanel = new Panel
+                        {
+                            Location = new Point(currentPadding, y),
+                            Size = new Size(categoryWidth, currentRowHeight - 4),
+                            BackColor = Color.FromArgb(245, 247, 250),
+                            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                        };
+
+                        var categoryLabel = new Label
+                        {
+                            Text = "  " + category,
+                            Dock = DockStyle.Fill,
+                            Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
+                            ForeColor = Color.FromArgb(70, 70, 80),
+                            TextAlign = ContentAlignment.MiddleLeft,
+                            Padding = new Padding(8, 0, 0, 0)
+                        };
+
+                        categoryPanel.Controls.Add(categoryLabel);
+                        contentPanel.Controls.Add(categoryPanel);
+                        y += currentRowHeight;
+
+                        foreach (var item in categorizedItems[category])
+                        {
+                            RenderPropertyItem(item, y, currentPadding, currentLabelWidth, currentGap,
+                                currentEditorWidth, currentRowHeight);
+                            y += currentRowHeight + 2;
+                        }
+
+                        y += currentCategorySpacing;
+                    }
+                }
+                else
+                {
+                    foreach (var item in propertyItems)
+                    {
+                        RenderPropertyItem(item, y, currentPadding, currentLabelWidth, currentGap,
+                            currentEditorWidth, currentRowHeight);
+                        y += currentRowHeight + 2;
+                    }
+                }
+
+                int visibleHeight = contentPanel.ClientSize.Height;
+                if (visibleHeight <= 0)
+                {
+                    visibleHeight = contentPanel.Height;
+                }
+
+                if (y > visibleHeight)
+                {
+                    contentPanel.AutoScrollMinSize = new Size(0, y + currentPadding);
+                }
+                else
+                {
+                    contentPanel.AutoScrollMinSize = Size.Empty;
+                }
+
+                // 先恢复布局, 让滚动条状态确定下来
+                contentPanel.ResumeLayout(false);
+                contentPanel.PerformLayout();
+
+                // 布局完成后记录最终宽度
+                lastContentWidth = contentPanel.ClientSize.Width;
+            }
+            finally
+            {
+                isRendering = false;
+            }
+        }
+
+        private void RenderPropertyItem(PropertyItem item, int y, int padding, int labelWidth, int gap, int editorWidth, int rowHeight)
+        {
+            // 属性名标签
             var nameLabel = new Label
             {
                 Text = item.DisplayName,
-                Location = new Point(padding + 5, y + 3), // 调整位置
-                Size = new Size(labelWidth - 5, 22), // 调整大小
+                Location = new Point(padding, y + (rowHeight - 20) / 2),
+                Size = new Size(labelWidth, 20),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 8.5f) // 减小字体
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(60, 60, 60),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left
             };
 
             if (!string.IsNullOrEmpty(item.Description))
             {
-                var toolTip = new ToolTip();
+                var toolTip = new ToolTip
+                {
+                    InitialDelay = 500,
+                    ReshowDelay = 200
+                };
                 toolTip.SetToolTip(nameLabel, item.Description);
             }
 
             contentPanel.Controls.Add(nameLabel);
 
-            // 编辑器
+            // 编辑器 
             var editor = PropertyEditorFactory.CreateEditor(item);
-            editor.Location = new Point(padding + labelWidth + 5, y);
-            editor.Width = editorWidth;
-            editor.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; // 添加锚定
-            item.EditorControl = editor;
 
+            int editorLeft = padding + labelWidth + gap;
+            editor.Location = new Point(editorLeft, y + (rowHeight - editor.Height) / 2);
+            editor.Width = editorWidth;
+            editor.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            item.EditorControl = editor;
             contentPanel.Controls.Add(editor);
         }
+
+        /// <summary>
+        /// 主动同步编辑器值到属性值
+        /// </summary>
+        private void SyncEditorValues()
+        {
+            if (propertyItems == null)
+            {
+                return;
+            }
+
+            foreach (var item in propertyItems)
+            {
+                if (item.EditorControl == null || item.IsReadOnly)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    Type targetType = Nullable.GetUnderlyingType(item.PropertyType) ?? item.PropertyType;
+
+                    // FluentNumericInput
+                    if (item.EditorControl is FluentNumericInput numInput)
+                    {
+                        if (PropertyEditorFactory.IsNumericType(targetType))
+                        {
+                            item.Value = Convert.ChangeType(numInput.Value, targetType);
+                        }
+                    }
+                    // FluentTextBox
+                    else if (item.EditorControl is FluentTextBox textBox)
+                    {
+                        if (targetType == typeof(string))
+                        {
+                            item.Value = textBox.Text;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                item.Value = Convert.ChangeType(textBox.Text, targetType);
+                            }
+                            catch { }
+                        }
+                    }
+                    // FluentCheckBox
+                    else if (item.EditorControl is FluentCheckBox checkBox)
+                    {
+                        if (targetType == typeof(bool))
+                        {
+                            item.Value = checkBox.Checked;
+                        }
+                    }
+                    // FluentComboBox
+                    else if (item.EditorControl is FluentComboBox comboBox)
+                    {
+                        if (comboBox.SelectedItem != null)
+                        {
+                            item.Value = comboBox.SelectedItem;
+                        }
+                    }
+                    // FluentColorPicker
+                    else if (item.EditorControl is FluentColorPicker colorPicker)
+                    {
+                        if (targetType == typeof(Color))
+                        {
+                            item.Value = colorPicker.SelectedColor;
+                        }
+                    }
+                    // FluentDateTimePicker
+                    else if (item.EditorControl is FluentDateTimePicker dtPicker)
+                    {
+                        if (targetType == typeof(DateTime))
+                        {
+                            item.Value = dtPicker.Value;
+                        }
+                    }
+                    // 兼容常规控件
+                    else if (item.EditorControl is NumericUpDown numericUpDown)
+                    {
+                        item.Value = Convert.ChangeType(numericUpDown.Value, targetType);
+                    }
+                    else if (item.EditorControl is TextBox tb)
+                    {
+                        if (targetType == typeof(string))
+                        {
+                            item.Value = tb.Text;
+                        }
+                        else
+                        {
+                            item.Value = Convert.ChangeType(tb.Text, targetType);
+                        }
+                    }
+                    else if (item.EditorControl is CheckBox cb)
+                    {
+                        item.Value = cb.Checked;
+                    }
+                    else if (item.EditorControl is ComboBox cmb)
+                    {
+                        if (cmb.SelectedItem != null)
+                        {
+                            item.Value = cmb.SelectedItem;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+        }
+
 
         #endregion
 
@@ -434,6 +645,46 @@ namespace FluentControls.Controls
 
         #region 保存和刷新
 
+        /// <summary>
+        /// 仅保存被用户编辑过的属性到目标对象
+        /// </summary>
+        public void SaveDirtyChanges()
+        {
+            var targetObject = GetCurrentObject();
+            if (targetObject == null || propertyItems == null)
+            {
+                return;
+            }
+
+            // 先同步所有编辑器值到 PropertyItem.Value
+            SyncEditorValues();
+
+            // 仅将脏属性写入目标对象
+            foreach (var item in propertyItems)
+            {
+                if (item.IsDirtyFromEditor && !item.IsReadOnly)
+                {
+                    item.SaveValue(targetObject);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 清除所有脏标记
+        /// </summary>
+        public void ClearDirtyFlags()
+        {
+            if (propertyItems == null)
+            {
+                return;
+            }
+
+            foreach (var item in propertyItems)
+            {
+                item.IsDirtyFromEditor = false;
+            }
+        }
+
         public void SaveChanges()
         {
             SaveCurrentObject();
@@ -447,6 +698,8 @@ namespace FluentControls.Controls
             {
                 return;
             }
+            // 主动同步
+            SyncEditorValues();
 
             foreach (var item in propertyItems)
             {
@@ -468,15 +721,22 @@ namespace FluentControls.Controls
                 return;
             }
 
-            foreach (var item in propertyItems)
+            isRefreshingEditors = true; // 刷新保护
+            try
             {
-                item.UpdateValue(targetObject);
+                foreach (var item in propertyItems)
+                {
+                    item.UpdateValue(targetObject);
+                    // 更新编辑器显示
+                    UpdateEditorValue(item);
+                }
 
-                // 更新编辑器显示
-                UpdateEditorValue(item);
+                hasUnsavedChanges = false;
             }
-
-            hasUnsavedChanges = false;
+            finally
+            {
+                isRefreshingEditors = false;
+            }
         }
 
         private void UpdateEditorValue(PropertyItem item)
@@ -518,6 +778,42 @@ namespace FluentControls.Controls
                     {
                         fluentColorPicker.SelectedColor = color;
                     }
+                }
+                else if (item.EditorControl is Panel imgPanel && typeof(Image).IsAssignableFrom(item.PropertyType))
+                {
+                    // 查找 PictureBox 和 Label
+                    var pictureBox = imgPanel.Controls.OfType<PictureBox>().FirstOrDefault();
+                    var label = imgPanel.Controls.OfType<Label>().FirstOrDefault();
+                    var clearBtn = imgPanel.Controls.OfType<FluentButton>()
+                        .FirstOrDefault(b => b.Text == "×");
+
+                    if (pictureBox != null)
+                    {
+                        var oldImage = pictureBox.Image;
+                        if (item.Value is Image img)
+                        {
+                            pictureBox.Image = PropertyEditorFactory.CreateImageCopy(img);
+                        }
+                        else
+                        {
+                            pictureBox.Image = null;
+                        }
+                        oldImage?.Dispose();
+                    }
+
+                    if (label != null)
+                    {
+                        label.Text = item.Value is Image img2
+                            ? $"{img2.Width}×{img2.Height}"
+                            : "(无图像)";
+                    }
+
+                    if (clearBtn != null)
+                    {
+                        clearBtn.Visible = item.Value != null;
+                    }
+
+                    imgPanel.Refresh();
                 }
                 // Panel (复杂类型)
                 else if (item.EditorControl is Panel panel)
@@ -581,12 +877,7 @@ namespace FluentControls.Controls
                 return "(null)";
             }
 
-            if (value is IList list)
-            {
-                return $"(Collection) {list.Count} 项";
-            }
-
-            return value.ToString();
+            return value is IList list ? $"(Collection) {list.Count} 项" : value.ToString();
         }
 
         private static string GetObjectDisplayText(object value, Type type)
@@ -614,12 +905,7 @@ namespace FluentControls.Controls
                     return $"{size.Width}, {size.Height}";
                 }
 
-                if (value is Padding padding)
-                {
-                    return $"{padding.Left}, {padding.Top}, {padding.Right}, {padding.Bottom}";
-                }
-
-                return value.ToString();
+                return value is Padding padding ? $"{padding.Left}, {padding.Top}, {padding.Right}, {padding.Bottom}" : value.ToString();
             }
 
             return $"({value.GetType().Name})";
@@ -629,7 +915,7 @@ namespace FluentControls.Controls
         {
             if (hasUnsavedChanges)
             {
-                var result = MessageBox.Show("有未保存的更改, 是否继续刷新?", "确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var result = FluentDialog.Show("有未保存的更改, 是否继续刷新?", "确认", DialogType.Warning);
 
                 if (result != DialogResult.Yes)
                 {
@@ -667,7 +953,6 @@ namespace FluentControls.Controls
 
         #endregion
     }
-
     #region 属性项
 
     public class PropertyItem
@@ -733,6 +1018,11 @@ namespace FluentControls.Controls
                 }
             }
         }
+
+        /// <summary>
+        /// 标记属性是否被用户通过编辑器修改过
+        /// </summary>
+        public bool IsDirtyFromEditor { get; set; } = false;
 
         // UI相关
         public Control EditorControl { get; set; }
@@ -803,12 +1093,7 @@ namespace FluentControls.Controls
 
         private object GetDefaultValue(Type type)
         {
-            if (type.IsValueType)
-            {
-                return Activator.CreateInstance(type);
-            }
-
-            return null;
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
         }
     }
 
@@ -823,39 +1108,38 @@ namespace FluentControls.Controls
             var editorType = GetEditorType(propertyItem.PropertyType);
             Control editor = null;
 
+            int editorHeight = 28;
+            int cornerRadius = 4;
+
             switch (editorType)
             {
                 case PropertyEditorType.Boolean:
-                    editor = CreateBooleanEditor(propertyItem);
+                    editor = CreateBooleanEditor(propertyItem, editorHeight);
                     break;
-
                 case PropertyEditorType.Number:
-                    editor = CreateNumberEditor(propertyItem);
+                    editor = CreateNumberEditor(propertyItem, editorHeight, cornerRadius);
                     break;
-
                 case PropertyEditorType.Enum:
-                    editor = CreateEnumEditor(propertyItem);
+                    editor = CreateEnumEditor(propertyItem, editorHeight, cornerRadius);
                     break;
-
                 case PropertyEditorType.Color:
-                    editor = CreateColorEditor(propertyItem);
+                    editor = CreateColorEditor(propertyItem, editorHeight, cornerRadius);
                     break;
-
                 case PropertyEditorType.DateTime:
-                    editor = CreateDateTimeEditor(propertyItem);
+                    editor = CreateDateTimeEditor(propertyItem, editorHeight, cornerRadius);
                     break;
-
                 case PropertyEditorType.List:
-                    editor = CreateListEditor(propertyItem);
+                    editor = CreateListEditor(propertyItem, editorHeight, cornerRadius);
                     break;
-
+                case PropertyEditorType.Image:
+                    editor = CreateImageEditor(propertyItem, editorHeight, cornerRadius);
+                    break;
                 case PropertyEditorType.Object:
-                    editor = CreateObjectEditor(propertyItem);
+                    editor = CreateObjectEditor(propertyItem, editorHeight, cornerRadius);
                     break;
-
                 case PropertyEditorType.Text:
                 default:
-                    editor = CreateTextEditor(propertyItem);
+                    editor = CreateTextEditor(propertyItem, editorHeight, cornerRadius);
                     break;
             }
 
@@ -893,6 +1177,11 @@ namespace FluentControls.Controls
                 return PropertyEditorType.Number;
             }
 
+            if (typeof(Image).IsAssignableFrom(underlyingType) || underlyingType == typeof(Bitmap))
+            {
+                return PropertyEditorType.Image;
+            }
+
             // 检查是否是结构体类型(Rectangle, Point, Size, Padding等)
             if (IsStructureType(underlyingType))
             {
@@ -905,12 +1194,7 @@ namespace FluentControls.Controls
                 return PropertyEditorType.List;
             }
 
-            if (underlyingType.IsClass && underlyingType != typeof(string))
-            {
-                return PropertyEditorType.Object;
-            }
-
-            return PropertyEditorType.Text;
+            return underlyingType.IsClass && underlyingType != typeof(string) ? PropertyEditorType.Object : PropertyEditorType.Text;
         }
 
         public static bool IsNumericType(Type type)
@@ -919,6 +1203,10 @@ namespace FluentControls.Controls
                    type == typeof(byte) || type == typeof(uint) || type == typeof(ulong) ||
                    type == typeof(ushort) || type == typeof(sbyte) || type == typeof(decimal) ||
                    type == typeof(double) || type == typeof(float);
+        }
+        private static bool IsFloatingPointType(Type type)
+        {
+            return type == typeof(float) || type == typeof(double) || type == typeof(decimal);
         }
 
         public static bool IsStructureType(Type type)
@@ -935,16 +1223,17 @@ namespace FluentControls.Controls
 
         #region 编辑器创建方法
 
-        private static Control CreateTextEditor(PropertyItem propertyItem)
+        private static Control CreateTextEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
             var textBox = new FluentTextBox
             {
                 Text = propertyItem.Value?.ToString() ?? "",
                 Width = 200,
-                Height = 28,
-                Padding = new Padding(8, 4, 8, 4),
+                Height = height,
+                Padding = new Padding(4, 0, 4, 0),
                 UseTheme = true,
-                ThemeName = ThemeManager.CurrentTheme?.Name
+                ThemeName = ThemeManager.CurrentTheme?.Name,
+                ShowBorder = true
             };
 
             textBox.TextChanged += (s, e) =>
@@ -955,22 +1244,21 @@ namespace FluentControls.Controls
             return textBox;
         }
 
-        private static Control CreateNumberEditor(PropertyItem propertyItem)
+        private static Control CreateNumberEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
             Type underlyingType = Nullable.GetUnderlyingType(propertyItem.PropertyType) ?? propertyItem.PropertyType;
             bool isInt = underlyingType.IsInteger();
 
-            var textBox = new FluentTextBox
+            var textBox = new FluentNumericInput
             {
-                Text = propertyItem.Value?.ToString() ?? "0",
                 Width = 200,
-                Height = 26,
-                InputFormat = isInt ? InputFormat.Integer : InputFormat.Decimal,
-                AllowNegative = true,
-                DecimalPlaces = 3,
-                Padding = new Padding(8, 4, 8, 4),
+                Height = height,
+                Value = Convert.ToDecimal(propertyItem.Value?.ToString() ?? "0"),
+                DecimalPlaces = isInt ? 0 : 3,
+                Padding = new Padding(4, 0, 4, 0),
                 UseTheme = true,
-                ThemeName = ThemeManager.CurrentTheme?.Name
+                ThemeName = ThemeManager.CurrentTheme?.Name,
+                ShowBorder = true
             };
 
             if (propertyItem.Value != null)
@@ -985,47 +1273,44 @@ namespace FluentControls.Controls
                 }
             }
 
-            textBox.TextChanged += (s, e) =>
+            Action syncValueToProperty = () =>
             {
                 try
                 {
-                    if (!string.IsNullOrWhiteSpace(textBox.Text))
+                    if (IsFloatingPointType(underlyingType))
                     {
-                        if (IsFloatingPointType(underlyingType))
+                        var newValue = Convert.ChangeType(textBox.Value, underlyingType);
+                        if (!Equals(propertyItem.Value, newValue))
                         {
-                            propertyItem.Value = Convert.ChangeType(
-                                decimal.Parse(textBox.Text), underlyingType);
+                            propertyItem.Value = newValue;
                         }
-                        else
+                    }
+                    else
+                    {
+                        var newValue = Convert.ChangeType((long)textBox.Value, underlyingType);
+                        if (!Equals(propertyItem.Value, newValue))
                         {
-                            // 去掉小数部分
-                            var value = decimal.Parse(textBox.Text);
-                            propertyItem.Value = Convert.ChangeType(
-                                (long)value, underlyingType);
+                            propertyItem.Value = newValue;
                         }
                     }
                 }
-                catch
-                {
-                    // 忽略转换错误
-                }
+                catch { }
             };
+
+            // 同时监听 TextChanged 和 ValueChanged
+            textBox.TextChanged += (s, e) => syncValueToProperty();
+            textBox.ValueChanged += (s, e) => syncValueToProperty();
 
             return textBox;
         }
 
-        private static bool IsFloatingPointType(Type type)
-        {
-            return type == typeof(float) || type == typeof(double) || type == typeof(decimal);
-        }
-
-        private static Control CreateBooleanEditor(PropertyItem propertyItem)
+        private static Control CreateBooleanEditor(PropertyItem propertyItem, int height = 22)
         {
             var checkBox = new FluentCheckBox
             {
                 Checked = propertyItem.Value is bool b && b,
                 Width = 200,
-                Height = 22,
+                Height = height,
                 Text = "",
                 UseTheme = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name
@@ -1039,14 +1324,14 @@ namespace FluentControls.Controls
             return checkBox;
         }
 
-        private static Control CreateEnumEditor(PropertyItem propertyItem)
+        private static Control CreateEnumEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
             Type underlyingType = Nullable.GetUnderlyingType(propertyItem.PropertyType) ?? propertyItem.PropertyType;
 
             var comboBox = new FluentComboBox
             {
                 Width = 200,
-                Height = 26,
+                Height = height,
                 UseTheme = true,
                 OnlySelection = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name
@@ -1074,12 +1359,12 @@ namespace FluentControls.Controls
             return comboBox;
         }
 
-        private static Control CreateColorEditor(PropertyItem propertyItem)
+        private static Control CreateColorEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
             var colorPicker = new FluentColorPicker
             {
                 Width = 200,
-                Height = 26,
+                Height = height,
                 SelectedColor = propertyItem.Value is Color c ? c : Color.White,
                 UseTheme = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name
@@ -1093,12 +1378,12 @@ namespace FluentControls.Controls
             return colorPicker;
         }
 
-        private static Control CreateDateTimeEditor(PropertyItem propertyItem)
+        private static Control CreateDateTimeEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
             var dateTimePicker = new FluentDateTimePicker
             {
                 Width = 200,
-                Height = 26,
+                Height = height,
                 Mode = DateTimePickerMode.DateTime,
                 CustomFormat = "yyyy-MM-dd HH:mm:ss",
                 UseTheme = true,
@@ -1118,50 +1403,68 @@ namespace FluentControls.Controls
             return dateTimePicker;
         }
 
-        private static Control CreateListEditor(PropertyItem propertyItem)
+        private static Control CreateListEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
-            var panel = new Panel
+            // 美化后的列表编辑器面板
+            var panel = new DoubleBufferedPanel
             {
                 Width = 200,
-                Height = 26,
-                BorderStyle = BorderStyle.FixedSingle,
+                Height = height,
                 BackColor = Color.White
+            };
+            panel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // 绘制圆角边框背景
+                using (var path = RoundedCornerRenderer.CreateRoundedRectPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), cornerRadius))
+                {
+                    using (var brush = new SolidBrush(Color.White))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                    using (var pen = new Pen(Color.FromArgb(210, 210, 215), 1))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
             };
 
             var label = new Label
             {
                 Text = GetListDisplayText(propertyItem.Value),
-                Width = 152,
-                Height = 24,
-                Location = new Point(3, 1),
+                Width = panel.Width - 36,
+                Height = height - 4,
+                Location = new Point(10, 2),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 8.5f)
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(60, 60, 60)
             };
 
             var button = new FluentButton
             {
                 Text = "...",
-                Width = 30,
-                Height = 22,
-                Location = new Point(160, 1),
+                Width = 28,
+                Height = height - 4,
+                Location = new Point(panel.Width - 30, 2),
                 UseTheme = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name,
                 ButtonStyle = ButtonStyle.Secondary,
                 CornerRadius = 0,
-                EnableRippleEffect = false
+                EnableRippleEffect = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold)
             };
 
             button.Click += (s, e) =>
             {
-                using (var editor = new ListEditorDialog(propertyItem))
+                Size dlgSize =new Size(560, 460);
+                using (var editor = new ListEditorDialog(propertyItem, dlgSize))
                 {
                     if (editor.ShowDialog() == DialogResult.OK)
                     {
-                        // 更新显示文本
                         label.Text = GetListDisplayText(propertyItem.Value);
-
-                        // 标记为已修改
                         propertyItem.OriginalValue = propertyItem.Value;
                     }
                 }
@@ -1173,41 +1476,204 @@ namespace FluentControls.Controls
             return panel;
         }
 
-        private static Control CreateObjectEditor(PropertyItem propertyItem)
+        private static Control CreateImageEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
         {
-            var panel = new Panel
+            int panelHeight = Math.Max(height, 28);
+
+            var panel = new DoubleBufferedPanel
             {
                 Width = 200,
-                Height = 26,
-                BorderStyle = BorderStyle.FixedSingle,
+                Height = panelHeight,
                 BackColor = Color.White
+            };
+
+            // 绘制边框
+            panel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = RoundedCornerRenderer.CreateRoundedRectPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), cornerRadius))
+                {
+                    using (var brush = new SolidBrush(Color.White))
+                    {
+                        g.FillPath(brush, path);
+                    }
+
+                    using (var pen = new Pen(Color.FromArgb(210, 210, 215), 1))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
+            };
+
+            // 图片预览区域
+            int previewSize = panelHeight - 6;
+            var previewBox = new PictureBox
+            {
+                Location = new Point(3, 3),
+                Size = new Size(previewSize, previewSize),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.FromArgb(245, 245, 248),
+                BorderStyle = BorderStyle.None
+            };
+            // 绘制棋盘格背景
+            previewBox.Paint += (s, e) =>
+            {
+                if (previewBox.Image == null)
+                {
+                    DrawCheckerboard(e.Graphics, previewBox.ClientRectangle, 4);
+                    // 绘制占位符
+                    using (var font = new Font("Segoe UI", 7f))
+                    using (var brush = new SolidBrush(Color.FromArgb(160, 160, 160)))
+                    {
+                        var sf = new StringFormat
+                        {
+                            Alignment = StringAlignment.Center,
+                            LineAlignment = StringAlignment.Center
+                        };
+                        e.Graphics.DrawString("无", font, brush, new RectangleF(0, 0, previewBox.Width, previewBox.Height), sf);
+                    }
+                }
+                else
+                {
+                    DrawCheckerboard(e.Graphics, previewBox.ClientRectangle, 4);
+                }
+            };
+
+            // 设置当前图片预览
+            UpdateImagePreview(previewBox, propertyItem.Value as Image);
+
+            // 信息标签
+            int labelLeft = previewSize + 10;
+            var infoLabel = new Label
+            {
+                Location = new Point(labelLeft, 2),
+                Size = new Size(panel.Width - labelLeft - 68, panelHeight - 4),
+                TextAlign = ContentAlignment.MiddleLeft,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 8.5f),
+                ForeColor = Color.FromArgb(80, 80, 80),
+                Text = GetImageDisplayText(propertyItem.Value as Image)
+            };
+
+            // 清除按钮
+            var btnClear = new FluentButton
+            {
+                Text = "×",
+                Size = new Size(24, panelHeight - 4),
+                Location = new Point(panel.Width - 56, 2),
+                Anchor = AnchorStyles.Right,
+                UseTheme = true,
+                ThemeName = ThemeManager.CurrentTheme?.Name,
+                ButtonStyle = ButtonStyle.Text,
+                CornerRadius = 0,
+                Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+                Visible = propertyItem.Value != null
+            };
+            btnClear.Click += (s, e) =>
+            {
+                propertyItem.Value = null;
+                UpdateImagePreview(previewBox, null);
+                infoLabel.Text = GetImageDisplayText(null);
+                btnClear.Visible = false;
+                panel.Refresh();
+            };
+
+            // 编辑按钮
+            var btnEdit = new FluentButton
+            {
+                Text = "...",
+                Size = new Size(28, panelHeight - 4),
+                Location = new Point(panel.Width - 30, 2),
+                Anchor = AnchorStyles.Right,
+                UseTheme = true,
+                ThemeName = ThemeManager.CurrentTheme?.Name,
+                ButtonStyle = ButtonStyle.Secondary,
+                CornerRadius = 0,
+                EnableRippleEffect = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold)
+            };
+
+            btnEdit.Click += (s, e) =>
+            {
+                OpenImageEditor(propertyItem, previewBox, infoLabel, btnClear, panel);
+            };
+
+            // 双击预览图打开编辑器
+            previewBox.DoubleClick += (s, e) =>
+            {
+                OpenImageEditor(propertyItem, previewBox, infoLabel, btnClear, panel);
+            };
+
+            // 监听属性值变化
+            propertyItem.ValueChanged += (s, e) =>
+            {
+                UpdateImagePreview(previewBox, propertyItem.Value as Image);
+                infoLabel.Text = GetImageDisplayText(propertyItem.Value as Image);
+                btnClear.Visible = propertyItem.Value != null;
+                panel.Refresh();
+            };
+
+            panel.Controls.Add(previewBox);
+            panel.Controls.Add(infoLabel);
+            panel.Controls.Add(btnClear);
+            panel.Controls.Add(btnEdit);
+
+            return panel;
+        }
+
+        private static Control CreateObjectEditor(PropertyItem propertyItem, int height = 28, int cornerRadius = 4)
+        {
+            var panel = new DoubleBufferedPanel
+            {
+                Width = 200,
+                Height = height,
+                BackColor = Color.White
+            };
+            panel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                using (var path = RoundedCornerRenderer.CreateRoundedRectPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), cornerRadius))
+                {
+                    using (var brush = new SolidBrush(Color.White))
+                    {
+                        g.FillPath(brush, path);
+                    }
+                    using (var pen = new Pen(Color.FromArgb(210, 210, 215), 1))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
             };
 
             var label = new Label
             {
                 Text = GetObjectDisplayText(propertyItem.Value, propertyItem.PropertyType),
-                Width = 152,
-                Height = 24,
-                Location = new Point(3, 1),
+                Width = panel.Width - 36,
+                Height = height - 4,
+                Location = new Point(10, 2),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 8.5f)
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(60, 60, 60)
             };
 
             var button = new FluentButton
             {
                 Text = "...",
-                Width = 30,
-                Height = 22,
-                Location = new Point(160, 1),
+                Width = 28,
+                Height = height - 4,
+                Location = new Point(panel.Width - 30, 2),
                 UseTheme = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name,
                 ButtonStyle = ButtonStyle.Secondary,
                 CornerRadius = 0,
-                EnableRippleEffect = false
+                EnableRippleEffect = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold)
             };
 
-            // 订阅值更改事件
             propertyItem.ValueChanged += (s, e) =>
             {
                 label.Text = GetObjectDisplayText(propertyItem.Value, propertyItem.PropertyType);
@@ -1216,17 +1682,18 @@ namespace FluentControls.Controls
 
             button.Click += (s, e) =>
             {
-                // 检查是否是结构体类型
                 if (IsStructureType(propertyItem.PropertyType))
                 {
-                    using (var editor = new StructureEditorDialog(propertyItem))
+                    Size dlgSize = new Size(340, 300);
+                    using (var editor = new StructureEditorDialog(propertyItem, dlgSize))
                     {
                         editor.ShowDialog();
                     }
                 }
                 else
                 {
-                    using (var editor = new ObjectEditorDialog(propertyItem))
+                    Size dlgSize = new Size(520, 520);
+                    using (var editor = new ObjectEditorDialog(propertyItem, dlgSize))
                     {
                         editor.ShowDialog();
                     }
@@ -1237,6 +1704,182 @@ namespace FluentControls.Controls
             panel.Controls.Add(button);
 
             return panel;
+        }
+
+        /// <summary>
+        /// 打开图片编辑器对话框
+        /// </summary>
+        private static void OpenImageEditor(PropertyItem propertyItem, PictureBox previewBox, Label infoLabel, FluentButton btnClear, Panel panel)
+        {
+            Image currentImage = propertyItem.Value as Image;
+            bool useIconFontEditor = HasIconFontEditorAttribute(propertyItem);
+
+            if (useIconFontEditor)
+            {
+                using (var dialog = new IconFontImageSelectorDialog(null, currentImage))
+                {
+                    if (dialog.ShowDialog(panel.FindForm()) == DialogResult.OK)
+                    {
+                        var selectedImage = dialog.SelectedImage;
+
+                        if (selectedImage != null)
+                        {
+                            // 创建独立副本
+                            Image newImage = CreateImageCopy(selectedImage);
+                            propertyItem.Value = newImage;
+                        }
+                        else
+                        {
+                            propertyItem.Value = null;
+                        }
+
+                        UpdateImagePreview(previewBox, propertyItem.Value as Image);
+                        infoLabel.Text = GetImageDisplayText(propertyItem.Value as Image);
+                        btnClear.Visible = propertyItem.Value != null;
+                        panel.Refresh();
+                    }
+                }
+            }
+            else
+            {
+                // 使用标准文件选择对话框
+                using (var dialog = new OpenFileDialog())
+                {
+                    dialog.Filter = "图像文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico|所有文件|*.*";
+                    dialog.Title = "选择图像";
+
+                    if (dialog.ShowDialog(panel.FindForm()) == DialogResult.OK)
+                    {
+                        try
+                        {
+                            using (var loadedImage = Image.FromFile(dialog.FileName))
+                            {
+                                Image newImage = CreateImageCopy(loadedImage);
+                                propertyItem.Value = newImage;
+                            }
+
+                            UpdateImagePreview(previewBox, propertyItem.Value as Image);
+                            infoLabel.Text = GetImageDisplayText(propertyItem.Value as Image);
+                            btnClear.Visible = true;
+                            panel.Refresh();
+                        }
+                        catch (Exception ex)
+                        {
+                            FluentMessageManager.Instance.Error(ex.Message, "错误");
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 检查属性是否标记了 IconFontImageEditor 特性
+        /// </summary>
+        private static bool HasIconFontEditorAttribute(PropertyItem propertyItem)
+        {
+            if (propertyItem.PropertyInfo == null)
+            {
+                return false;
+            }
+
+            var editorAttr = propertyItem.PropertyInfo
+                .GetCustomAttributes(typeof(EditorAttribute), true)
+                .OfType<EditorAttribute>()
+                .FirstOrDefault();
+
+            if (editorAttr != null)
+            {
+                return editorAttr.EditorTypeName.Contains("IconFontImageEditor");
+            }
+
+            return true;
+        }
+
+        private static void UpdateImagePreview(PictureBox previewBox, Image image)
+        {
+            var oldImage = previewBox.Image;
+            previewBox.Image = image != null ? CreateImageCopy(image) : null;
+            oldImage?.Dispose();
+        }
+
+        private static string GetImageDisplayText(Image image)
+        {
+            if (image == null)
+            {
+                return "(无图像)";
+            }
+
+            try
+            {
+                return $"{image.Width}×{image.Height}";
+            }
+            catch
+            {
+                return "(无效图像)";
+            }
+        }
+
+        /// <summary>
+        /// 创建图片的独立副本
+        /// </summary>
+        public static Image CreateImageCopy(Image source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var ms = new MemoryStream())
+                {
+                    source.Save(ms, ImageFormat.Png);
+                    var bytes = ms.ToArray();
+                    var newStream = new MemoryStream(bytes);
+                    return Image.FromStream(newStream);
+                }
+            }
+            catch
+            {
+                try
+                {
+                    var bitmap = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+                    using (var g = Graphics.FromImage(bitmap))
+                    {
+                        g.Clear(Color.Transparent);
+                        g.DrawImage(source, 0, 0, source.Width, source.Height);
+                    }
+                    return bitmap;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 绘制棋盘格背景
+        /// </summary>
+        private static void DrawCheckerboard(Graphics g, Rectangle rect, int checkSize)
+        {
+            using (var lightBrush = new SolidBrush(Color.White))
+            using (var darkBrush = new SolidBrush(Color.FromArgb(220, 220, 220)))
+            {
+                g.FillRectangle(lightBrush, rect);
+                for (int y = rect.Top; y < rect.Bottom; y += checkSize)
+                {
+                    for (int x = rect.Left; x < rect.Right; x += checkSize)
+                    {
+                        if (((x - rect.Left) / checkSize + (y - rect.Top) / checkSize) % 2 == 1)
+                        {
+                            int w = Math.Min(checkSize, rect.Right - x);
+                            int h = Math.Min(checkSize, rect.Bottom - y);
+                            g.FillRectangle(darkBrush, x, y, w, h);
+                        }
+                    }
+                }
+            }
         }
 
         internal static string GetListDisplayText(object value)
@@ -1297,12 +1940,7 @@ namespace FluentControls.Controls
                     return $"{size.Width}, {size.Height}";
                 }
 
-                if (value is Padding padding)
-                {
-                    return $"{padding.Left}, {padding.Top}, {padding.Right}, {padding.Bottom}";
-                }
-
-                return value.ToString();
+                return value is Padding padding ? $"{padding.Left}, {padding.Top}, {padding.Right}, {padding.Bottom}" : value.ToString();
             }
 
             return $"({value.GetType().Name})";
@@ -1322,12 +1960,16 @@ namespace FluentControls.Controls
     public class StructureEditorDialog : FluentDialog
     {
         private PropertyItem propertyItem;
-        private Dictionary<string, FluentTextBox> editors;
+        private Dictionary<string, FluentNumericInput> editors;
+        private int cornerRadius = 6;
+        private int fieldSpacing = 48;
+        private int fieldHeight = 36;
+        private Size dialogSize = new Size(340, 300);
 
-        public StructureEditorDialog(PropertyItem propertyItem) : base(DialogType.Custom)
+        public StructureEditorDialog(PropertyItem propertyItem, Size? size = null) : base(DialogType.Custom, size: size)
         {
             this.propertyItem = propertyItem;
-            editors = new Dictionary<string, FluentTextBox>();
+            editors = new Dictionary<string, FluentNumericInput>();
             InitializeComponents();
         }
 
@@ -1335,25 +1977,25 @@ namespace FluentControls.Controls
         {
             this.TitleBar.Title = $"编辑 {propertyItem.DisplayName}";
             this.DialogButtons = DialogButtons.OKCancel;
+            this.StartPosition = FormStartPosition.CenterParent;
 
             Type type = propertyItem.PropertyType;
             object value = propertyItem.Value ?? Activator.CreateInstance(type);
 
-            int y = 16;
-            int labelWidth = 100;
-            int editorWidth = 150;
-            int spacing = 42;
+            int y = 20;
+            int labelWidth = 80;
+            int editorWidth = 180;
 
             if (type == typeof(Rectangle) || type == typeof(RectangleF))
             {
                 InputFormat format = (type == typeof(Rectangle)) ? InputFormat.Integer : InputFormat.Decimal;
 
                 CreateField("X", y, labelWidth, editorWidth, format);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Y", y, labelWidth, editorWidth, format);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Width", y, labelWidth, editorWidth, format);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Height", y, labelWidth, editorWidth, format);
 
                 if (value is Rectangle rect)
@@ -1365,24 +2007,20 @@ namespace FluentControls.Controls
                 }
                 else if (value is RectangleF rectF)
                 {
-                    editors["X"].Text = rectF.X.ToString();
-                    editors["Y"].Text = rectF.Y.ToString();
-                    editors["Width"].Text = rectF.Width.ToString();
-                    editors["Height"].Text = rectF.Height.ToString();
-                    editors["X"].DecimalPlaces = 2;
-                    editors["Y"].DecimalPlaces = 2;
-                    editors["Width"].DecimalPlaces = 2;
-                    editors["Height"].DecimalPlaces = 2;
+                    editors["X"].Text = rectF.X.ToString("F2");
+                    editors["Y"].Text = rectF.Y.ToString("F2");
+                    editors["Width"].Text = rectF.Width.ToString("F2");
+                    editors["Height"].Text = rectF.Height.ToString("F2");
                 }
 
-                this.Size = new Size(350, 260);
+                dialogSize = new Size(340, 300);
             }
             else if (type == typeof(Point) || type == typeof(PointF))
             {
                 InputFormat format = (type == typeof(Point)) ? InputFormat.Integer : InputFormat.Decimal;
 
                 CreateField("X", y, labelWidth, editorWidth, format);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Y", y, labelWidth, editorWidth, format);
 
                 if (value is Point point)
@@ -1392,20 +2030,18 @@ namespace FluentControls.Controls
                 }
                 else if (value is PointF pointF)
                 {
-                    editors["X"].Text = pointF.X.ToString();
-                    editors["Y"].Text = pointF.Y.ToString();
-                    editors["X"].DecimalPlaces = 2;
-                    editors["Y"].DecimalPlaces = 2;
+                    editors["X"].Text = pointF.X.ToString("F2");
+                    editors["Y"].Text = pointF.Y.ToString("F2");
                 }
 
-                this.Size = new Size(300, 190);
+                dialogSize = new Size(340, 210);
             }
             else if (type == typeof(Size) || type == typeof(SizeF))
             {
                 InputFormat format = (type == typeof(Size)) ? InputFormat.Integer : InputFormat.Decimal;
 
                 CreateField("Width", y, labelWidth, editorWidth, format);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Height", y, labelWidth, editorWidth, format);
 
                 if (value is Size size)
@@ -1415,21 +2051,20 @@ namespace FluentControls.Controls
                 }
                 else if (value is SizeF sizeF)
                 {
-                    editors["Width"].Text = sizeF.Width.ToString();
-                    editors["Height"].Text = sizeF.Height.ToString();
-                    editors["Width"].DecimalPlaces = 2;
-                    editors["Height"].DecimalPlaces = 2;
+                    editors["Width"].Text = sizeF.Width.ToString("F2");
+                    editors["Height"].Text = sizeF.Height.ToString("F2");
                 }
-                this.Size = new Size(300, 190);
+
+                dialogSize = new Size(340, 210);
             }
             else if (type == typeof(Padding))
             {
                 CreateField("Left", y, labelWidth, editorWidth, InputFormat.Integer);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Top", y, labelWidth, editorWidth, InputFormat.Integer);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Right", y, labelWidth, editorWidth, InputFormat.Integer);
-                y += spacing;
+                y += fieldSpacing;
                 CreateField("Bottom", y, labelWidth, editorWidth, InputFormat.Integer);
 
                 if (value is Padding padding)
@@ -1440,57 +2075,90 @@ namespace FluentControls.Controls
                     editors["Bottom"].Text = padding.Bottom.ToString();
                 }
 
-                this.Size = new Size(350, 260);
+                dialogSize = new Size(340, 300);
             }
         }
 
-        private void CreateField(string fieldName, int y, int labelWidth, int editorWidth, InputFormat inputFormat = InputFormat.Decimal)
+        protected override void OnHandleCreated(EventArgs e)
         {
-            string text = $"{fieldName}:";
-            int prefixWidth = TextRenderer.MeasureText(text, Font).Width;
-            int prefixAreaWidth = 75;
+            base.OnHandleCreated(e);
 
-            var numericUpDown = new FluentTextBox
+            BeginInvoke(new Action(() =>
             {
-                Location = new Point(40, y),
-                Size = new Size(prefixAreaWidth + editorWidth, 32),
-                ShowBorder = false,
-                InputFormat = inputFormat,
-                Padding = new Padding(8, 6, 8, 6),
-                ShowPrefix = true,
-                Prefix = text,
-                PrefixAreaWidth = 75
+                this.Size = dialogSize;
+            }));
+        }
+
+        private void CreateField(string fieldName, int y, int labelWidth, int editorWidth, InputFormat inputFormat)
+        {
+            // 创建标签
+            var label = new Label
+            {
+                Text = fieldName,
+                Location = new Point(24, y + 8),
+                Size = new Size(labelWidth, 20),
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.FromArgb(70, 70, 70),
+                TextAlign = ContentAlignment.MiddleRight
             };
-            editors[fieldName] = numericUpDown;
-            this.AddCustomControl(numericUpDown);
+            this.AddCustomControl(label);
+
+            // 创建输入框
+            bool isInt = inputFormat == InputFormat.Integer;
+            var textBox = new FluentNumericInput
+            {
+                Location = new Point(24 + labelWidth + 12, y),
+                Width = editorWidth,
+                Height = fieldHeight,
+                DecimalPlaces = isInt ? 0 : 3,
+                Padding = new Padding(12, 8, 12, 8),
+                ButtonSpacing = 5,
+                UseTheme = true,
+                ThemeName = ThemeManager.CurrentTheme?.Name,
+                ShowBorder = true
+            };
+
+            editors[fieldName] = textBox;
+            this.AddCustomControl(textBox);
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
 
+            this.SuspendLayout();
+            SetupDialogButtons();
+            this.ResumeLayout(true);
+        }
+
+        private void SetupDialogButtons()
+        {
             var panel = this.Controls.OfType<Panel>().FirstOrDefault(p => p.Dock == DockStyle.Bottom);
             if (panel != null)
             {
+                panel.Height = 60;
+                panel.Padding = new Padding(16, 12, 16, 12);
                 panel.Controls.Clear();
 
                 var flowPanel = new FlowLayoutPanel
                 {
                     Dock = DockStyle.Fill,
                     FlowDirection = FlowDirection.RightToLeft,
-                    Padding = new Padding(10, 5, 10, 5)
+                    WrapContents = false,
+                    BackColor = Color.Transparent
                 };
 
                 var btnCancel = new FluentButton
                 {
                     Text = "取消",
-                    Size = new Size(100, 30),
+                    Size = new Size(90, 36),
                     UseTheme = true,
                     ThemeName = ThemeManager.CurrentTheme?.Name,
                     ButtonStyle = ButtonStyle.Secondary,
-                    Margin = new Padding(5, 0, 5, 0)
+                    CornerRadius = 0,
+                    Margin = new Padding(0, 0, 0, 0),
+                    Font = new Font("Segoe UI", 9.5f)
                 };
-                // 添加关闭逻辑
                 btnCancel.Click += (s, be) =>
                 {
                     this.DialogResult = DialogResult.Cancel;
@@ -1501,24 +2169,23 @@ namespace FluentControls.Controls
                 var btnOK = new FluentButton
                 {
                     Text = "确定",
-                    Size = new Size(100, 30),
+                    Size = new Size(90, 36),
                     UseTheme = true,
                     ThemeName = ThemeManager.CurrentTheme?.Name,
                     ButtonStyle = ButtonStyle.Primary,
-                    Margin = new Padding(5, 0, 5, 0)
+                    CornerRadius = 0,
+                    Margin = new Padding(0, 0, 12, 0),
+                    Font = new Font("Segoe UI", 9.5f)
                 };
                 btnOK.Click += (s, be) =>
                 {
                     SaveValue();
-                    // 添加关闭逻辑
                     this.DialogResult = DialogResult.OK;
                     this.Close();
                 };
                 flowPanel.Controls.Add(btnOK);
 
                 panel.Controls.Add(flowPanel);
-
-                // 设置默认按钮和取消按钮
                 this.AcceptButton = btnOK;
                 this.CancelButton = btnCancel;
             }
@@ -1600,12 +2267,12 @@ namespace FluentControls.Controls
         private FluentButton btnEdit;
         private IList workingList;
         private Type itemType;
+        private int cornerRadius = 6;
 
-        public ListEditorDialog(PropertyItem propertyItem) : base(DialogType.Custom)
+        public ListEditorDialog(PropertyItem propertyItem, Size? size = null) : base(DialogType.Custom, size: size)
         {
             this.propertyItem = propertyItem;
 
-            // 获取列表的元素类型
             if (propertyItem.PropertyType.IsGenericType)
             {
                 itemType = propertyItem.PropertyType.GetGenericArguments()[0];
@@ -1626,95 +2293,77 @@ namespace FluentControls.Controls
         private void InitializeComponents()
         {
             this.TitleBar.Title = $"编辑 {propertyItem.DisplayName}";
-            this.Size = new Size(510, 420);
             this.DialogButtons = DialogButtons.OKCancel;
+            this.StartPosition = FormStartPosition.CenterParent;
 
-            // ListBox
+            this.SuspendLayout();
+
+            // 美化后的 ListBox
             listBox = new ListBox
             {
-                Location = new Point(20, 20),
-                Size = new Size(370, 300),
-                HorizontalScrollbar = true,
-                Font = new Font("Consolas", 9)
+                Location = new Point(24, 20),
+                Size = new Size(400, 340),
+                Font = new Font("Consolas", 10),
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White,
+                ItemHeight = 28
             };
             listBox.SelectedIndexChanged += ListBox_SelectedIndexChanged;
             listBox.DoubleClick += (s, e) => EditSelectedItem();
             this.AddCustomControl(listBox);
 
-            // 按钮
-            int btnX = 410;
-            int btnY = 60;
-            int btnWidth = 80;
-            int btnHeight = 35;
-            int spacing = 10;
+            // 按钮区域
+            int btnX = 440;
+            int btnY = 20;
+            int btnWidth = 90;
+            int btnHeight = 36;
+            int spacing = 8;
 
-            btnAdd = new FluentButton
-            {
-                Text = "添加",
-                Location = new Point(btnX, btnY),
-                Size = new Size(btnWidth, btnHeight),
-                UseTheme = true,
-                ThemeName = ThemeManager.CurrentTheme?.Name,
-                ButtonStyle = ButtonStyle.Primary
-            };
+            btnAdd = CreateButton("添加", btnX, btnY, btnWidth, btnHeight, ButtonStyle.Primary);
             btnAdd.Click += BtnAdd_Click;
             this.AddCustomControl(btnAdd);
             btnY += btnHeight + spacing;
 
-            btnEdit = new FluentButton
-            {
-                Text = "编辑",
-                Location = new Point(btnX, btnY),
-                Size = new Size(btnWidth, btnHeight),
-                UseTheme = true,
-                ThemeName = ThemeManager.CurrentTheme?.Name,
-                ButtonStyle = ButtonStyle.Secondary,
-                Enabled = false
-            };
+            btnEdit = CreateButton("编辑", btnX, btnY, btnWidth, btnHeight, ButtonStyle.Secondary);
             btnEdit.Click += (s, e) => EditSelectedItem();
+            btnEdit.Enabled = false;
             this.AddCustomControl(btnEdit);
             btnY += btnHeight + spacing;
 
-            btnRemove = new FluentButton
-            {
-                Text = "删除",
-                Location = new Point(btnX, btnY),
-                Size = new Size(btnWidth, btnHeight),
-                UseTheme = true,
-                ThemeName = ThemeManager.CurrentTheme?.Name,
-                ButtonStyle = ButtonStyle.Danger,
-                Enabled = false
-            };
+            btnRemove = CreateButton("删除", btnX, btnY, btnWidth, btnHeight, ButtonStyle.Danger);
             btnRemove.Click += BtnRemove_Click;
+            btnRemove.Enabled = false;
             this.AddCustomControl(btnRemove);
-            btnY += btnHeight + spacing;
+            btnY += btnHeight + spacing + 16; // 额外间距分隔
 
-            btnMoveUp = new FluentButton
-            {
-                Text = "上移",
-                Location = new Point(btnX, btnY),
-                Size = new Size(btnWidth, btnHeight),
-                UseTheme = true,
-                ThemeName = ThemeManager.CurrentTheme?.Name,
-                ButtonStyle = ButtonStyle.Secondary,
-                Enabled = false
-            };
+            btnMoveUp = CreateButton("上移", btnX, btnY, btnWidth, btnHeight, ButtonStyle.Secondary);
             btnMoveUp.Click += BtnMoveUp_Click;
+            btnMoveUp.Enabled = false;
             this.AddCustomControl(btnMoveUp);
             btnY += btnHeight + spacing;
 
-            btnMoveDown = new FluentButton
+            btnMoveDown = CreateButton("下移", btnX, btnY, btnWidth, btnHeight, ButtonStyle.Secondary);
+            btnMoveDown.Click += BtnMoveDown_Click;
+            btnMoveDown.Enabled = false;
+            this.AddCustomControl(btnMoveDown);
+
+            this.ResumeLayout();
+        }
+
+        private FluentButton CreateButton(string text, int x, int y, int width, int height, ButtonStyle style)
+        {
+            return new FluentButton
             {
-                Text = "下移",
-                Location = new Point(btnX, btnY),
-                Size = new Size(btnWidth, btnHeight),
+                Text = text,
+                Location = new Point(x, y),
+                Size = new Size(width, height),
                 UseTheme = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name,
-                ButtonStyle = ButtonStyle.Secondary,
-                Enabled = false
+                ButtonStyle = style,
+                CornerRadius = 0,
+                EnableRippleEffect = true,
+                Font = new Font("Segoe UI", 9)
             };
-            btnMoveDown.Click += BtnMoveDown_Click;
-            this.AddCustomControl(btnMoveDown);
         }
 
         private void LoadList()
@@ -1849,13 +2498,12 @@ namespace FluentControls.Controls
                 }
                 else
                 {
-                    // 对于引用类型, 尝试创建实例
                     try
                     {
                         newItem = Activator.CreateInstance(itemType);
 
-                        // 使用新的方式创建 PropertyItem
-                        using (var editor = new ObjectEditorDialog(newItem, itemType, "新建项"))
+                        Size dlgSize = new Size(520, 520);
+                        using (var editor = new ObjectEditorDialog(newItem, itemType, "新建项", dlgSize))
                         {
                             if (editor.ShowDialog(this) == DialogResult.OK)
                             {
@@ -1932,8 +2580,8 @@ namespace FluentControls.Controls
             }
             else
             {
-                // 对象类型, 使用对象编辑器
-                using (var editor = new ObjectEditorDialog(item, itemType, $"编辑 {itemType.Name}"))
+                Size dlgSize = new Size(520, 520);
+                using (var editor = new ObjectEditorDialog(item, itemType, $"编辑 {itemType.Name}", dlgSize))
                 {
                     if (editor.ShowDialog(this) == DialogResult.OK)
                     {
@@ -1951,12 +2599,7 @@ namespace FluentControls.Controls
                 return "";
             }
 
-            if (type.IsValueType)
-            {
-                return Activator.CreateInstance(type).ToString();
-            }
-
-            return "";
+            return type.IsValueType ? Activator.CreateInstance(type).ToString() : "";
         }
 
         private void BtnRemove_Click(object sender, EventArgs e)
@@ -2003,30 +2646,34 @@ namespace FluentControls.Controls
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            this.SuspendLayout();
 
-            // 在底部面板添加自定义按钮
             var panel = this.Controls.OfType<Panel>().FirstOrDefault(p => p.Dock == DockStyle.Bottom);
             if (panel != null)
             {
+                panel.Height = 60;
+                panel.Padding = new Padding(16, 12, 16, 12);
                 panel.Controls.Clear();
 
                 var flowPanel = new FlowLayoutPanel
                 {
                     Dock = DockStyle.Fill,
                     FlowDirection = FlowDirection.RightToLeft,
-                    Padding = new Padding(10, 5, 10, 5)
+                    WrapContents = false,
+                    BackColor = Color.Transparent
                 };
 
                 var btnCancel = new FluentButton
                 {
                     Text = "取消",
-                    Size = new Size(100, 30),
+                    Size = new Size(90, 36),
                     UseTheme = true,
                     ThemeName = ThemeManager.CurrentTheme?.Name,
                     ButtonStyle = ButtonStyle.Secondary,
-                    Margin = new Padding(5, 0, 5, 0)
+                    CornerRadius = 0,
+                    Margin = new Padding(0),
+                    Font = new Font("Segoe UI", 9.5f)
                 };
-                // 添加关闭逻辑
                 btnCancel.Click += (s, be) =>
                 {
                     this.DialogResult = DialogResult.Cancel;
@@ -2037,13 +2684,14 @@ namespace FluentControls.Controls
                 var btnOK = new FluentButton
                 {
                     Text = "确定",
-                    Size = new Size(100, 30),
+                    Size = new Size(90, 36),
                     UseTheme = true,
                     ThemeName = ThemeManager.CurrentTheme?.Name,
                     ButtonStyle = ButtonStyle.Primary,
-                    Margin = new Padding(5, 0, 5, 0)
+                    CornerRadius = 0,
+                    Margin = new Padding(0, 0, 12, 0),
+                    Font = new Font("Segoe UI", 9.5f)
                 };
-                // 添加关闭逻辑
                 btnOK.Click += (s, be) =>
                 {
                     SaveList();
@@ -2053,12 +2701,13 @@ namespace FluentControls.Controls
                 flowPanel.Controls.Add(btnOK);
 
                 panel.Controls.Add(flowPanel);
-
-                // 设置默认按钮和取消按钮
                 this.AcceptButton = btnOK;
                 this.CancelButton = btnCancel;
+
+                this.ResumeLayout(true);
             }
         }
+
         private void SaveList()
         {
             // 保存到属性
@@ -2087,19 +2736,18 @@ namespace FluentControls.Controls
         private PropertyItem propertyItem;
         private FluentPropertyGrid propertyGrid;
         private object editedObject;
+        private int cornerRadius = 6;
 
         public object EditedObject => editedObject;
 
-        // 原有构造函数
-        public ObjectEditorDialog(PropertyItem propertyItem) : base(DialogType.Custom)
+        public ObjectEditorDialog(PropertyItem propertyItem, Size? size = null) : base(DialogType.Custom, size: size)
         {
             this.propertyItem = propertyItem;
             this.editedObject = propertyItem.Value;
             InitializeComponents();
         }
 
-        // 新增构造函数：直接传入对象
-        public ObjectEditorDialog(object obj, Type objectType, string title) : base(DialogType.Custom)
+        public ObjectEditorDialog(object obj, Type objectType, string title, Size? size = null) : base(DialogType.Custom, size: size)
         {
             this.editedObject = obj;
 
@@ -2118,14 +2766,13 @@ namespace FluentControls.Controls
         private void InitializeComponents()
         {
             this.TitleBar.Title = $"编辑 {propertyItem.DisplayName}";
-            this.Size = new Size(500, 500);
             this.DialogButtons = DialogButtons.OKCancel;
+            this.StartPosition = FormStartPosition.CenterParent;
 
             propertyGrid = new FluentPropertyGrid
             {
-                Location = new Point(20, 10),
-                Size = new Size(460, 400),
-                ShowNavigationButtons = false,
+                Location = new Point(20, 16),
+                Size = new Size(480, 410),
                 ShowActionButtons = false,
                 UseTheme = true,
                 ThemeName = ThemeManager.CurrentTheme?.Name
@@ -2137,7 +2784,6 @@ namespace FluentControls.Controls
             }
             else if (propertyItem.PropertyType.IsClass && propertyItem.PropertyType != typeof(string))
             {
-                // 尝试创建实例
                 try
                 {
                     editedObject = Activator.CreateInstance(propertyItem.PropertyType);
@@ -2155,29 +2801,34 @@ namespace FluentControls.Controls
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            this.SuspendLayout();
 
             var panel = this.Controls.OfType<Panel>().FirstOrDefault(p => p.Dock == DockStyle.Bottom);
             if (panel != null)
             {
+                panel.Height = 60;
+                panel.Padding = new Padding(16, 12, 16, 12);
                 panel.Controls.Clear();
 
                 var flowPanel = new FlowLayoutPanel
                 {
                     Dock = DockStyle.Fill,
                     FlowDirection = FlowDirection.RightToLeft,
-                    Padding = new Padding(10, 5, 10, 5)
+                    WrapContents = false,
+                    BackColor = Color.Transparent
                 };
 
                 var btnCancel = new FluentButton
                 {
                     Text = "取消",
-                    Size = new Size(100, 30),
+                    Size = new Size(90, 36),
                     UseTheme = true,
                     ThemeName = ThemeManager.CurrentTheme?.Name,
                     ButtonStyle = ButtonStyle.Secondary,
-                    Margin = new Padding(5, 0, 5, 0)
+                    CornerRadius = 0,
+                    Margin = new Padding(0),
+                    Font = new Font("Segoe UI", 9.5f)
                 };
-                // 添加关闭逻辑
                 btnCancel.Click += (s, be) =>
                 {
                     this.DialogResult = DialogResult.Cancel;
@@ -2188,11 +2839,13 @@ namespace FluentControls.Controls
                 var btnOK = new FluentButton
                 {
                     Text = "确定",
-                    Size = new Size(100, 30),
+                    Size = new Size(90, 36),
                     UseTheme = true,
                     ThemeName = ThemeManager.CurrentTheme?.Name,
                     ButtonStyle = ButtonStyle.Primary,
-                    Margin = new Padding(5, 0, 5, 0)
+                    CornerRadius = 0,
+                    Margin = new Padding(0, 0, 12, 0),
+                    Font = new Font("Segoe UI", 9.5f)
                 };
                 btnOK.Click += (s, be) =>
                 {
@@ -2202,90 +2855,19 @@ namespace FluentControls.Controls
                     {
                         propertyItem.Value = editedObject;
                     }
-                    // 添加关闭逻辑
                     this.DialogResult = DialogResult.OK;
                     this.Close();
                 };
                 flowPanel.Controls.Add(btnOK);
 
                 panel.Controls.Add(flowPanel);
-
-                // 设置默认按钮和取消按钮
                 this.AcceptButton = btnOK;
                 this.CancelButton = btnCancel;
+
+                this.ResumeLayout(true);
             }
         }
     }
-
-    #endregion
-
-    #region 特性
-
-    /// <summary>
-    /// 忽略编辑特性
-    /// 标记此特性的属性不会在PropertyGrid中显示
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class PropertyIgnoreEditAttribute : Attribute
-    {
-    }
-
-    /// <summary>
-    /// 属性显示名称特性
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class PropertyDisplayNameAttribute : Attribute
-    {
-        public PropertyDisplayNameAttribute(string displayName)
-        {
-            DisplayName = displayName;
-        }
-
-        public string DisplayName { get; }
-    }
-
-    /// <summary>
-    /// 属性描述特性
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class PropertyDescriptionAttribute : Attribute
-    {
-        public PropertyDescriptionAttribute(string description)
-        {
-            Description = description;
-        }
-
-        public string Description { get; }
-    }
-
-    /// <summary>
-    /// 属性分类特性
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class PropertyCategoryAttribute : Attribute
-    {
-        public PropertyCategoryAttribute(string category)
-        {
-            Category = category;
-        }
-
-        public string Category { get; }
-    }
-
-    /// <summary>
-    /// 只读属性特性
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class PropertyReadOnlyAttribute : Attribute
-    {
-        public PropertyReadOnlyAttribute(bool isReadOnly = true)
-        {
-            IsReadOnly = isReadOnly;
-        }
-
-        public bool IsReadOnly { get; }
-    }
-
 
     #endregion
 
@@ -2303,6 +2885,7 @@ namespace FluentControls.Controls
         Color,          // 颜色选择器
         DateTime,       // 日期时间选择器
         List,           // 列表编辑器
+        Image,          // 图片选择器
         Object,         // 对象编辑器
         Custom          // 自定义
     }

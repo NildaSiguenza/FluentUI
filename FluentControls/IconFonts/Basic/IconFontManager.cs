@@ -348,6 +348,8 @@ namespace FluentControls.IconFonts
         boxicons,
         coolicons,
         Eva_Icons,
+        FluentSystemIconsRegular,
+        FluentSystemIconsResizable,
         FontAwesome7FreeSolid,
         FontAwesome7Free,
         FontAwesome7Brands,

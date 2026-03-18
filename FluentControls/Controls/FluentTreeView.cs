@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Design;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -72,7 +73,7 @@ namespace FluentControls.Controls
         public FluentTreeView()
         {
             SetStyle(ControlStyles.Selectable, true);
-            nodes = new FluentTreeNodeCollection(null,this);
+            nodes = new FluentTreeNodeCollection(null, this);
             nodeBounds = new Dictionary<FluentTreeNode, Rectangle>();
 
             InitializeScrollBar();
@@ -309,7 +310,7 @@ namespace FluentControls.Controls
 
         #endregion
 
-        #region 数据
+        #region 数据绑定
 
         /// <summary>
         /// 绑定层次结构数据
@@ -354,6 +355,112 @@ namespace FluentControls.Controls
             }
 
             UpdateLayout();
+        }
+
+        /// <summary>
+        /// 绑定多层级异构数据
+        /// (基于通用的多层级树配置构建器)
+        /// </summary>
+        public void BindMultiLevelData(IEnumerable<object> rootData, Action<MultiLevelTreeBuilder> configure)
+        {
+            if (configure == null)
+            {
+                throw new ArgumentNullException(nameof(configure));
+            }
+
+            var builder = new MultiLevelTreeBuilder();
+            configure(builder);
+
+            var nodes = builder.Build(rootData);
+
+            Nodes.Clear();
+            foreach (var node in nodes)
+            {
+                Nodes.Add(node);
+            }
+
+            UpdateLayout();
+        }
+
+        /// <summary>
+        /// 绑定两层级数据
+        /// </summary>
+        public void BindTwoLevelData<TParent, TChild>(
+            IEnumerable<TParent> parentData,
+            Func<TParent, string> parentDisplaySelector,
+            Func<TParent, IEnumerable<TChild>> childrenSelector,
+            Func<TChild, string> childDisplaySelector,
+            Func<TParent, Image> parentIconSelector = null,
+            Func<TChild, Image> childIconSelector = null,
+            Func<TParent, bool> parentEnabledSelector = null,
+            Func<TChild, bool> childEnabledSelector = null,
+            Func<TParent, bool> parentExpandedSelector = null,
+            Func<TParent, object> parentTagSelector = null,
+            Func<TChild, object> childTagSelector = null)
+        {
+            BindMultiLevelData(
+                parentData.Cast<object>(),
+                builder => builder
+                    .AddLevel(
+                        parentDisplaySelector,
+                        p => childrenSelector(p)?.Cast<object>(),
+                        parentIconSelector,
+                        parentEnabledSelector,
+                        parentExpandedSelector,
+                        parentTagSelector)
+                    .AddLevel(
+                        childDisplaySelector,
+                        childrenSelector: null,
+                        childIconSelector,
+                        childEnabledSelector,
+                        tagSelector: childTagSelector));
+        }
+
+        /// <summary>
+        /// 绑定三层级数据
+        /// </summary>
+        public void BindThreeLevelData<TLevel1, TLevel2, TLevel3>(
+            IEnumerable<TLevel1> level1Data,
+            Func<TLevel1, string> level1DisplaySelector,
+            Func<TLevel1, IEnumerable<TLevel2>> level2Selector,
+            Func<TLevel2, string> level2DisplaySelector,
+            Func<TLevel2, IEnumerable<TLevel3>> level3Selector,
+            Func<TLevel3, string> level3DisplaySelector,
+            Func<TLevel1, Image> level1IconSelector = null,
+            Func<TLevel2, Image> level2IconSelector = null,
+            Func<TLevel3, Image> level3IconSelector = null,
+            Func<TLevel1, bool> level1EnabledSelector = null,
+            Func<TLevel2, bool> level2EnabledSelector = null,
+            Func<TLevel3, bool> level3EnabledSelector = null,
+            Func<TLevel1, bool> level1ExpandedSelector = null,
+            Func<TLevel2, bool> level2ExpandedSelector = null,
+            Func<TLevel1, object> level1TagSelector = null,
+            Func<TLevel2, object> level2TagSelector = null,
+            Func<TLevel3, object> level3TagSelector = null)
+        {
+            BindMultiLevelData(
+                level1Data.Cast<object>(),
+                builder => builder
+                    .AddLevel(
+                        level1DisplaySelector,
+                        l1 => level2Selector(l1)?.Cast<object>(),
+                        level1IconSelector,
+                        level1EnabledSelector,
+                        level1ExpandedSelector,
+                        level1TagSelector)
+                    .AddLevel(
+                        level2DisplaySelector,
+                        l2 => level3Selector(l2)?.Cast<object>(),
+                        level2IconSelector,
+                        level2EnabledSelector,
+                        level2ExpandedSelector,
+                        level2TagSelector)
+                    .AddLevel(
+                        level3DisplaySelector,
+                        childrenSelector: null,
+                        level3IconSelector,
+                        level3EnabledSelector,
+                        tagSelector: level3TagSelector));
         }
 
         /// <summary>
@@ -2061,12 +2168,14 @@ namespace FluentControls.Controls
 
         private FluentTreeView GetTreeView()
         {
-            if (treeView != null)
-            {
-                return treeView;
-            }
+            return treeView != null ? treeView : (owner?.TreeView);
+        }
 
-            return owner?.TreeView;
+        public FluentTreeNode Add(string text)
+        {
+            var node = new FluentTreeNode(text);
+            Add(node);
+            return node;
         }
 
         public new void Add(FluentTreeNode node)
@@ -2189,6 +2298,359 @@ namespace FluentControls.Controls
                     }
                 }
             }
+            return null;
+        }
+    }
+
+    #endregion
+
+    #region 通用数据配置
+
+    /// <summary>
+    /// 树节点层级配置接口
+    /// </summary>
+    public interface ITreeNodeLevelConfig
+    {
+        Type DataType { get; }
+        FluentTreeNode CreateNode(object data);
+        IEnumerable<object> GetChildren(object data);
+    }
+
+    /// <summary>
+    /// 泛型层级配置
+    /// </summary>
+    public class TreeNodeLevelConfig<T> : ITreeNodeLevelConfig
+    {
+        private readonly Func<T, string> displayTextSelector;
+        private readonly Func<T, IEnumerable<object>> childrenSelector;
+        private readonly Func<T, Image> iconSelector;
+        private readonly Func<T, bool> isEnabledSelector;
+        private readonly Func<T, bool> isExpandedSelector;
+        private readonly Func<T, object> tagSelector;
+        private readonly Func<T, Color?> foreColorSelector;
+        private readonly Func<T, bool> isVisibleSelector;
+
+        public Type DataType => typeof(T);
+
+        public TreeNodeLevelConfig(
+            Func<T, string> displayTextSelector,
+            Func<T, IEnumerable<object>> childrenSelector = null,
+            Func<T, Image> iconSelector = null,
+            Func<T, bool> isEnabledSelector = null,
+            Func<T, bool> isExpandedSelector = null,
+            Func<T, object> tagSelector = null,
+            Func<T, Color?> foreColorSelector = null,
+            Func<T, bool> isVisibleSelector = null)
+        {
+            this.displayTextSelector = displayTextSelector ?? throw new ArgumentNullException(nameof(displayTextSelector));
+            this.childrenSelector = childrenSelector;
+            this.iconSelector = iconSelector;
+            this.isEnabledSelector = isEnabledSelector ?? (x => true);
+            this.isExpandedSelector = isExpandedSelector ?? (x => false);
+            this.tagSelector = tagSelector ?? (x => x);
+            this.foreColorSelector = foreColorSelector;
+            this.isVisibleSelector = isVisibleSelector ?? (x => true);
+        }
+
+        public FluentTreeNode CreateNode(object data)
+        {
+            if (data is T typedData)
+            {
+                var node = new FluentTreeNode
+                {
+                    Text = displayTextSelector(typedData),
+                    Icon = iconSelector?.Invoke(typedData),
+                    IsEnabled = isEnabledSelector(typedData),
+                    IsExpanded = isExpandedSelector(typedData),
+                    Tag = tagSelector(typedData),
+                    ForeColor = foreColorSelector?.Invoke(typedData),
+                    IsVisible = isVisibleSelector(typedData)
+                };
+
+                return node;
+            }
+
+            throw new InvalidOperationException($"数据不是目标类型: {typeof(T).Name}");
+        }
+
+        public IEnumerable<object> GetChildren(object data)
+        {
+            return data is T typedData && childrenSelector != null
+                ? childrenSelector(typedData) ?? Enumerable.Empty<object>()
+                : Enumerable.Empty<object>();
+        }
+    }
+
+    /// <summary>
+    /// 条件配置包装器
+    /// </summary>
+    public class ConditionalTreeNodeConfig<T> : ITreeNodeLevelConfig
+    {
+        private readonly List<(Func<T, bool> condition, TreeNodeLevelConfig<T> config)> conditionalConfigs;
+        private readonly TreeNodeLevelConfig<T> defaultConfig;
+
+        public Type DataType => typeof(T);
+
+        public ConditionalTreeNodeConfig(TreeNodeLevelConfig<T> defaultConfig)
+        {
+            this.defaultConfig = defaultConfig;
+            this.conditionalConfigs = new List<(Func<T, bool>, TreeNodeLevelConfig<T>)>();
+        }
+
+        public void AddCondition(Func<T, bool> condition, TreeNodeLevelConfig<T> config)
+        {
+            conditionalConfigs.Add((condition, config));
+        }
+
+        public FluentTreeNode CreateNode(object data)
+        {
+            if (data is T typedData)
+            {
+                // 查找匹配的条件配置
+                foreach (var (condition, config) in conditionalConfigs)
+                {
+                    if (condition(typedData))
+                    {
+                        return config.CreateNode(data);
+                    }
+                }
+
+                // 使用默认配置
+                return defaultConfig.CreateNode(data);
+            }
+
+            throw new InvalidOperationException($"Data is not of type {typeof(T).Name}");
+        }
+
+        public IEnumerable<object> GetChildren(object data)
+        {
+            if (data is T typedData)
+            {
+                // 条件配置通常共享相同的子项选择器
+                return defaultConfig.GetChildren(data);
+            }
+
+            return Enumerable.Empty<object>();
+        }
+    }
+
+    /// <summary>
+    /// 条件配置构建器
+    /// </summary>
+    public class ConditionalConfigBuilder<T>
+    {
+        private readonly ConditionalTreeNodeConfig<T> conditionalConfig;
+
+        public ConditionalConfigBuilder(ConditionalTreeNodeConfig<T> conditionalConfig)
+        {
+            this.conditionalConfig = conditionalConfig;
+        }
+
+        public ConditionalConfigBuilder<T> When(
+            Func<T, bool> condition,
+            Func<T, string> displayTextSelector,
+            Func<T, Color?> foreColorSelector = null,
+            Func<T, Image> iconSelector = null)
+        {
+            var config = new TreeNodeLevelConfig<T>(
+                displayTextSelector,
+                childrenSelector: null, // 条件配置不改变子项
+                iconSelector: iconSelector,
+                foreColorSelector: foreColorSelector);
+
+            conditionalConfig.AddCondition(condition, config);
+            return this;
+        }
+    }
+
+    /// <summary>
+    /// 多层级树配置构建器
+    /// </summary>
+    public class MultiLevelTreeBuilder
+    {
+        // 改用字典存储类型到配置的映射
+        private readonly Dictionary<Type, ITreeNodeLevelConfig> typeConfigs = new Dictionary<Type, ITreeNodeLevelConfig>();
+
+        // 记录根类型
+        private Type rootType;
+
+        /// <summary>
+        /// 添加类型配置
+        /// </summary>
+        public MultiLevelTreeBuilder AddLevel<T>(
+            Func<T, string> displayTextSelector,
+            Func<T, IEnumerable<object>> childrenSelector = null,
+            Func<T, Image> iconSelector = null,
+            Func<T, bool> isEnabledSelector = null,
+            Func<T, bool> isExpandedSelector = null,
+            Func<T, object> tagSelector = null,
+            Func<T, Color?> foreColorSelector = null,
+            Func<T, bool> isVisibleSelector = null)
+        {
+            var config = new TreeNodeLevelConfig<T>(
+                displayTextSelector,
+                childrenSelector,
+                iconSelector,
+                isEnabledSelector,
+                isExpandedSelector,
+                tagSelector,
+                foreColorSelector,
+                isVisibleSelector);
+
+            // 使用类型作为键
+            typeConfigs[typeof(T)] = config;
+
+            // 记录第一个添加的类型作为根类型
+            if (rootType == null)
+            {
+                rootType = typeof(T);
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// 添加条件配置
+        /// </summary>
+        public MultiLevelTreeBuilder AddConditionalLevel<T>(
+            Func<T, string> displayTextSelector,
+            Func<T, IEnumerable<object>> childrenSelector = null,
+            Action<ConditionalConfigBuilder<T>> configureConditions = null,
+            Func<T, Image> iconSelector = null,
+            Func<T, bool> isEnabledSelector = null,
+            Func<T, bool> isExpandedSelector = null,
+            Func<T, object> tagSelector = null)
+        {
+            var defaultConfig = new TreeNodeLevelConfig<T>(
+                displayTextSelector,
+                childrenSelector,
+                iconSelector,
+                isEnabledSelector,
+                isExpandedSelector,
+                tagSelector);
+
+            if (configureConditions != null)
+            {
+                var conditionalConfig = new ConditionalTreeNodeConfig<T>(defaultConfig);
+                var builder = new ConditionalConfigBuilder<T>(conditionalConfig);
+                configureConditions(builder);
+                typeConfigs[typeof(T)] = conditionalConfig;
+            }
+            else
+            {
+                typeConfigs[typeof(T)] = defaultConfig;
+            }
+
+            if (rootType == null)
+            {
+                rootType = typeof(T);
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// 构建树节点（修正版）
+        /// </summary>
+        public IEnumerable<FluentTreeNode> Build(IEnumerable<object> rootData)
+        {
+            if (typeConfigs.Count == 0)
+            {
+                throw new InvalidOperationException("至少需要配置一个类型");
+            }
+
+            var nodes = new List<FluentTreeNode>();
+
+            foreach (var data in rootData)
+            {
+                var node = BuildNodeRecursive(data);
+                if (node != null)
+                {
+                    nodes.Add(node);
+                }
+            }
+
+            return nodes;
+        }
+
+        /// <summary>
+        /// 递归构建节点（基于类型匹配）
+        /// </summary>
+        private FluentTreeNode BuildNodeRecursive(object data)
+        {
+            if (data == null)
+            {
+                return null;
+            }
+
+            // 获取数据的实际类型
+            Type dataType = data.GetType();
+
+            // 查找匹配的配置（支持继承）
+            ITreeNodeLevelConfig config = FindMatchingConfig(dataType);
+
+            if (config == null)
+            {
+                // 没有找到匹配的配置，跳过此节点
+                return null;
+            }
+
+            // 创建节点
+            var node = config.CreateNode(data);
+
+            // 获取子项
+            var children = config.GetChildren(data);
+
+            if (children != null && children.Any())
+            {
+                foreach (var child in children)
+                {
+                    if (child != null)
+                    {
+                        // 递归处理子项
+                        var childNode = BuildNodeRecursive(child);
+                        if (childNode != null)
+                        {
+                            node.Nodes.Add(childNode);
+                        }
+                    }
+                }
+            }
+
+            return node;
+        }
+
+        /// <summary>
+        /// 查找匹配的配置
+        /// </summary>
+        private ITreeNodeLevelConfig FindMatchingConfig(Type dataType)
+        {
+            // 1. 精确匹配
+            if (typeConfigs.TryGetValue(dataType, out var config))
+            {
+                return config;
+            }
+
+            // 2. 查找基类匹配
+            Type currentType = dataType.BaseType;
+            while (currentType != null && currentType != typeof(object))
+            {
+                if (typeConfigs.TryGetValue(currentType, out config))
+                {
+                    return config;
+                }
+                currentType = currentType.BaseType;
+            }
+
+            // 3. 查找接口匹配
+            foreach (var interfaceType in dataType.GetInterfaces())
+            {
+                if (typeConfigs.TryGetValue(interfaceType, out config))
+                {
+                    return config;
+                }
+            }
+
             return null;
         }
     }

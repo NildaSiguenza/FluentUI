@@ -2147,6 +2147,19 @@ namespace FluentControls.Controls
         private bool visible = true;
         private int displayIndex = -1;
 
+        public FluentListViewColumn()
+        {
+        }
+
+        public FluentListViewColumn(string text, int width = 100, HorizontalAlignment textAlign = HorizontalAlignment.Left, bool visible = true, int displayIndex = -1)
+        {
+            this.text = text;
+            this.width = width;
+            this.textAlign = textAlign;
+            this.visible = visible;
+            this.displayIndex = displayIndex;
+        }
+
         [Category("Appearance")]
         [Description("列标题文本")]
         [DefaultValue("Column")]
