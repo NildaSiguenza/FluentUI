@@ -2375,9 +2375,12 @@ namespace FluentControls.Controls
 
         public IEnumerable<object> GetChildren(object data)
         {
-            return data is T typedData && childrenSelector != null
-                ? childrenSelector(typedData) ?? Enumerable.Empty<object>()
-                : Enumerable.Empty<object>();
+            if (data is T typedData && childrenSelector != null)
+            {
+                return childrenSelector(typedData) ?? Enumerable.Empty<object>();
+            }
+
+            return Enumerable.Empty<object>();
         }
     }
 

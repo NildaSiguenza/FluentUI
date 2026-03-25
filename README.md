@@ -32,7 +32,7 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (43)
+## Control List (45)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
@@ -56,20 +56,22 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 - FluentFontIcon: An icon control that supports font icon display.
 - FluentMasker: A control that supports masking effects.
 - FluentDropdown: A dropdown menu control that supports grouping and status selection.
-- ✨FluentProgressMasker: A control that supports progress masking effects.
-- ✨FluentNumericInput: A control that supports numerical input and adjustment.
+- FluentProgressMasker: A control that supports progress masking effects.
+- FluentNumericInput: A control that supports numerical input and adjustment.
 
 ### Container Controls (3)
 - FluentPanel: A panel control that supports various layout methods.
 - FluentTabControl: A tab control that supports switching between multiple tabs. 
 - FluentRepeater: A repeating control that supports template display.
 
-### List Controls (5)
+### List Controls (7)
 - FluentCheckBoxList: A checkbox list control that supports multi-selection lists. 
 - FluentRadioList: A radio button list control that supports single-selection lists. 
 - FluentListBox: A list box control that supports multi-selection and custom styles.
 - FluentTreeView: A tree view control that supports displaying a hierarchical structure.
 - FluentNavigationView: A control that supports displaying a navigation menu.
+- ✨FluentToolList: A control that supports displaying a list of tools.
+- ✨FluentPanelList: A control that supports displaying a panel list.
 
 ### Data Controls (2)
 - FluentListView: A list view control that supports displaying and sorting multiple columns.

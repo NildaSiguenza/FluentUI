@@ -15,3 +15,5 @@ FluentControls/IconFonts/字体资源文件目录结构.md
 FluentControls/AutoFitDPI/DPIUsage.cs
 Infrastructure/Utils/HighPrecisionTimer.cs
 Infrastructure/Utils/HighPrecisionTimerTest.cs
+/FluentControls.WinformDemo/bin
+/FluentControls.WinformDemo/obj
