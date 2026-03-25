@@ -27,6 +27,9 @@ dotnet add package FluentControls
 Runtime: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your application's runtime directory.
 Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/main/IconFonts and its files to your [Visual Studio program directory]\[Visual Studio version]\Enterprise\Common7\IDE\ directory.
 ```
+## Examples
+![screenshot](./build/WinformDemo_shortcut.png)
+[WinformDemo: ](https://github.com/NildaSiguenza/FluentUI/tree/main/FluentControls.WinformDemo)
 
 ## Updates
 > FluentControls follows Semantic Versioning.  
