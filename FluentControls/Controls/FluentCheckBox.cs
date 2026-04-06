@@ -452,7 +452,7 @@ namespace FluentControls.Controls
         {
             if (checkBoxStyle == CheckBoxStyle.Switch)
             {
-                // Switch 样式下，非开关区域都是文本区域
+                // Switch 样式下, 非开关区域都是文本区域
                 return !IsPointInCheckBox(point) && currentTextRect.Contains(point);
             }
             return currentTextRect.Contains(point);

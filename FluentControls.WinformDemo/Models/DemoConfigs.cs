@@ -2224,6 +2224,168 @@ namespace FluentControls.WinformDemo
         }
     }
 
+    public class NumericInputConfig : ControlDemoConfigBase
+    {
+        [PropertyCategory("数值")]
+        [PropertyDisplayName("当前值")]
+        public decimal Value { get; set; } = 0;
+
+        [PropertyCategory("数值")]
+        [PropertyDisplayName("每次增减的步进值")]
+        public decimal Increment { get; set; } = 1;
+
+        [PropertyCategory("数值")]
+        [PropertyDisplayName("显示的小数位数")]
+        public int DecimalPlaces { get; set; } = 0;
+
+        [PropertyCategory("数值")]
+        [PropertyDisplayName("是否显示千位分隔符")]
+        public bool ThousandsSeparator { get; set; } = false;
+
+        [PropertyCategory("数值")]
+        [PropertyDisplayName("是否以十六进制显示")]
+        public bool Hexadecimal { get; set; } = false;
+
+        [PropertyCategory("图标")]
+        [PropertyDisplayName("输入框内显示的图标")]
+        [Editor(typeof(IconFontImageEditor), typeof(UITypeEditor))]
+        public Image Icon { get; set; }
+
+        [PropertyCategory("图标")]
+        [PropertyDisplayName("图标在输入框内的位置")]
+        public IconPosition IconPosition { get; set; } = IconPosition.Left;
+
+        [PropertyCategory("图标")]
+        [PropertyDisplayName("图标显示大小")]
+        public Size IconSize { get; set; } = new Size(16, 16);
+
+        [PropertyCategory("图标")]
+        [PropertyDisplayName("图标与输入框的间距")]
+        public int IconSpacing { get; set; } = 4;
+
+        [PropertyCategory("外观")]
+        [PropertyDisplayName("是否显示边框")]
+        public bool ShowBorder { get; set; } = true;
+
+        [PropertyCategory("外观")]
+        [PropertyDisplayName("圆角半径")]
+        public int CornerRadius { get; set; } = 4;
+
+        [PropertyCategory("外观")]
+        [PropertyDisplayName("是否显示上下调节按钮")]
+        public bool ShowButtons { get; set; } = true;
+
+        public override void ApplyTo(Control ctrl)
+        {
+            base.ApplyTo(ctrl);
+            if (ctrl is FluentNumericInput tb)
+            {
+                tb.Value = Value;
+                tb.Increment = Increment;
+                tb.DecimalPlaces = DecimalPlaces;
+                tb.ThousandsSeparator = ThousandsSeparator;
+                tb.Hexadecimal = Hexadecimal;
+                tb.Icon = Icon;
+                tb.IconPosition = IconPosition;
+                tb.IconSize = IconSize;
+                tb.IconSpacing = IconSpacing;
+                tb.ShowBorder = ShowBorder;
+                tb.BorderSize = ShowBorder ? 1 : 0;
+                tb.CornerRadius = CornerRadius;
+                tb.ShowButtons = ShowButtons;
+            }
+        }
+
+        public override void ReadFrom(Control ctrl)
+        {
+            base.ReadFrom(ctrl);
+            if (ctrl is FluentNumericInput fni)
+            {
+                Value = fni.Value;
+                Increment = fni.Increment;
+                DecimalPlaces = fni.DecimalPlaces;
+                ThousandsSeparator = fni.ThousandsSeparator;
+                Hexadecimal = fni.Hexadecimal;
+                Icon = fni.Icon;
+                IconPosition = fni.IconPosition;
+                IconSize = fni.IconSize;
+                IconSpacing = fni.IconSpacing;
+                ShowBorder = fni.ShowBorder;
+                CornerRadius = fni.CornerRadius;
+                ShowButtons = fni.ShowButtons;
+            }
+        }
+
+        public static NumericInputConfig FromControl(FluentNumericInput tb)
+        {
+            var cfg = new NumericInputConfig();
+            cfg.ReadFrom(tb);
+            return cfg;
+        }
+    }
+
+    public class MaskerConfig : ControlDemoConfigBase
+    {
+        [PropertyCategory("Mask")]
+        [PropertyDisplayName("显示的提示文本")]
+        public string MaskText { get; set; } = "加载中...";
+
+        [PropertyCategory("Mask")]
+        [PropertyDisplayName("动画和文本的布局方式")]
+        public MaskContentLayout ContentLayout { get; set; } = MaskContentLayout.Vertical;
+
+        [PropertyCategory("Mask")]
+        [PropertyDisplayName("是否显示提示文本")]
+        public bool ShowText { get; set; } = true;
+
+        [PropertyCategory("Mask")]
+        [PropertyDisplayName("加载动画的样式")]
+        public MaskAnimationStyle AnimationStyle { get; set; } = MaskAnimationStyle.Circle;
+
+        [PropertyCategory("Mask")]
+        [PropertyDisplayName("遮罩背景的透明度")]
+        public float BackgroundOpacity { get; set; } = 0.7f;
+
+        [PropertyCategory("Mask")]
+        [PropertyDisplayName("是否显示右上角的关闭按钮")]
+        public bool ShowCloseButton { get; set; } = false;
+
+        public override void ApplyTo(Control ctrl)
+        {
+            base.ApplyTo(ctrl);
+            if (ctrl is FluentMasker msk)
+            {
+                msk.MaskText = MaskText;
+                msk.ContentLayout = ContentLayout;
+                msk.ShowText = ShowText;
+                msk.AnimationStyle = AnimationStyle;
+                msk.BackgroundOpacity = BackgroundOpacity;
+                msk.ShowCloseButton = ShowCloseButton;
+            }
+        }
+
+        public override void ReadFrom(Control ctrl)
+        {
+            base.ReadFrom(ctrl);
+            if (ctrl is FluentMasker msk)
+            {
+                MaskText = msk.MaskText;
+                ContentLayout = msk.ContentLayout;
+                ShowText = msk.ShowText;
+                AnimationStyle = msk.AnimationStyle;
+                BackgroundOpacity = msk.BackgroundOpacity;
+                ShowCloseButton = msk.ShowCloseButton;
+            }
+        }
+
+        public static MaskerConfig FromControl(FluentMasker tb)
+        {
+            var cfg = new MaskerConfig();
+            cfg.ReadFrom(tb);
+            return cfg;
+        }
+    }
+
     #endregion
 
     #region 列表控件配置

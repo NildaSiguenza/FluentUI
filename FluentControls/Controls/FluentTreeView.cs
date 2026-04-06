@@ -2553,7 +2553,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 构建树节点（修正版）
+        /// 构建树节点(修正版)
         /// </summary>
         public IEnumerable<FluentTreeNode> Build(IEnumerable<object> rootData)
         {
@@ -2577,7 +2577,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 递归构建节点（基于类型匹配）
+        /// 递归构建节点(基于类型匹配)
         /// </summary>
         private FluentTreeNode BuildNodeRecursive(object data)
         {
@@ -2589,12 +2589,12 @@ namespace FluentControls.Controls
             // 获取数据的实际类型
             Type dataType = data.GetType();
 
-            // 查找匹配的配置（支持继承）
+            // 查找匹配的配置(支持继承)
             ITreeNodeLevelConfig config = FindMatchingConfig(dataType);
 
             if (config == null)
             {
-                // 没有找到匹配的配置，跳过此节点
+                // 没有找到匹配的配置, 跳过此节点
                 return null;
             }
 

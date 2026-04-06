@@ -226,10 +226,12 @@ namespace FluentControls.WinformDemo
                 Nav(FluentSystemIconsResizableIconChar.IconIcFluentCircle20Regular)));
             //cat.Items.Add(MI("FluentFontIcon",
             //    Nav(FluentSystemIconsResizableIconChar.IconIcFluentTextFont20Regular)));
-            //cat.Items.Add(MI("FluentMasker",
-            //    Nav(FluentSystemIconsResizableIconChar.IconIcFluentSquare20Regular)));
+            cat.Items.Add(MI("FluentMasker",
+                Nav(FluentSystemIconsResizableIconChar.IconIcFluentSquare20Regular)));
             //cat.Items.Add(MI("FluentProgressMasker",
             //    Nav(FluentSystemIconsResizableIconChar.IconIcFluentSquare20Regular)));
+            cat.Items.Add(MI("FluentNumericInput",
+                Nav(FluentSystemIconsResizableIconChar.IconIcFluentNumberCircle020Regular)));
 
             navigation.MenuItems.Add(cat);
         }
@@ -898,10 +900,20 @@ namespace FluentControls.WinformDemo
                     Size = new Size(48, 48)
                 });
 
-            Register("FluentMasker", "FluentMasker", "支持遮罩效果的控件", "基本控件",
-                () => new FluentMasker
+            RegisterFormDemo("FluentMasker", "FluentMasker", "支持遮罩效果的控件", "基本控件",
+                () =>
                 {
-                    Size = new Size(200, 120)
+                    var masker = new FluentMasker
+                    {
+                        TargetControl = this,
+                        AnimationStyle = MaskAnimationStyle.Circle,
+                        ContentLayout = MaskContentLayout.Horizontal,
+                        MaskText = "加载中...",
+                        ShowText = true,
+                        BackgroundOpacity = 0.7f,
+                        ShowCloseButton = true,
+                    };
+                    masker.Show();
                 });
 
             Register("FluentProgressMasker", "FluentProgressMasker", "支持进度遮罩效果的控件", "基本控件",
@@ -909,6 +921,18 @@ namespace FluentControls.WinformDemo
                 {
                     Size = new Size(200, 120)
                 });
+
+            Register("FluentNumericInput", "FluentNumericInput", "支持数值输入和调节的控件", "基本控件",
+               () => new FluentNumericInput
+               {
+                   Value = 0,
+                   ShowButtons = true,
+                   Size = new Size(160, 36),
+                   InnerPadding = new Padding(6, 2, 6, 2),
+                   Padding = new Padding(4, 2, 4, 2),
+                   UseTheme = true
+               },
+               ctrl => NumericInputConfig.FromControl((FluentNumericInput)ctrl));
 
             // 容器控件
 
@@ -1311,7 +1335,7 @@ namespace FluentControls.WinformDemo
 
                     var infoLabel = new Label
                     {
-                        Text = $"窗体类控件无法在此处预览\n请点击下方按钮打开示例窗体",
+                        Text = $"特殊控件无法在此处预览\n请点击下方按钮打开 {key}",
                         AutoSize = false,
                         Dock = DockStyle.Top,
                         Height = 60,

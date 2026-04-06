@@ -1257,7 +1257,7 @@ namespace FluentControls.Controls
         /// <summary>
         /// 显示错误消息
         /// </summary>
-        public FluentMessage Error(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 5000, MessageDisplayMode displayMode = MessageDisplayMode.Application, Exception exception = null)
+        public FluentMessage Error(string content, string title = null, MessagePosition position = MessagePosition.BottomRight, int duration = 4000, MessageDisplayMode displayMode = MessageDisplayMode.Application, Exception exception = null)
         {
             var options = new MessageOptions
             {
@@ -1664,6 +1664,7 @@ namespace FluentControls.Controls
     /// <summary>
     /// 消息配置选项
     /// </summary>
+    [Serializable]
     public class MessageOptions
     {
         public MessageOptions()
@@ -2144,4 +2145,5 @@ namespace FluentControls.Controls
     }
 
     #endregion
+
 }

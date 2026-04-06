@@ -15,6 +15,8 @@ using System.Collections;
 using System.Globalization;
 using System.Resources;
 using System.ComponentModel.Design;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 
 namespace FluentControls.IconFonts
 {
@@ -30,15 +32,66 @@ namespace FluentControls.IconFonts
 
         public override object EditValue(ITypeDescriptorContext context, IServiceProvider provider, object value)
         {
+            if (provider == null)
+            {
+                return value;
+            }
+
+            Image result = value as Image;
+
             using (var dialog = new IconFontImageSelectorDialog(context, value as Image))
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    return dialog.SelectedImage;
+                    var selectedImage = dialog.SelectedImage;
+
+                    if (selectedImage == null)
+                    {
+                        return null;
+                    }
+
+                    // 验证图片有效性
+                    try
+                    {
+                        var testWidth = selectedImage.Width;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[EditValue] Dialog returned INVALID image: {ex.Message}");
+                        return value; // 返回原值
+                    }
+
+                    // 再次创建独立副本
+                    result = CreateFinalCopy(selectedImage);
+
+                    // 验证最终副本
+                    try
+                    {
+                        var testWidth = result.Width;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[EditValue] Final copy is INVALID: {ex.Message}");
+                        return value;
+                    }
                 }
             }
 
-            return value;
+            // Dialog 已经 Dispose, 再次验证结果
+            if (result != null && result != value)
+            {
+                try
+                {
+                    var testWidth = result.Width;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[EditValue] After dialog dispose, result is INVALID: {ex.Message}");
+                    return value;
+                }
+            }
+
+            return result ?? value;
         }
 
         public override bool GetPaintValueSupported(ITypeDescriptorContext context)
@@ -50,7 +103,39 @@ namespace FluentControls.IconFonts
         {
             if (e.Value is Image image)
             {
-                e.Graphics.DrawImage(image, e.Bounds);
+                try
+                {
+                    e.Graphics.DrawImage(image, e.Bounds);
+                }
+                catch (ArgumentException)
+                {
+                    using (var brush = new SolidBrush(Color.Red))
+                    {
+                        e.Graphics.FillRectangle(brush, e.Bounds);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 创建最终的独立图片副本
+        /// </summary>
+        private Image CreateFinalCopy(Image source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            // 通过字节数组完全隔离
+            using (var ms = new MemoryStream())
+            {
+                source.Save(ms, ImageFormat.Png);
+                var bytes = ms.ToArray();
+
+                // 创建新的 stream
+                var newStream = new MemoryStream(bytes);
+                return Image.FromStream(newStream);
             }
         }
 
@@ -100,8 +185,18 @@ namespace FluentControls.IconFonts
         public IconFontImageSelectorDialog(ITypeDescriptorContext context, Image currentImage)
         {
             this.context = context;
-            this.originalImage = currentImage;
-            this.selectedImage = currentImage;
+
+            // 复制当前图像,避免对原图像的引用
+            if (currentImage != null)
+            {
+                this.originalImage = CreateIndependentCopy(currentImage);
+                this.selectedImage = CreateIndependentCopy(currentImage);
+            }
+            else
+            {
+                this.originalImage = null;
+                this.selectedImage = null;
+            }
 
             resourceLocator = new ProjectResourceLocator(context);
             // 获取项目路径
@@ -160,6 +255,49 @@ namespace FluentControls.IconFonts
                 }
 
             };
+        }
+
+        /// <summary>
+        /// 创建完全独立的图片副本
+        /// </summary>
+        private static Image CreateIndependentCopy(Image source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                // 使用 MemoryStream + PNG 格式确保完全独立
+                using (var ms = new MemoryStream())
+                {
+                    source.Save(ms, ImageFormat.Png);
+                    var data = ms.ToArray();
+
+                    // 从字节数组创建新的 MemoryStream
+                    var newStream = new MemoryStream(data);
+                    return Image.FromStream(newStream);
+                }
+            }
+            catch
+            {
+                // 备用方案：像素级复制
+                try
+                {
+                    var bitmap = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+                    using (var g = Graphics.FromImage(bitmap))
+                    {
+                        g.Clear(Color.Transparent);
+                        g.DrawImage(source, 0, 0, source.Width, source.Height);
+                    }
+                    return bitmap;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
         }
 
         #region 本地文件标签页
@@ -699,14 +837,16 @@ namespace FluentControls.IconFonts
 
         private Image ToImage(byte[] data)
         {
-            if (data == null || data.Length == 0)
-            {
-                return null;
-            }
-            using (var ms = new MemoryStream(data))
-            {
-                return Image.FromStream(ms);
-            }
+
+            return CreateImageFromBytes(data);
+            //if (data == null || data.Length == 0)
+            //{
+            //    return null;
+            //}
+            //using (var ms = new MemoryStream(data))
+            //{
+            //    return Image.FromStream(ms);
+            //}
         }
 
         /// <summary>
@@ -1220,14 +1360,24 @@ namespace FluentControls.IconFonts
                 try
                 {
                     var previewSize = Math.Min(iconPreviewBox.Width, iconPreviewBox.Height) - 20;
-                    var icon = currentProvider.GetIcon(
+                    Image newPreview = null;
+
+                    using (var icon = currentProvider.GetIcon(
                         item.EnumValue,
                         previewSize,
                         iconColor,
-                        (float)iconRotationNumeric.Value);
+                        (float)iconRotationNumeric.Value))
+                    {
+                        if (icon != null)
+                        {
+                            newPreview = CreateIndependentCopy(icon);
+                        }
+                    }
 
-                    iconPreviewBox.Image?.Dispose();
-                    iconPreviewBox.Image = icon;
+                    // 安全地更换预览图片
+                    var oldImage = iconPreviewBox.Image;
+                    iconPreviewBox.Image = newPreview;
+                    oldImage?.Dispose();
 
                     lblIconInfo.Text = $"名称: {item.Name}\n" +
                                      $"Unicode: {item.Unicode}\n" +
@@ -1246,20 +1396,55 @@ namespace FluentControls.IconFonts
             {
                 try
                 {
-                    var icon = currentProvider.GetIcon(
+                    Image newImage = null;
+
+                    // 从 provider 获取图标
+                    using (var icon = currentProvider.GetIcon(
                         item.EnumValue,
                         (float)iconSizeNumeric.Value,
                         iconColor,
-                        (float)iconRotationNumeric.Value);
+                        (float)iconRotationNumeric.Value))
+                    {
+                        if (icon != null)
+                        {
+                            // 创建独立副本
+                            newImage = CreateIndependentCopy(icon);
+                        }
+                    }
 
-                    selectedImage?.Dispose();
-                    selectedImage = new Bitmap(icon);
+                    if (newImage != null)
+                    {
+                        // 释放旧图片
+                        selectedImage?.Dispose();
+                        selectedImage = newImage;
+                    }
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"生成图标失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        /// <summary>
+        /// 从字节数组创建独立图片
+        /// </summary>
+        private static Image CreateImageFromBytes(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+            {
+                return null;
+            }
+
+            var stream = new MemoryStream(data);
+            var image = Image.FromStream(stream);
+
+            // 创建独立副本后释放原始资源
+            var independentCopy = CreateIndependentCopy(image);
+            image.Dispose();
+            stream.Dispose();
+
+            return independentCopy;
         }
 
         private class FontProviderItem
@@ -1299,6 +1484,7 @@ namespace FluentControls.IconFonts
                 Anchor = AnchorStyles.Right | AnchorStyles.Top
             };
             btnOK.Location = new Point(panel.Width - 230, 8);
+            btnOK.Click += BtnOK_Click;
 
             var btnCancel = new Button
             {
@@ -1317,9 +1503,9 @@ namespace FluentControls.IconFonts
             };
             btnClear.Click += (s, e) =>
             {
+                selectedImage?.Dispose();
                 selectedImage = null;
                 DialogResult = DialogResult.OK;
-                Close();
             };
 
             panel.Controls.AddRange(new Control[] { btnOK, btnCancel, btnClear });
@@ -1330,228 +1516,87 @@ namespace FluentControls.IconFonts
             return panel;
         }
 
+        private void BtnOK_Click(object sender, EventArgs e)
+        {
+            // 根据当前标签页处理
+            switch (tabControl.SelectedIndex)
+            {
+                case 0: // 本地文件
+                        // selectedImage 已经在 BtnBrowse_Click 中设置
+                    break;
+
+                case 1: // 项目资源
+                        // selectedImage 已经在 ResourceTreeView_AfterSelect 中设置
+                    break;
+
+                case 2: // 字体图标
+                        // 确保生成最新的图标
+                    if (iconListBox.SelectedItem != null)
+                    {
+                        GenerateIconImage();
+                    }
+                    break;
+            }
+
+            // 验证 selectedImage 是否有效
+            if (selectedImage != null)
+            {
+                try
+                {
+                    var test = selectedImage.Width; // 简单验证
+                    Debug.WriteLine($"[BtnOK_Click] selectedImage is valid: {selectedImage.Width}x{selectedImage.Height}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[BtnOK_Click] selectedImage is INVALID: {ex.Message}");
+                    MessageBox.Show("图片无效, 请重新选择", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
+            DialogResult = DialogResult.OK;
+        }
+
         #endregion
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                localFilePreview?.Image?.Dispose();
-                resourcePreview?.Image?.Dispose();
-                iconPreviewBox?.Image?.Dispose();
+                // 清理预览控件的图片
+                if (localFilePreview?.Image != null)
+                {
+                    var img = localFilePreview.Image;
+                    localFilePreview.Image = null;
+                    img.Dispose();
+                }
+
+                if (resourcePreview?.Image != null)
+                {
+                    var img = resourcePreview.Image;
+                    resourcePreview.Image = null;
+                    img.Dispose();
+                }
+
+                if (iconPreviewBox?.Image != null)
+                {
+                    var img = iconPreviewBox.Image;
+                    iconPreviewBox.Image = null;
+                    img.Dispose();
+                }
+
+                // 清理副本
+                originalImage?.Dispose();
+                originalImage = null;
 
                 if (DialogResult != DialogResult.OK)
                 {
                     selectedImage?.Dispose();
+                    selectedImage = null;
                 }
             }
             base.Dispose(disposing);
         }
     }
-
-    /// <summary>
-    /// 图标选择对话框
-    /// </summary>
-    //public partial class IconCharSelectorDialog : Form
-    //{
-    //    private string fontFamily;
-    //    private string selectedIconChar;
-    //    private IIconFontProvider provider;
-
-    //    private FlowLayoutPanel iconPanel;
-    //    private TextBox searchBox;
-    //    private Label previewLabel;
-    //    private ComboBox sizeComboBox;
-
-    //    public string SelectedIconChar => selectedIconChar;
-
-    //    public IconCharSelectorDialog(string fontFamily, string currentIconChar)
-    //    {
-    //        this.fontFamily = fontFamily;
-    //        this.selectedIconChar = currentIconChar;
-    //        this.provider = IconFontManager.Instance.GetProvider(fontFamily);
-
-    //        InitializeComponent();
-    //        LoadIcons();
-    //    }
-
-    //    private void InitializeComponent()
-    //    {
-    //        Size = new Size(800, 600);
-    //        Text = $"选择图标 - {fontFamily}";
-    //        StartPosition = FormStartPosition.CenterParent;
-
-    //        // 搜索框
-    //        searchBox = new TextBox
-    //        {
-    //            Dock = DockStyle.Top,
-    //            Height = 30
-    //        };
-    //        searchBox.TextChanged += SearchBox_TextChanged;
-
-    //        // 工具栏
-    //        var toolbar = new Panel
-    //        {
-    //            Dock = DockStyle.Top,
-    //            Height = 40,
-    //            Padding = new Padding(5)
-    //        };
-
-    //        sizeComboBox = new ComboBox
-    //        {
-    //            Left = 10,
-    //            Top = 8,
-    //            Width = 100,
-    //            DropDownStyle = ComboBoxStyle.DropDownList
-    //        };
-    //        sizeComboBox.Items.AddRange(new object[] { "小", "中", "大" });
-    //        sizeComboBox.SelectedIndex = 1;
-    //        sizeComboBox.SelectedIndexChanged += (s, e) => LoadIcons();
-    //        toolbar.Controls.Add(sizeComboBox);
-
-    //        // 图标面板
-    //        iconPanel = new FlowLayoutPanel
-    //        {
-    //            Dock = DockStyle.Fill,
-    //            AutoScroll = true,
-    //            Padding = new Padding(10)
-    //        };
-
-    //        // 预览区
-    //        var previewPanel = new Panel
-    //        {
-    //            Dock = DockStyle.Bottom,
-    //            Height = 100,
-    //            BorderStyle = BorderStyle.FixedSingle
-    //        };
-
-    //        previewLabel = new Label
-    //        {
-    //            Dock = DockStyle.Fill,
-    //            TextAlign = ContentAlignment.MiddleCenter,
-    //            Font = provider?.GetFont(48f) ?? new Font(SystemFonts.DefaultFont.FontFamily, 48f)
-    //        };
-    //        previewPanel.Controls.Add(previewLabel);
-
-    //        // 按钮
-    //        var buttonPanel = new Panel
-    //        {
-    //            Dock = DockStyle.Bottom,
-    //            Height = 50
-    //        };
-
-    //        var btnOK = new Button
-    //        {
-    //            Text = "确定",
-    //            DialogResult = DialogResult.OK,
-    //            Size = new Size(100, 30),
-    //            Location = new Point(Width - 220, 10)
-    //        };
-
-    //        var btnCancel = new Button
-    //        {
-    //            Text = "取消",
-    //            DialogResult = DialogResult.Cancel,
-    //            Size = new Size(100, 30),
-    //            Location = new Point(Width - 110, 10)
-    //        };
-
-    //        buttonPanel.Controls.AddRange(new Control[] { btnOK, btnCancel });
-
-    //        Controls.Add(iconPanel);
-    //        Controls.Add(previewPanel);
-    //        Controls.Add(toolbar);
-    //        Controls.Add(searchBox);
-    //        Controls.Add(buttonPanel);
-
-    //        AcceptButton = btnOK;
-    //        CancelButton = btnCancel;
-    //    }
-
-    //    private void LoadIcons(string filter = null)
-    //    {
-    //        iconPanel.SuspendLayout();
-    //        iconPanel.Controls.Clear();
-
-    //        if (provider == null)
-    //        {
-    //            return;
-    //        }
-
-    //        var mapping = provider.GetIconMapping();
-    //        var size = sizeComboBox.SelectedIndex == 0 ? 32 : sizeComboBox.SelectedIndex == 1 ? 48 : 64;
-
-    //        foreach (var kvp in mapping)
-    //        {
-    //            if (!string.IsNullOrEmpty(filter) && !kvp.Key.IndexOf(filter, StringComparison.OrdinalIgnoreCase).Equals(-1))
-    //            {
-    //                continue;
-    //            }
-
-    //            var iconButton = CreateIconButton(kvp.Key, kvp.Value, size);
-    //            iconPanel.Controls.Add(iconButton);
-    //        }
-
-    //        iconPanel.ResumeLayout();
-    //    }
-
-    //    private Button CreateIconButton(string name, string unicode, int size)
-    //    {
-    //        var button = new Button
-    //        {
-    //            Size = new Size(size + 20, size + 40),
-    //            Text = name,
-    //            TextAlign = ContentAlignment.BottomCenter,
-    //            ImageAlign = ContentAlignment.TopCenter,
-    //            Font = new Font(Font.FontFamily, 8f),
-    //            Tag = name,
-    //            FlatStyle = FlatStyle.Flat,
-    //            Cursor = Cursors.Hand
-    //        };
-
-    //        button.FlatAppearance.BorderSize = 1;
-    //        button.FlatAppearance.BorderColor = Color.LightGray;
-
-    //        // 生成图标图像
-    //        var iconImage = IconFontRenderer.ToImage(
-    //            unicode,
-    //            provider.GetFont(size),
-    //            Color.Black,
-    //            new Size(size, size));
-
-    //        button.Image = iconImage;
-
-    //        button.Click += (s, e) =>
-    //        {
-    //            selectedIconChar = name;
-    //            previewLabel.Text = unicode;
-
-    //            // 高亮选中
-    //            foreach (Button btn in iconPanel.Controls)
-    //            {
-    //                btn.FlatAppearance.BorderColor = Color.LightGray;
-    //                btn.FlatAppearance.BorderSize = 1;
-    //            }
-
-    //            button.FlatAppearance.BorderColor = Color.Blue;
-    //            button.FlatAppearance.BorderSize = 2;
-    //        };
-
-    //        // 如果是当前选中的图标
-    //        if (name == selectedIconChar)
-    //        {
-    //            button.FlatAppearance.BorderColor = Color.Blue;
-    //            button.FlatAppearance.BorderSize = 2;
-    //            previewLabel.Text = unicode;
-    //        }
-
-    //        return button;
-    //    }
-
-    //    private void SearchBox_TextChanged(object sender, EventArgs e)
-    //    {
-    //        LoadIcons(searchBox.Text);
-    //    }
-    //}
 
 }

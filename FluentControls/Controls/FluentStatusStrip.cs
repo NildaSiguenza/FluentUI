@@ -5,12 +5,14 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Design;
+using System.IO;
 using System.Linq;
 using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
+using FluentControls.IconFonts;
 
 namespace FluentControls.Controls
 {
@@ -705,6 +707,75 @@ namespace FluentControls.Controls
         }
     }
 
+    [ToolStripItemDesignerAvailability(ToolStripItemDesignerAvailability.ToolStrip | ToolStripItemDesignerAvailability.StatusStrip)]
+    public class FluentToolStripMessageNotifier : FluentToolStripControlHost
+    {
+        public FluentToolStripMessageNotifier() : base(new FluentMessageNotifier())
+        {
+            MessageNotifier.Size = new Size(32, 32);
+        }
+
+        /// <summary>
+        /// 颜色选择器控件
+        /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+        [Browsable(false)]
+        public FluentMessageNotifier MessageNotifier => (FluentMessageNotifier)Control;
+
+        [Description("通知图标")]
+        [Editor(typeof(IconFontImageEditor), typeof(UITypeEditor))]
+        public Image Icon
+        {
+            get => MessageNotifier.Icon;
+            set => MessageNotifier.Icon = value;
+        }
+
+        [DefaultValue(24)]
+        [Description("通知图标大小")]
+        public int IconSize
+        {
+            get => MessageNotifier.IconSize;
+            set => MessageNotifier.IconSize = value;
+        }
+
+        [Description("角标显示位置")]
+        public BadgePosition BadgePosition
+        {
+            get => MessageNotifier.BadgePosition;
+            set => MessageNotifier.BadgePosition = value;
+        }
+
+        [Description("当前选中的颜色")]
+        public Color BackColor
+        {
+            get => MessageNotifier.BackColor;
+            set => MessageNotifier.BackColor = value;
+        }
+
+        [Description("角标背景色")]
+        public Color BadgeBackColor
+        {
+            get => MessageNotifier.BadgeBackColor;
+            set => MessageNotifier.BadgeBackColor = value;
+        }
+
+        [Description("角标文字颜色")]
+        public Color BadgeForeColor
+        {
+            get => MessageNotifier.BadgeForeColor;
+            set => MessageNotifier.BadgeForeColor = value;
+        }
+
+        [DefaultValue(NotificationFilterMode.WarningAndError)]
+        [Description("通知过滤模式")]
+        public NotificationFilterMode FilterMode
+        {
+            get => MessageNotifier.FilterMode;
+            set => MessageNotifier.FilterMode = value;
+        }
+
+    }
+
     #endregion
 
     #region 状态栏项集合
@@ -950,6 +1021,7 @@ namespace FluentControls.Controls
             addItemMenu.DropDownItems.Add("进度条", null, (s, e) => AddItem(typeof(FluentToolStripProgressBar)));
             addItemMenu.DropDownItems.Add("下拉框", null, (s, e) => AddItem(typeof(FluentToolStripComboBox)));
             addItemMenu.DropDownItems.Add("颜色选择器", null, (s, e) => AddItem(typeof(FluentToolStripColorPicker)));
+            addItemMenu.DropDownItems.Add("通知管理器", null, (s, e) => AddItem(typeof(FluentToolStripMessageNotifier)));
 
             contextMenu.Items.Add(addItemMenu);
             contextMenu.Items.Add(new ToolStripSeparator());
@@ -1053,6 +1125,11 @@ namespace FluentControls.Controls
             {
                 colorPicker.Size = new Size(60, 20);
                 colorPicker.Alignment = FluentToolStripItemAlignment.Right;
+            }
+            else if (item is FluentToolStripMessageNotifier messageNotifier)
+            {
+                messageNotifier.Size = new Size(24, 24);
+                messageNotifier.Alignment = FluentToolStripItemAlignment.Right;
             }
         }
 
@@ -1321,6 +1398,11 @@ namespace FluentControls.Controls
             designer.AddItem(typeof(FluentToolStripColorPicker));
         }
 
+        public void AddMessageNotifier()
+        {
+            designer.AddItem(typeof(FluentToolStripMessageNotifier));
+        }
+
         public void EditItems()
         {
             designer.ShowItemsEditorDialog();
@@ -1354,6 +1436,7 @@ namespace FluentControls.Controls
             items.Add(new DesignerActionMethodItem(this, "AddProgressBar", "添加进度条", "操作"));
             items.Add(new DesignerActionMethodItem(this, "AddComboBox", "添加下拉框", "操作"));
             items.Add(new DesignerActionMethodItem(this, "AddColorPicker", "添加颜色选择器", "操作"));
+            items.Add(new DesignerActionMethodItem(this, "AddMessageNotifier", "添加通知管理器", "操作"));
             items.Add(new DesignerActionMethodItem(this, "EditItems", "编辑项目...", "操作"));
 
             return items;
@@ -1480,7 +1563,8 @@ namespace FluentControls.Controls
                 "Separator",
                 "ProgressBar",
                 "ComboBox",
-                "ColorPicker"
+                "ColorPicker",
+                "MessageNotifier"
             });
             itemTypeComboBox.SelectedIndex = 0;
 
@@ -1712,6 +1796,11 @@ namespace FluentControls.Controls
                 typeText = "[Color]";
                 typeColor = Color.Brown;
             }
+            else if (item is FluentToolStripMessageNotifier)
+            {
+                typeText = "[Text]";
+                typeColor = Color.DarkRed;
+            }
 
             displayText = item.Name;
             if (!string.IsNullOrEmpty(item.Text) && item.Text != item.Name)
@@ -1910,6 +1999,10 @@ namespace FluentControls.Controls
             {
                 return "statusStripColorPicker";
             }
+            else if (itemType == typeof(FluentToolStripMessageNotifier))
+            {
+                return "statusStripMessageNotifier";
+            }
             else
             {
                 return "statusStripItem";
@@ -2014,6 +2107,7 @@ namespace FluentControls.Controls
                 case "ProgressBar": return typeof(FluentToolStripProgressBar);
                 case "ComboBox": return typeof(FluentToolStripComboBox);
                 case "ColorPicker": return typeof(FluentToolStripColorPicker);
+                case "MessageNotifier": return typeof(FluentToolStripMessageNotifier);
                 default: return null;
             }
         }
@@ -2045,6 +2139,11 @@ namespace FluentControls.Controls
                 colorPicker.Size = new Size(60, 20);
                 colorPicker.Alignment = FluentToolStripItemAlignment.Right;
             }
+            else if (item is FluentToolStripMessageNotifier messageNotifier)
+            {
+                messageNotifier.Size = new Size(24, 24);
+                messageNotifier.Alignment = FluentToolStripItemAlignment.Right;
+            }
         }
     }
 
@@ -2070,7 +2169,8 @@ namespace FluentControls.Controls
                 typeof(FluentStatusStripSeparator),
                 typeof(FluentToolStripProgressBar),
                 typeof(FluentToolStripComboBox),
-                typeof(FluentToolStripColorPicker)
+                typeof(FluentToolStripColorPicker),
+                typeof(FluentToolStripMessageNotifier),
             };
         }
 
@@ -2183,6 +2283,11 @@ namespace FluentControls.Controls
             {
                 colorPicker.Size = new Size(60, 20);
                 colorPicker.Alignment = FluentToolStripItemAlignment.Right;
+            }
+            else if(item is FluentToolStripMessageNotifier notifier)
+            {
+                notifier.Size = new Size(24, 24);
+                notifier.Alignment = FluentToolStripItemAlignment.Right;
             }
         }
     }

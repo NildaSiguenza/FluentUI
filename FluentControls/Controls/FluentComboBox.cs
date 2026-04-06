@@ -1463,7 +1463,7 @@ namespace FluentControls.Controls
                     g.FillRectangle(brush, bounds);
                 }
 
-                // 多选模式下，选中项添加左侧指示条
+                // 多选模式下, 选中项添加左侧指示条
                 if (item.IsSelected && parent.SelectionStyle == ComboBoxSelectionStyle.Multiple)
                 {
                     var indicatorColor = parent.UseTheme && parent.Theme != null

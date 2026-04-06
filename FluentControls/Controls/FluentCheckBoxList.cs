@@ -30,6 +30,8 @@ namespace FluentControls.Controls
         private bool showItemAnimation;
 
         private bool isUpdating = false;
+        public event EventHandler<CheckBoxItemEventArgs> ItemCheckedChanged;
+        public event EventHandler<CheckBoxItemEventArgs> ItemTextClicked;
 
         public FluentCheckBoxList()
         {
@@ -54,7 +56,7 @@ namespace FluentControls.Controls
             autoSizeItems = true;
 
             // 创建容器面板
-            containerPanel = new Panel();
+            containerPanel = new DoubleBufferedPanel();
             containerPanel.AutoScroll = true;
             containerPanel.Dock = DockStyle.Fill;
             containerPanel.BackColor = Color.Transparent;
@@ -62,10 +64,11 @@ namespace FluentControls.Controls
 
             containerPanel.SizeChanged += (sender, e) => LayoutControls();
 
+            containerPanel.Scroll += OnContainerScroll;
             // 监听容器面板的控件添加事件以支持主题继承
             containerPanel.ControlAdded += OnContainerControlAdded;
 
-            base.Controls.Add(containerPanel);  // 使用base.Controls
+            base.Controls.Add(containerPanel);
 
             Size = new Size(200, 300);
             ShadowLevel = 0;
@@ -116,6 +119,7 @@ namespace FluentControls.Controls
                 if (orientation != value)
                 {
                     orientation = value;
+                    ResetScrollPosition();
                     LayoutControls();
                 }
             }
@@ -232,6 +236,92 @@ namespace FluentControls.Controls
 
         #endregion
 
+        #region 滚动处理 
+
+        /// <summary>
+        /// 容器滚动事件处理
+        /// </summary>
+        private void OnContainerScroll(object sender, ScrollEventArgs e)
+        {
+            // 强制刷新整个容器面板以消除残影
+            containerPanel.Invalidate();
+            containerPanel.Update();
+
+            // 刷新所有子控件
+            foreach (var checkBox in checkBoxControls)
+            {
+                checkBox.Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 重置滚动位置
+        /// </summary>
+        private void ResetScrollPosition()
+        {
+            if (containerPanel != null)
+            {
+                containerPanel.AutoScrollPosition = new Point(0, 0);
+            }
+        }
+
+        #endregion
+
+        #region 事件
+
+        /// <summary>
+        /// 触发复选框状态改变事件
+        /// </summary>
+        protected virtual void OnItemCheckedChanged(CheckBoxItemEventArgs e)
+        {
+            ItemCheckedChanged?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// 触发复选框文本点击事件
+        /// </summary>
+        protected virtual void OnItemTextClicked(CheckBoxItemEventArgs e)
+        {
+            ItemTextClicked?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// 内部复选框状态改变处理
+        /// </summary>
+        private void CheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (sender is FluentCheckBox checkBox)
+            {
+                int index = checkBoxControls.IndexOf(checkBox);
+                if (index >= 0 && index < designTimeItems.Count)
+                {
+                    // 同步更新数据项
+                    designTimeItems[index].Checked = checkBox.Checked;
+
+                    // 触发事件
+                    var args = new CheckBoxItemEventArgs(checkBox, index, checkBox.Checked);
+                    OnItemCheckedChanged(args);
+                }
+            }
+        }
+
+
+        private void CheckBox_TextClicked(object sender, EventArgs e)
+        {
+            if (sender is FluentCheckBox checkBox)
+            {
+                int index = checkBoxControls.IndexOf(checkBox);
+                if (index >= 0 && index < designTimeItems.Count)
+                {
+                    // 触发事件
+                    var args = new CheckBoxItemEventArgs(checkBox, index, checkBox.Checked);
+                    OnItemTextClicked(args);
+                }
+            }
+        }
+
+        #endregion
+
         #region 设计时支持
 
         /// <summary>
@@ -262,13 +352,20 @@ namespace FluentControls.Controls
 
             try
             {
+                containerPanel.SuspendLayout();
+
                 // 清除现有控件
                 foreach (FluentCheckBox control in checkBoxControls)
                 {
+                    // 取消事件订阅
+                    control.CheckedChanged -= CheckBox_CheckedChanged;
                     containerPanel.Controls.Remove(control);
                     control.Dispose();
                 }
                 checkBoxControls.Clear();
+
+                // 重置滚动位置
+                ResetScrollPosition();
 
                 // 根据设计时数据创建控件
                 for (int i = 0; i < designTimeItems.Count; i++)
@@ -279,6 +376,7 @@ namespace FluentControls.Controls
                     containerPanel.Controls.Add(checkBox);
                 }
 
+                containerPanel.ResumeLayout(true);
                 LayoutControls();
             }
             finally
@@ -313,6 +411,10 @@ namespace FluentControls.Controls
 
             checkBox.EnableAnimation = this.EnableAnimation;
             checkBox.BackColor = this.BackColor;
+
+            // 订阅选中状态改变事件
+            checkBox.CheckedChanged += CheckBox_CheckedChanged;
+            checkBox.TextClicked += CheckBox_TextClicked;
 
             return checkBox;
         }
@@ -378,32 +480,48 @@ namespace FluentControls.Controls
         /// </summary>
         private void LayoutControls()
         {
-            if (checkBoxControls.Count == 0)
+            if (checkBoxControls.Count == 0 || containerPanel == null)
             {
+                // 没有控件时重置滚动区域
+                if (containerPanel != null)
+                {
+                    containerPanel.AutoScrollMinSize = Size.Empty;
+                }
                 return;
             }
 
             containerPanel.SuspendLayout();
 
-            int itemHeight = autoSizeItems ? 32 : fixedItemSize.Height;
-            int itemWidth = autoSizeItems ? 120 : fixedItemSize.Width;
-
-            // 计算可用区域
-            int availableWidth = containerPanel.ClientSize.Width - Padding.Left - Padding.Right;
-            int availableHeight = containerPanel.ClientSize.Height - Padding.Top - Padding.Bottom;
-
-            if (orientation == ListOrientation.Horizontal)
+            try
             {
-                // 横向排列, 自动换行
-                LayoutHorizontalFlow(itemWidth, itemHeight, availableWidth);
-            }
-            else
-            {
-                // 纵向排列, 自动换列
-                LayoutVerticalFlow(itemWidth, itemHeight, availableHeight);
-            }
+                int itemHeight = autoSizeItems ? 32 : fixedItemSize.Height;
+                int itemWidth = autoSizeItems ? 120 : fixedItemSize.Width;
 
-            containerPanel.ResumeLayout();
+                // 计算可用区域(考虑滚动条宽度)
+                int scrollBarWidth = SystemInformation.VerticalScrollBarWidth;
+                int scrollBarHeight = SystemInformation.HorizontalScrollBarHeight;
+
+                int availableWidth = containerPanel.ClientSize.Width - Padding.Left - Padding.Right;
+                int availableHeight = containerPanel.ClientSize.Height - Padding.Top - Padding.Bottom;
+
+                if (orientation == ListOrientation.Horizontal)
+                {
+                    // 横向排列, 自动换行
+                    LayoutHorizontalFlow(itemWidth, itemHeight, availableWidth);
+                }
+                else
+                {
+                    // 纵向排列, 自动换列
+                    LayoutVerticalFlow(itemWidth, itemHeight, availableHeight);
+                }
+            }
+            finally
+            {
+                containerPanel.ResumeLayout(true);
+
+                // 强制刷新以消除残影
+                containerPanel.Invalidate(true);
+            }
         }
 
         /// <summary>
@@ -414,25 +532,22 @@ namespace FluentControls.Controls
             int currentX = Padding.Left;
             int currentY = Padding.Top;
             int maxRowHeight = itemHeight;
-            int totalHeight = 0;
+            int contentHeight = 0;
 
             for (int i = 0; i < checkBoxControls.Count; i++)
             {
                 FluentCheckBox control = checkBoxControls[i];
 
-                // 计算实际项目宽度(可以根据文本长度动态调整)
                 int actualItemWidth = CalculateItemWidth(control, itemWidth);
 
                 // 检查是否需要换行
                 if (currentX + actualItemWidth > availableWidth + Padding.Left && currentX > Padding.Left)
                 {
-                    // 换行
                     currentX = Padding.Left;
                     currentY += maxRowHeight + itemSpacing;
                     maxRowHeight = itemHeight;
                 }
 
-                // 设置控件位置和大小
                 control.Location = new Point(currentX, currentY);
                 control.Size = new Size(actualItemWidth, itemHeight);
 
@@ -440,12 +555,8 @@ namespace FluentControls.Controls
                 currentX += actualItemWidth + itemSpacing;
                 maxRowHeight = Math.Max(maxRowHeight, itemHeight);
 
-                // 计算总高度
-                if (i == checkBoxControls.Count - 1 ||
-                    (i < checkBoxControls.Count - 1 && currentX + CalculateItemWidth(checkBoxControls[i + 1], itemWidth) > availableWidth + Padding.Left))
-                {
-                    totalHeight = currentY + maxRowHeight;
-                }
+                // 更新内容高度
+                contentHeight = currentY + maxRowHeight;
 
                 // 应用动画
                 if (showItemAnimation && EnableAnimation && !DesignMode && control.Visible)
@@ -454,8 +565,9 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 设置容器面板的自动滚动最小尺寸
-            containerPanel.AutoScrollMinSize = new Size(0, totalHeight + Padding.Bottom);
+            // 精确设置滚动区域大小
+            int totalHeight = contentHeight + Padding.Bottom;
+            containerPanel.AutoScrollMinSize = new Size(0, totalHeight);
         }
 
         /// <summary>
@@ -466,48 +578,40 @@ namespace FluentControls.Controls
             int currentX = Padding.Left;
             int currentY = Padding.Top;
             int maxColumnWidth = itemWidth;
-            int totalWidth = 0;
+            int contentWidth = 0;
 
             for (int i = 0; i < checkBoxControls.Count; i++)
             {
                 FluentCheckBox control = checkBoxControls[i];
 
-                // 计算实际项目宽度
                 int actualItemWidth = CalculateItemWidth(control, itemWidth);
 
                 // 检查是否需要换列
                 if (currentY + itemHeight > availableHeight + Padding.Top && currentY > Padding.Top)
                 {
-                    // 换列
                     currentX += maxColumnWidth + itemSpacing;
                     currentY = Padding.Top;
                     maxColumnWidth = actualItemWidth;
                 }
 
-                // 设置控件位置和大小
                 control.Location = new Point(currentX, currentY);
                 control.Size = new Size(actualItemWidth, itemHeight);
 
-                // 更新位置
                 currentY += itemHeight + itemSpacing;
                 maxColumnWidth = Math.Max(maxColumnWidth, actualItemWidth);
 
-                // 计算总宽度
-                if (i == checkBoxControls.Count - 1 ||
-                    (i < checkBoxControls.Count - 1 && currentY + itemHeight > availableHeight + Padding.Top))
-                {
-                    totalWidth = currentX + maxColumnWidth;
-                }
+                // 更新内容宽度
+                contentWidth = currentX + maxColumnWidth;
 
-                // 应用动画
                 if (showItemAnimation && EnableAnimation && !DesignMode && control.Visible)
                 {
                     AnimateItemEntry(control, i);
                 }
             }
 
-            // 设置容器面板的自动滚动最小尺寸
-            containerPanel.AutoScrollMinSize = new Size(totalWidth + Padding.Right, 0);
+            // 精确设置滚动区域大小
+            int totalWidth = contentWidth + Padding.Right;
+            containerPanel.AutoScrollMinSize = new Size(totalWidth, 0);
         }
 
         /// <summary>
@@ -600,13 +704,24 @@ namespace FluentControls.Controls
             }
         }
 
-        /// <summary>
-        /// 容器尺寸改变时重新布局
-        /// </summary>
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
             LayoutControls();
+        }
+
+        /// <summary>
+        /// 重写 WndProc 处理滚动消息, 解决残影问题
+        /// </summary>
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            // WM_VSCROLL = 0x0115, WM_HSCROLL = 0x0114
+            if (m.Msg == 0x0115 || m.Msg == 0x0114)
+            {
+                containerPanel?.Invalidate(true);
+            }
         }
 
         #endregion
@@ -686,6 +801,8 @@ namespace FluentControls.Controls
                 isUpdating = true;
                 try
                 {
+                    control.CheckedChanged -= CheckBox_CheckedChanged;
+                    control.TextClicked -= CheckBox_TextClicked;
                     designTimeItems.RemoveAt(index);
                     checkBoxControls.RemoveAt(index);
                     containerPanel.Controls.Remove(control);
@@ -719,14 +836,23 @@ namespace FluentControls.Controls
             isUpdating = true;
             try
             {
+                containerPanel.SuspendLayout();
+
                 designTimeItems.Clear();
                 foreach (FluentCheckBox control in checkBoxControls)
                 {
+                    // 取消事件订阅
+                    control.CheckedChanged -= CheckBox_CheckedChanged;
                     containerPanel.Controls.Remove(control);
                     control.Dispose();
                 }
                 checkBoxControls.Clear();
-                LayoutControls();
+
+                // 重置滚动区域
+                containerPanel.AutoScrollMinSize = Size.Empty;
+                ResetScrollPosition();
+
+                containerPanel.ResumeLayout(true);
             }
             finally
             {
@@ -771,19 +897,27 @@ namespace FluentControls.Controls
         /// </summary>
         public void SetAllChecked(bool isChecked)
         {
-            for (int i = 0; i < designTimeItems.Count; i++)
+            isUpdating = true;
+            try
             {
-                designTimeItems[i].Checked = isChecked;
-            }
+                for (int i = 0; i < designTimeItems.Count; i++)
+                {
+                    designTimeItems[i].Checked = isChecked;
+                }
 
-            foreach (FluentCheckBox control in checkBoxControls)
+                foreach (FluentCheckBox control in checkBoxControls)
+                {
+                    control.Checked = isChecked;
+                }
+            }
+            finally
             {
-                control.Checked = isChecked;
+                isUpdating = false;
             }
         }
 
         /// <summary>
-        /// 批量添加项(性能优化)
+        /// 批量添加项
         /// </summary>
         public void AddItems(IEnumerable<string> texts, bool isChecked = false, bool isIndependentMode = false)
         {
@@ -810,7 +944,7 @@ namespace FluentControls.Controls
             }
             finally
             {
-                containerPanel.ResumeLayout();
+                containerPanel.ResumeLayout(true);
                 isUpdating = false;
             }
         }
@@ -838,9 +972,19 @@ namespace FluentControls.Controls
             }
             finally
             {
-                containerPanel.ResumeLayout();
+                containerPanel.ResumeLayout(true);
                 isUpdating = false;
             }
+        }
+
+        /// <summary>
+        /// 刷新布局
+        /// </summary>
+        public void RefreshLayout()
+        {
+            ResetScrollPosition();
+            LayoutControls();
+            containerPanel?.Invalidate(true);
         }
 
         #endregion
@@ -887,9 +1031,18 @@ namespace FluentControls.Controls
         {
             if (disposing)
             {
+                // 取消所有事件订阅
+                foreach (var checkBox in checkBoxControls)
+                {
+                    checkBox.CheckedChanged -= CheckBox_CheckedChanged;
+                }
+
                 Clear();
+
                 if (containerPanel != null)
                 {
+                    containerPanel.Scroll -= OnContainerScroll;
+                    containerPanel.ControlAdded -= OnContainerControlAdded;
                     containerPanel.Dispose();
                 }
             }
@@ -898,7 +1051,8 @@ namespace FluentControls.Controls
 
         #endregion
     }
-    #region 子项
+
+    #region 复选框项
 
     /// <summary>
     /// 复选框项集合
@@ -1064,6 +1218,43 @@ namespace FluentControls.Controls
         public override string ToString()
         {
             return string.IsNullOrEmpty(text) ? "(Empty)" : text;
+        }
+    }
+
+    #endregion
+
+    #region 枚举和辅助类
+
+    /// <summary>
+    /// 复选框项状态改变事件参数
+    /// </summary>
+    public class CheckBoxItemEventArgs : EventArgs
+    {
+        /// <summary>
+        /// 发生变化的复选框控件
+        /// </summary>
+        public FluentCheckBox CheckBox { get; }
+
+        /// <summary>
+        /// 复选框在列表中的索引
+        /// </summary>
+        public int Index { get; }
+
+        /// <summary>
+        /// 当前选中状态
+        /// </summary>
+        public bool IsChecked { get; }
+
+        /// <summary>
+        /// 复选框的文本
+        /// </summary>
+        public string Text => CheckBox?.Text ?? string.Empty;
+
+        public CheckBoxItemEventArgs(FluentCheckBox checkBox, int index, bool isChecked)
+        {
+            CheckBox = checkBox;
+            Index = index;
+            IsChecked = isChecked;
         }
     }
 

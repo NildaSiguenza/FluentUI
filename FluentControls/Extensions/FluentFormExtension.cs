@@ -9,7 +9,7 @@ using FluentControls.Controls;
 
 namespace FluentControls
 {
-    public static class FluentFormExt
+    public static class FluentFormExtension
     {
 
         private const int GWL_EXSTYLE = -20;

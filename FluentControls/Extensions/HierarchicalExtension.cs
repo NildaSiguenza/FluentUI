@@ -9,7 +9,7 @@ using Infrastructure;
 
 namespace FluentControls
 {
-    public static class HierarchicalExtensions
+    public static class HierarchicalExtension
     {
         public static IHierarchicalItem<T> AsHierarchical<T>(
             this T item,

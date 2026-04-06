@@ -2994,7 +2994,9 @@ namespace FluentControls.Controls
         private void RefreshControlRecursive(Control ctrl)
         {
             if (ctrl == null || ctrl.IsDisposed)
+            {
                 return;
+            }
 
             ctrl.Invalidate(true);
             ctrl.Update();

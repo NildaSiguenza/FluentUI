@@ -712,7 +712,7 @@ namespace FluentControls.Controls
                 {
                     scrollBars = value;
 
-                    // 如果手动设置了滚动条，禁用自动控制
+                    // 如果手动设置了滚动条, 禁用自动控制
                     if (value != ScrollBars.None)
                     {
                         autoScrollBars = false;
@@ -1194,7 +1194,7 @@ namespace FluentControls.Controls
             }
             catch
             {
-                // 忽略错误，避免在某些特殊情况下崩溃
+                // 忽略错误, 避免在某些特殊情况下崩溃
             }
         }
 
@@ -1232,7 +1232,7 @@ namespace FluentControls.Controls
             }
             catch
             {
-                // 如果测量失败，使用备用方法
+                // 如果测量失败, 使用备用方法
                 return UseAlternativeOverflowCheck();
             }
         }
@@ -1501,7 +1501,7 @@ namespace FluentControls.Controls
                 case InputFormat.Integer:
                     if (long.TryParse(text, out long longVal))
                     {
-                        // 如果在 int 范围内返回 int，否则返回 long
+                        // 如果在 int 范围内返回 int, 否则返回 long
                         if (longVal >= int.MinValue && longVal <= int.MaxValue)
                         {
                             return (int)longVal;
@@ -1622,7 +1622,7 @@ namespace FluentControls.Controls
                 return;
             }
 
-            // 如果没有设置范围限制，不需要验证
+            // 如果没有设置范围限制, 不需要验证
             if (!minimum.HasValue && !maximum.HasValue)
             {
                 return;
@@ -1659,7 +1659,7 @@ namespace FluentControls.Controls
                         var args = new ValueOutOfRangeEventArgs(originalValue, clampedValue.Value, minimum, maximum);
                         OnValueOutOfRange(args);
 
-                        // 如果事件没有取消，则修正值
+                        // 如果事件没有取消, 则修正值
                         if (!args.Cancel)
                         {
                             if (inputFormat == InputFormat.Integer)

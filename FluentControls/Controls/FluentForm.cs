@@ -89,10 +89,13 @@ namespace FluentControls.Controls
 
         #region 构造函数
 
-        public FluentForm()
+        public FluentForm(bool showTitleBar = true)
         {
             InitializeForm();
-            InitializeTitleBar();
+            if (showTitleBar)
+            {
+                InitializeTitleBar();
+            }
             ApplyTheme();
             EnableShadow();
         }
@@ -157,14 +160,14 @@ namespace FluentControls.Controls
                     // 正常状态且可调整大小时, 预留边框空间
                     return new Padding(
                         RESIZE_BORDER_SIZE,
-                        titleBar?.Height ?? 32,
+                        titleBar?.Height ?? 0,
                         RESIZE_BORDER_SIZE,
                         RESIZE_BORDER_SIZE);
                 }
                 else
                 {
                     // 不可调整大小时, 只预留标题栏空间
-                    return new Padding(0, titleBar?.Height ?? 32, 0, 0);
+                    return new Padding(0, titleBar?.Height ?? 0, 0, 0);
                 }
             }
             set
@@ -194,6 +197,29 @@ namespace FluentControls.Controls
         [Description("标题栏")]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         public FluentTitleBar TitleBar => titleBar;
+
+        [Category("Fluent")]
+        [Description("是否显示标题栏")]
+        [DefaultValue(true)]
+        public bool ShowTitleBar
+        {
+            get
+            {
+                return (titleBar == null) ? false : true;
+            }
+            set
+            {
+                if (value && titleBar == null)
+                {
+                    InitializeTitleBar();
+                }
+                else if (!value)
+                {
+                    titleBar = null;
+                }
+                Invalidate();
+            }
+        }
 
         [Category("Fluent")]
         [Description("圆角半径")]
@@ -352,6 +378,8 @@ namespace FluentControls.Controls
             g.SmoothingMode = SmoothingMode.HighQuality;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
+            int titleBarHeight = titleBar == null ? 0 : titleBar.Height;
+
             // 绘制标题栏背景
             if (titleBar != null)
             {
@@ -365,7 +393,7 @@ namespace FluentControls.Controls
                             // 创建顶部圆角矩形
                             path.AddArc(0, 0, CornerRadius * 2, CornerRadius * 2, 180, 90);
                             path.AddArc(Width - CornerRadius * 2, 0, CornerRadius * 2, CornerRadius * 2, 270, 90);
-                            path.AddLine(Width, titleBar.Height, 0, titleBar.Height);
+                            path.AddLine(Width, titleBarHeight, 0, titleBarHeight);
                             path.CloseFigure();
 
                             g.FillPath(brush, path);
@@ -374,7 +402,7 @@ namespace FluentControls.Controls
                     else
                     {
                         // 无圆角或最大化时直接填充矩形
-                        g.FillRectangle(brush, 0, 0, Width, titleBar.Height);
+                        g.FillRectangle(brush, 0, 0, Width, titleBarHeight);
                     }
                 }
             }
@@ -390,7 +418,7 @@ namespace FluentControls.Controls
                     // 创建底部圆角矩形
                     using (var path = new GraphicsPath())
                     {
-                        path.AddRectangle(new Rectangle(0, titleBar.Height, Width, Height - titleBar.Height - CornerRadius));
+                        path.AddRectangle(new Rectangle(0, titleBarHeight, Width, Height - titleBarHeight - CornerRadius));
                         path.AddArc(0, Height - CornerRadius * 2, CornerRadius * 2, CornerRadius * 2, 90, 90);
                         path.AddArc(Width - CornerRadius * 2, Height - CornerRadius * 2, CornerRadius * 2, CornerRadius * 2, 0, 90);
 
@@ -399,7 +427,7 @@ namespace FluentControls.Controls
                 }
                 else
                 {
-                    g.FillRectangle(backBrush, 0, titleBar.Height, Width, Height - titleBar.Height);
+                    g.FillRectangle(backBrush, 0, titleBarHeight, Width, Height - titleBarHeight);
                 }
             }
 
@@ -407,16 +435,19 @@ namespace FluentControls.Controls
             if (WindowState != FormWindowState.Maximized && Theme != null)
             {
                 // 绘制标题栏部分的边框(使用标题栏颜色)
-                using (var titlePen = new Pen(titleBar.BackColor, 1))
+                if (titleBar != null)
                 {
-                    if (CornerRadius > 0)
+                    using (var titlePen = new Pen(titleBar.BackColor, 1))
                     {
-                        using (var path = new GraphicsPath())
+                        if (CornerRadius > 0)
                         {
-                            // 只绘制顶部圆角边框
-                            path.AddArc(0, 0, CornerRadius * 2, CornerRadius * 2, 180, 90);
-                            path.AddArc(Width - CornerRadius * 2 - 1, 0, CornerRadius * 2, CornerRadius * 2, 270, 90);
-                            g.DrawPath(titlePen, path);
+                            using (var path = new GraphicsPath())
+                            {
+                                // 只绘制顶部圆角边框
+                                path.AddArc(0, 0, CornerRadius * 2, CornerRadius * 2, 180, 90);
+                                path.AddArc(Width - CornerRadius * 2 - 1, 0, CornerRadius * 2, CornerRadius * 2, 270, 90);
+                                g.DrawPath(titlePen, path);
+                            }
                         }
                     }
                 }
@@ -429,7 +460,7 @@ namespace FluentControls.Controls
                         using (var path = new GraphicsPath())
                         {
                             // 左边线
-                            path.AddLine(0, titleBar.Height, 0, Height - CornerRadius);
+                            path.AddLine(0, titleBarHeight, 0, Height - CornerRadius);
                             // 左下圆角
                             path.AddArc(0, Height - CornerRadius * 2 - 1, CornerRadius * 2, CornerRadius * 2, 90, 90);
                             // 底边线
@@ -437,7 +468,7 @@ namespace FluentControls.Controls
                             // 右下圆角
                             path.AddArc(Width - CornerRadius * 2 - 1, Height - CornerRadius * 2 - 1, CornerRadius * 2, CornerRadius * 2, 0, 90);
                             // 右边线
-                            path.AddLine(Width - 1, Height - CornerRadius, Width - 1, titleBar.Height);
+                            path.AddLine(Width - 1, Height - CornerRadius, Width - 1, titleBarHeight);
 
                             g.DrawPath(pen, path);
                         }
@@ -447,9 +478,9 @@ namespace FluentControls.Controls
                         // 绘制无圆角时的边框
                         using (var path = new GraphicsPath())
                         {
-                            path.AddLine(1, titleBar.Height, 1, Height - 1);
+                            path.AddLine(1, titleBarHeight, 1, Height - 1);
                             path.AddLine(1, Height - 1, Width - 1, Height - 1);
-                            path.AddLine(Width - 1, Height - 1, Width - 1, titleBar.Height);
+                            path.AddLine(Width - 1, Height - 1, Width - 1, titleBarHeight);
                             g.DrawPath(pen, path);
                         }
 

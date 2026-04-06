@@ -583,7 +583,7 @@ namespace FluentControls.Controls
 
             isShowing = false;
 
-            // 先激活父窗口，再隐藏遮罩
+            // 先激活父窗口, 再隐藏遮罩
             if (parentForm != null && !parentForm.IsDisposed && parentForm.IsHandleCreated)
             {
                 // 使用 Win32 API 确保父窗口在最前面

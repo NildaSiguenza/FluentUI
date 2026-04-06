@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FluentControls
 {
-    public static class StyleExt
+    public static class StyleExtension
     {
         public static bool HasValue(this Font font)
         {

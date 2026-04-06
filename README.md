@@ -35,7 +35,7 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 > FluentControls follows Semantic Versioning.  
 > Breaking changes will only be introduced in major releases.
 
-## Control List (45)
+## Control List (46)
 
 ### Control Base Classes (2)
 - FluentControlBase: The base class for all FluentControls controls, providing basic styles and behaviors.
@@ -73,8 +73,8 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 - FluentListBox: A list box control that supports multi-selection and custom styles.
 - FluentTreeView: A tree view control that supports displaying a hierarchical structure.
 - FluentNavigationView: A control that supports displaying a navigation menu.
-- ✨FluentToolList: A control that supports displaying a list of tools.
-- ✨FluentPanelList: A control that supports displaying a panel list.
+- FluentToolList: A control that supports displaying a list of tools.
+- FluentPanelList: A control that supports displaying a panel list.
 
 ### Data Controls (2)
 - FluentListView: A list view control that supports displaying and sorting multiple columns.
@@ -92,13 +92,14 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 - FluentForm: A form control that supports custom styles and behaviors.
 - FluentDialog: A dialog box control that supports multiple display styles. 
 
-### Combo Controls (6)
+### Combo Controls (7)
 - FluentCard: A combo control that supports card-style display. 
 - FluentPagination: A pagination control that supports pagination display and navigation.
 - FluentImageViewer: An image viewer control that supports image viewing and basic editing.
 - FluentLogView: A log view control that supports log display and filtering.
 - FluentPropertyGrid: A property grid control that supports property editing and display.
 - FluentFileSelect: A combo control that supports file selection. 
+- ✨FluentMessageNotifier: A control that supports message notification display.
 
 ### Components (2)
 - FluentImageList: A component that supports image list management.

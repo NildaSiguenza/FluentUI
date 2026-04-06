@@ -75,7 +75,9 @@ namespace Infrastructure
             {
                 var childs = childItemsSelector(item);
                 if (childs == null)
+                {
                     yield break;
+                }
 
                 foreach (T childItem in childs)
                 {

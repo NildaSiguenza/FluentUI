@@ -1457,37 +1457,66 @@ namespace FluentControls.Controls
 
         #endregion
 
-        #region 内部类
+    }
 
-        public class DoubleBufferedPanel : Panel
+    #region 双缓冲Panel
+
+    internal class DoubleBufferedPanel : Panel
+    {
+        public DoubleBufferedPanel()
         {
-            public DoubleBufferedPanel()
-            {
-                SetStyle(
-                    ControlStyles.UserPaint |
-                    ControlStyles.AllPaintingInWmPaint |
-                    ControlStyles.OptimizedDoubleBuffer |
-                    ControlStyles.ResizeRedraw |
-                    ControlStyles.SupportsTransparentBackColor,
-                    true);
+            SetStyle(
+                ControlStyles.UserPaint |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw |
+                ControlStyles.SupportsTransparentBackColor,
+                true);
 
-                DoubleBuffered = true;
-                UpdateStyles();
-            }
+            DoubleBuffered = true;
+            UpdateStyles();
+        }
 
-            protected override CreateParams CreateParams
+        protected override CreateParams CreateParams
+        {
+            get
             {
-                get
-                {
-                    CreateParams cp = base.CreateParams;
-                    cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
-                    return cp;
-                }
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
             }
         }
 
-        #endregion
+        protected override void OnScroll(ScrollEventArgs se)
+        {
+            base.OnScroll(se);
+
+            // 滚动后强制刷新
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+        }
+
+        /// <summary>
+        /// 重写 WndProc 处理滚动相关消息
+        /// </summary>
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            // WM_VSCROLL = 0x0115, WM_HSCROLL = 0x0114, WM_MOUSEWHEEL = 0x020A
+            if (m.Msg == 0x0115 || m.Msg == 0x0114 || m.Msg == 0x020A)
+            {
+                Invalidate(true);
+                Update();
+            }
+        }
     }
+
+    #endregion
 
     #region 枚举和辅助类
 

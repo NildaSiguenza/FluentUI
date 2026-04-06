@@ -2059,7 +2059,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 设置水平分隔条位置(比例值，带动画)
+        /// 设置水平分隔条位置(比例值, 带动画)
         /// </summary>
         public void SetHorizontalSplitterDistance(float distance, bool animate = true)
         {
@@ -2070,7 +2070,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 设置垂直分隔条位置(比例值，带动画)
+        /// 设置垂直分隔条位置(比例值, 带动画)
         /// </summary>
         public void SetVerticalSplitterDistance(float distance, bool animate = true)
         {
@@ -2081,7 +2081,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 设置水平分隔条位置(像素值，带动画)
+        /// 设置水平分隔条位置(像素值, 带动画)
         /// </summary>
         public void SetHorizontalSplitterPixelDistance(int? distance, bool animate = true)
         {
@@ -2092,7 +2092,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 设置垂直分隔条位置(像素值，带动画)
+        /// 设置垂直分隔条位置(像素值, 带动画)
         /// </summary>
         public void SetVerticalSplitterPixelDistance(int? distance, bool animate = true)
         {
@@ -2103,7 +2103,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 同时设置水平和垂直分隔条位置(比例值，带动画)
+        /// 同时设置水平和垂直分隔条位置(比例值, 带动画)
         /// </summary>
         public void SetSplitterDistances(float horizontal, float vertical, bool animate = true)
         {
@@ -2125,7 +2125,7 @@ namespace FluentControls.Controls
         }
 
         /// <summary>
-        /// 同时设置水平和垂直分隔条位置(像素值，带动画)
+        /// 同时设置水平和垂直分隔条位置(像素值, 带动画)
         /// </summary>
         public void SetSplitterPixelDistances(int horizontalPixels, int verticalPixels, bool animate = true)
         {
