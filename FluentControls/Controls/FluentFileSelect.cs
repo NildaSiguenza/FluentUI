@@ -162,11 +162,13 @@ namespace FluentControls.Controls
                     {
                         case FileSelectLayout.SingleLine:
                             fileListRepeater.AutoScroll = false;
-                            fileListRepeater.AutoSizeItems = false;
+                            fileListRepeater.AutoSizeItems = true;
+                            fileListRepeater.LayoutMode = RepeaterLayoutMode.Horizontal;
                             break;
                         case FileSelectLayout.MultiLine:
                             fileListRepeater.AutoScroll = true;
                             fileListRepeater.AutoSizeItems = true;
+                            fileListRepeater.LayoutMode = RepeaterLayoutMode.Auto;
                             break;
                     }
 
@@ -561,6 +563,12 @@ namespace FluentControls.Controls
         {
             base.OnResize(e);
             UpdateLayout();
+
+            // 尺寸变化时刷新文件项大小
+            if (fileItems.Count > 0)
+            {
+                RefreshExistingItemSizes();
+            }
         }
 
         private void UpdateLayout()
@@ -597,7 +605,7 @@ namespace FluentControls.Controls
             // 标签
             if (showLabel)
             {
-                labelText.MaximumSize = new Size(0, 0); // 不限制, 让其自动调整
+                labelText.MaximumSize = new Size(0, 0);
                 labelText.AutoSize = true;
 
                 var labelSize = labelText.PreferredSize;
@@ -642,7 +650,54 @@ namespace FluentControls.Controls
             int repeaterPadding = Math.Max(0, (fileListRepeater.Height - FileItemSize.Height) / 2);
             fileListRepeater.Margin = new Padding(repeaterMargin);
             fileListRepeater.Padding = new Padding(repeaterPadding);
-            //ListBoxMargin = new Padding(listBoxMargin.Left, ListBoxSpacing.Top * (-1) + 1, listBoxMargin.Right, listBoxMargin.Bottom);
+
+            // 单行模式下也启用自适应大小
+            fileListRepeater.AutoSizeItems = true;
+
+            // 刷新现有项的布局
+            RefreshExistingItemSizes();
+        }
+
+        /// <summary>
+        /// 刷新现有文件项的大小
+        /// </summary>
+        private void RefreshExistingItemSizes()
+        {
+            if (fileItems.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var item in fileListRepeater.GetItems())
+            {
+                if (item is Panel panel)
+                {
+                    var contentLabel = panel.Controls["contentLabel"] as Label;
+                    if (contentLabel != null && !string.IsNullOrEmpty(contentLabel.Text))
+                    {
+                        // 重新计算大小
+                        Size newSize = CalculateOptimalPanelSize(
+                            contentLabel.Text,
+                            contentLabel.Font,
+                            panel.Padding);
+
+                        if (panel.Size != newSize)
+                        {
+                            panel.Size = newSize;
+
+                            // 更新 Label 大小
+                            int deleteButtonSpace = fileListRepeater.DeleteIconSize + 6;
+                            int labelWidth = panel.Width - panel.Padding.Horizontal - deleteButtonSpace;
+                            contentLabel.Size = new Size(
+                                Math.Max(10, labelWidth),
+                                panel.Height - panel.Padding.Vertical);
+                        }
+                    }
+                }
+            }
+
+            // 刷新 Repeater 布局
+            fileListRepeater.RefreshLayout();
         }
 
         private void LayoutMultiLine()
@@ -692,7 +747,7 @@ namespace FluentControls.Controls
                 buttonHeight
             );
 
-            // 第二行：文件列表 - 应用ListBoxMargin
+            // 第二行：文件列表
             currentY += firstRowHeight + spacing;
             int repeaterX = padding + listBoxMargin.Left;
             int repeaterY = currentY + listBoxMargin.Top;
@@ -716,18 +771,16 @@ namespace FluentControls.Controls
         {
             var panel = new Panel
             {
-                Size = fileItemSize,
                 BackColor = Color.White,
-                Padding = new Padding(2, 1, 2, 1),
+                Padding = new Padding(4, 1, 4, 1),
                 AutoSize = false
             };
 
-            // 单行显示：文件名 + 文件大小
+            // 创建内容标签 
             var contentLabel = new Label
             {
                 Name = "contentLabel",
                 AutoSize = false,
-                Dock = DockStyle.Fill,
                 Font = new Font("Microsoft YaHei UI", 8.5F),
                 ForeColor = Color.FromArgb(50, 50, 50),
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -735,16 +788,19 @@ namespace FluentControls.Controls
                 UseMnemonic = false
             };
 
+            // 设置文本
+            string displayText = string.Empty;
             if (fileInfo != null)
             {
                 if (showFileSize)
                 {
-                    contentLabel.Text = $"{fileInfo.FileName}  ({fileInfo.FileSizeText})";
+                    displayText = $"{fileInfo.FileName}  ({fileInfo.FileSizeText})";
                 }
                 else
                 {
-                    contentLabel.Text = fileInfo.FileName;
+                    displayText = fileInfo.FileName;
                 }
+                contentLabel.Text = displayText;
             }
 
             panel.Controls.Add(contentLabel);
@@ -762,96 +818,144 @@ namespace FluentControls.Controls
                 toolTip.SetToolTip(contentLabel, fileInfo.FilePath);
             }
 
-            // 计算合适的大小
-            if (fileInfo != null && autoSizeFileItems)
-            {
-                using (var g = contentLabel.CreateGraphics())
-                {
-                    var textSize = g.MeasureString(contentLabel.Text, contentLabel.Font);
+            // 计算文件项大小
+            Size panelSize = CalculateOptimalPanelSize(displayText, contentLabel.Font, panel.Padding);
+            panel.Size = panelSize;
 
-                    // 计算宽度：文本宽度 + 内边距 + 删除按钮空间 + 额外余量
-                    int width = (int)Math.Ceiling(textSize.Width) +
-                               panel.Padding.Left + panel.Padding.Right +
-                               fileListRepeater.DeleteIconSize + 8 + 20;
+            // 手动设置 Label 的位置和大小
+            int deleteButtonSpace = fileListRepeater.DeleteIconSize + 6;
+            int labelX = panel.Padding.Left;
+            int labelY = panel.Padding.Top;
+            int labelWidth = panel.Width - panel.Padding.Horizontal - deleteButtonSpace;
+            int labelHeight = panel.Height - panel.Padding.Vertical;
 
-                    panel.Size = new Size(width, fileItemSize.Height);
-                }
-            }
-            else
-            {
-                panel.Size = fileItemSize;
-            }
+            contentLabel.Location = new Point(labelX, labelY);
+            contentLabel.Size = new Size(Math.Max(10, labelWidth), Math.Max(10, labelHeight));
 
             return panel;
         }
 
-        //private void UpdateFileItemControl(Control control, FileItemInfo fileInfo)
-        //{
-        //    if (control is Panel panel)
-        //    {
-        //        var contentLabel = panel.Controls["contentLabel"] as Label;
+        /// <summary>
+        /// 计算最优的文件项面板大小
+        /// </summary>
+        private Size CalculateOptimalPanelSize(string text, Font font, Padding panelPadding)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return fileItemSize;
+            }
 
-        //        if (contentLabel != null)
-        //        {
-        //            // 组合显示：文件名 + 文件大小
-        //            if (showFileSize)
-        //            {
-        //                contentLabel.Text = $"{fileInfo.FileName}  ({fileInfo.FileSizeText})";
-        //            }
-        //            else
-        //            {
-        //                contentLabel.Text = fileInfo.FileName;
-        //            }
-        //        }
+            int deleteButtonSpace = fileListRepeater.DeleteIconSize + 6;
+            int extraMargin = 8;
 
-        //        // 设置工具提示显示完整路径
-        //        var toolTip = new ToolTip
-        //        {
-        //            AutoPopDelay = 5000,
-        //            InitialDelay = 500,
-        //            ReshowDelay = 100
-        //        };
-        //        toolTip.SetToolTip(panel, fileInfo.FilePath);
+            int textWidth;
+            using (var g = CreateGraphics())
+            {
+                var textSize = TextRenderer.MeasureText(g, text, font,
+                    new Size(int.MaxValue, fileItemSize.Height),
+                    TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+                textWidth = textSize.Width;
+            }
 
-        //        if (contentLabel != null)
-        //        {
-        //            toolTip.SetToolTip(contentLabel, fileInfo.FilePath);
-        //        }
-        //    }
-        //}
+            // 理想宽度 = 文本宽度 + 内边距 + 删除按钮空间 + 额外边距
+            int idealWidth = textWidth + panelPadding.Horizontal + deleteButtonSpace + extraMargin;
+            int maxWidth = GetMaxAvailableWidth();
+
+            // 最终宽度：在理想宽度和最大宽度之间取较小值, 但不小于最小宽度
+            int minWidth = 100;
+            int finalWidth;
+
+            if (idealWidth <= maxWidth)
+            {
+                finalWidth = idealWidth;
+            }
+            else
+            {
+                // 需要省略, 使用最大可用宽度
+                finalWidth = maxWidth;
+            }
+
+            finalWidth = Math.Max(minWidth, finalWidth);
+
+            return new Size(finalWidth, fileItemSize.Height);
+        }
+
+        /// <summary>
+        /// 获取文件项的最大可用宽度
+        /// </summary>
+        private int GetMaxAvailableWidth()
+        {
+            if (fileListRepeater == null)
+            {
+                return fileItemSize.Width;
+            }
+
+            int repeaterInnerWidth = fileListRepeater.Width -
+                                      fileListRepeater.Padding.Horizontal -
+                                      fileListRepeater.BorderWidth * 2;
+
+            // 考虑滚动条(如果可能出现)
+            if (fileListRepeater.AutoScroll)
+            {
+                repeaterInnerWidth -= 20;
+            }
+
+            // 保留边距
+            return Math.Max(100, repeaterInnerWidth - 8);
+        }
 
         /// <summary>
         /// 计算文件项的适当大小
         /// </summary>
         private Size CalculateFileItemSize(Control control)
         {
-            if (!autoSizeFileItems)
-            {
-                return fileItemSize;
-            }
-
             if (control is Panel panel)
             {
                 var contentLabel = panel.Controls["contentLabel"] as Label;
                 if (contentLabel != null && !string.IsNullOrEmpty(contentLabel.Text))
                 {
-                    using (var g = contentLabel.CreateGraphics())
-                    {
-                        var textSize = g.MeasureString(contentLabel.Text, contentLabel.Font);
-
-                        // 计算宽度：文本宽度 + 内边距 + 删除按钮空间 + 额外余量
-                        int width = (int)Math.Ceiling(textSize.Width) +
-                                   panel.Padding.Left + panel.Padding.Right +
-                                   fileListRepeater.DeleteIconSize + 8 + 20;
-
-                        // 返回已经在创建时设置的大小, 或重新计算
-                        return new Size(width, fileItemSize.Height);
-                    }
+                    return CalculateOptimalPanelSize(
+                        contentLabel.Text,
+                        contentLabel.Font,
+                        panel.Padding);
                 }
             }
 
             return control.Size;
         }
+
+        /// <summary>
+        /// 计算文件项的适当大小
+        /// </summary>
+        //private Size CalculateFileItemSize(Control control)
+        //{
+        //    if (!autoSizeFileItems)
+        //    {
+        //        return fileItemSize;
+        //    }
+
+        //    if (control is Panel panel)
+        //    {
+        //        var contentLabel = panel.Controls["contentLabel"] as Label;
+        //        if (contentLabel != null && !string.IsNullOrEmpty(contentLabel.Text))
+        //        {
+        //            using (var g = contentLabel.CreateGraphics())
+        //            {
+        //                var textSize = g.MeasureString(contentLabel.Text, contentLabel.Font);
+
+        //                // 计算宽度：文本宽度 + 内边距 + 删除按钮空间 + 额外余量
+        //                int width = (int)Math.Ceiling(textSize.Width) +
+        //                           panel.Padding.Left + panel.Padding.Right +
+        //                           fileListRepeater.DeleteIconSize + 8 + 20;
+
+        //                // 返回已经在创建时设置的大小, 或重新计算
+        //                return new Size(width, fileItemSize.Height);
+        //            }
+        //        }
+        //    }
+
+        //    return control.Size;
+        //}
 
         private void RefreshFileItems()
         {
@@ -1087,7 +1191,7 @@ namespace FluentControls.Controls
 
         public override string ToString()
         {
-            return $"{FileName} ({FileSizeText})";
+            return $"{FileName} ({FileSizeText})" ;
         }
     }
 

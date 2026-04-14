@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -80,6 +81,39 @@ namespace Infrastructure
             var buffer = new byte[8];
             r.NextBytes(buffer);
             return BitConverter.ToUInt64(buffer, 0);
+        }
+
+        public static Color NextColor(double saturation = 0.7, double value = 0.9)
+        {
+            double hue;
+            lock (r) // 如果你可能多线程调用
+            {
+                hue = r.NextDouble() * 360.0;
+            }
+
+            return ColorFromHsv(hue, saturation, value);
+        }
+
+        private static Color ColorFromHsv(double h, double s, double v)
+        {
+            int hi = (int)Math.Floor(h / 60) % 6;
+            double f = h / 60 - Math.Floor(h / 60);
+
+            v = v * 255;
+            int vi = (int)v;
+            int p = (int)(v * (1 - s));
+            int q = (int)(v * (1 - f * s));
+            int t = (int)(v * (1 - (1 - f) * s));
+
+            switch (hi)
+            {
+                case 0: return Color.FromArgb(vi, t, p);
+                case 1: return Color.FromArgb(q, vi, p);
+                case 2: return Color.FromArgb(p, vi, t);
+                case 3: return Color.FromArgb(p, q, vi);
+                case 4: return Color.FromArgb(t, p, vi);
+                default: return Color.FromArgb(vi, p, q);
+            }
         }
     }
 }

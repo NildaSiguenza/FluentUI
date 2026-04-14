@@ -89,7 +89,7 @@ namespace FluentControls.Controls
 
         #region 构造函数
 
-        public FluentForm(bool showTitleBar = true)
+        public FluentForm(bool showTitleBar)
         {
             InitializeForm();
             if (showTitleBar)
@@ -98,6 +98,11 @@ namespace FluentControls.Controls
             }
             ApplyTheme();
             EnableShadow();
+        }
+
+        public FluentForm() : this(true)
+        {
+
         }
 
         private void InitializeForm()

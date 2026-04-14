@@ -26,6 +26,9 @@ namespace FluentControls.Controls
         private List<FluentButton> buttons;
         private DwmWindowCorner cornerStyle = DwmWindowCorner.Default;
 
+        private bool enableOpenAnimation = true;
+        private int openAnimationDuration = 100;
+
         #region 构造函数
 
         public FluentDialog() : this(DialogType.Information)
@@ -203,6 +206,30 @@ namespace FluentControls.Controls
 
         [Browsable(false)]
         public new bool ShowInTaskbar => false;
+
+        /// <summary>
+        /// 是否启用打开对话框时的动画效果
+        /// </summary>
+        [Category("Fluent")]
+        [DefaultValue(true)]
+        [Description("是否启用打开对话框时的动画效果")]
+        public bool EnableOpenAnimation
+        {
+            get => enableOpenAnimation;
+            set => enableOpenAnimation = value;
+        }
+
+        /// <summary>
+        /// 打开对话框时动画时长(毫秒)
+        /// </summary>
+        [Category("Fluent")]
+        [DefaultValue(100)]
+        [Description("打开对话框时动画时长(毫秒)")]
+        public int OpenAnimationDuration
+        {
+            get => openAnimationDuration;
+            set => openAnimationDuration = Math.Max(0, Math.Min(1000, value));
+        }
 
         #endregion
 
@@ -421,8 +448,11 @@ namespace FluentControls.Controls
             base.OnShown(e);
 
             // 显示动画
-            this.Opacity = 0;
-            AnimationManager.AnimateFade(this, 1.0, 200);
+            if (EnableOpenAnimation && openAnimationDuration > 0)
+            {
+                this.Opacity = 0;
+                AnimationManager.AnimateFade(this, 1.0, openAnimationDuration);
+            }
 
             if (dialogType == DialogType.Input)
             {

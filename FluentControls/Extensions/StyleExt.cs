@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FluentControls
 {
-    public static class StyleExtension
+    public static class StyleExt
     {
         public static bool HasValue(this Font font)
         {
@@ -22,6 +22,5 @@ namespace FluentControls
                      Math.Abs(font.Size - defaultFont.Size) < 0.01f &&
                      font.Style == defaultFont.Style);
         }
-
     }
 }

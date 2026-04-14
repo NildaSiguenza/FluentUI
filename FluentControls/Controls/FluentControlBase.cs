@@ -156,7 +156,7 @@ namespace FluentControls
                 {
                     if (!string.IsNullOrEmpty(value))
                     {
-                        var mTheme= ThemeManager.GetTheme(value);
+                        var mTheme = ThemeManager.GetTheme(value);
                         if (mTheme != null)
                         {
                             theme = mTheme;

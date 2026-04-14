@@ -169,6 +169,11 @@ namespace FluentControls.Controls
             }
         }
 
+        [Category("Fluent")]
+        [Description("Switch模式下控件的位置")]
+        [DefaultValue(SwitchPosition.Left)]
+        public SwitchPosition SwitchPosition { get; set; } = SwitchPosition.Left;
+
         #endregion
 
         #region 事件
@@ -203,7 +208,7 @@ namespace FluentControls.Controls
         protected override void InitializeDefaultStyles()
         {
             base.InitializeDefaultStyles();
-            BackColor = SystemColors.Control;
+            BackColor = Color.Transparent;
             ForeColor = SystemColors.ControlText;
         }
 
@@ -215,7 +220,6 @@ namespace FluentControls.Controls
                 return;
             }
 
-            BackColor = Theme.Colors.Surface;
             ForeColor = Theme.Colors.TextPrimary;
         }
 
@@ -363,7 +367,7 @@ namespace FluentControls.Controls
 
             // 开关位置(保存为复选框区域)
             currentCheckBoxRect = new Rectangle(
-                (Width - switchWidth) / 2,
+                (SwitchPosition == SwitchPosition.Left) ? 0 : (Width - switchWidth) / 2,
                 (Height - switchHeight) / 2,
                 switchWidth,
                 switchHeight);
@@ -640,4 +644,11 @@ namespace FluentControls.Controls
         /// </summary>
         Switch
     }
+
+    public enum SwitchPosition
+    {
+        Left,
+        Center
+    }
+
 }

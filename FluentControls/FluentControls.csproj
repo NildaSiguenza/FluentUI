@@ -27,6 +27,10 @@
 		<Configurations>Debug;Release;UseProjectReferences</Configurations>
 	</PropertyGroup>
 	<ItemGroup>
+	  <Compile Remove="Controls\FluentDialog.cs" />
+	  <Compile Remove="Controls\FluentForm.cs" />
+	  <Compile Remove="Controls\FluentMasker.cs" />
+	  <Compile Remove="Controls\FluentProgressMasker.cs" />
 	  <Compile Remove="Extensions\FluentControlExt.cs" />
 	  <Compile Remove="Extensions\FluentFormExt.cs" />
 	  <Compile Remove="Extensions\HierarchicalExt.cs" />

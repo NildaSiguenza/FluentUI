@@ -1146,8 +1146,8 @@ namespace FluentControls.Controls
             {
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9),
-                TabPadding = new Padding(5),
-                TabMinWidth = 60
+                TabPadding = new Padding(8, 5, 5, 5),
+                TabMinWidth = 50
             };
 
             allTab = new FluentTabPage("全部");

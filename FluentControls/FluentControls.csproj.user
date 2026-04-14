@@ -35,9 +35,6 @@
     <Compile Update="Controls\FluentDateTimePicker.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Update="Controls\FluentDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="Controls\FluentDropdown.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -47,8 +44,8 @@
     <Compile Update="Controls\FluentFontIcon.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Update="Controls\FluentForm.cs">
-      <SubType>Form</SubType>
+    <Compile Update="Controls\FluentGroupBox.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="Controls\FluentImageList.cs">
       <SubType>Component</SubType>
@@ -70,9 +67,6 @@
     </Compile>
     <Compile Update="Controls\FluentLogView.cs">
       <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="Controls\FluentMasker.cs">
-      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Controls\FluentMenuStrip.cs">
       <SubType>Component</SubType>
@@ -100,9 +94,6 @@
     </Compile>
     <Compile Update="Controls\FluentProgess.cs">
       <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="Controls\FluentProgressMasker.cs">
-      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Controls\FluentPropertyGrid.cs">
       <SubType>Component</SubType>
@@ -145,6 +136,21 @@
     </Compile>
     <Compile Update="Controls\FluentTreeView.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Forms\FluentDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FluentForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FluentMasker.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FluentProgressMasker.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FluentSettingsPanel.cs">
+      <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
 </Project>

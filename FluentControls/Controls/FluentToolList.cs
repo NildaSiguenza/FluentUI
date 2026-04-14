@@ -49,6 +49,8 @@ namespace FluentControls.Controls
         private Color? hoverItemForeColor = null;
 
         private int imageTextSpacing = 8;
+        private bool isFocused = false;
+        private bool isFirstPaint = true;
 
         // 动画相关
         private Dictionary<FluentToolListCategory, float> expandAnimations = new Dictionary<FluentToolListCategory, float>();
@@ -75,6 +77,10 @@ namespace FluentControls.Controls
             InitializeExpandTimer();
 
             Size = new Size(200, 400);
+
+            // 启用键盘支持
+            SetStyle(ControlStyles.Selectable, true);
+            TabStop = true;
         }
 
         private void InitializeScrollBar()
@@ -135,13 +141,19 @@ namespace FluentControls.Controls
             {
                 if (selectedItem != value)
                 {
-                    var oldItem = selectedItem;
                     selectedItem = value;
                     OnSelectedItemChanged(new FluentToolListItemEventArgs(selectedItem));
 
-                    if (!DesignMode)
+                    if (!DesignMode && value != null)
                     {
-                        EnsureVisible(selectedItem);
+                        // 使用 BeginInvoke 延迟执行, 确保布局完成
+                        if (IsHandleCreated)
+                        {
+                            BeginInvoke(new Action(() =>
+                            {
+                                EnsureVisible(value);
+                            }));
+                        }
                     }
 
                     Invalidate();
@@ -478,7 +490,6 @@ namespace FluentControls.Controls
 
         #region 事件
 
-
         protected virtual void OnSelectedItemChanged(FluentToolListItemEventArgs e)
         {
             SelectedItemChanged?.Invoke(this, e);
@@ -496,7 +507,383 @@ namespace FluentControls.Controls
 
         #endregion
 
+        #region 键盘支持
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            if (!Enabled)
+            {
+                return;
+            }
+
+            switch (e.KeyCode)
+            {
+                case Keys.Up:
+                    SelectPreviousItem();
+                    e.Handled = true;
+                    break;
+
+                case Keys.Down:
+                    SelectNextItem();
+                    e.Handled = true;
+                    break;
+
+                case Keys.Home:
+                    SelectFirstItem();
+                    e.Handled = true;
+                    break;
+
+                case Keys.End:
+                    SelectLastItem();
+                    e.Handled = true;
+                    break;
+
+                case Keys.Enter:
+                case Keys.Space:
+                    // 如果选中的是分组, 切换展开状态
+                    if (selectedItem is FluentToolListCategory category)
+                    {
+                        ToggleCategory(category);
+                        e.Handled = true;
+                    }
+                    // 如果是普通项, 触发点击事件
+                    else if (selectedItem != null)
+                    {
+                        OnItemClick(new FluentToolListItemEventArgs(selectedItem, MouseButtons.Left, Point.Empty));
+                        e.Handled = true;
+                    }
+                    break;
+
+                case Keys.Left:
+                    // 折叠当前分组或跳转到父分组
+                    CollapseCurrentOrSelectParent();
+                    e.Handled = true;
+                    break;
+
+                case Keys.Right:
+                    // 展开当前分组或进入子项
+                    ExpandCurrentOrSelectChild();
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        protected override bool IsInputKey(Keys keyData)
+        {
+            // 确保箭头键等被视为输入键
+            switch (keyData)
+            {
+                case Keys.Up:
+                case Keys.Down:
+                case Keys.Left:
+                case Keys.Right:
+                case Keys.Home:
+                case Keys.End:
+                case Keys.Enter:
+                case Keys.Space:
+                    return true;
+                default:
+                    return base.IsInputKey(keyData);
+            }
+        }
+
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            isFocused = true;
+
+            // 如果没有选中项, 选中第一个
+            if (selectedItem == null)
+            {
+                SelectFirstItem();
+            }
+
+            Invalidate();
+        }
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            base.OnLostFocus(e);
+            isFocused = false;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// 获取所有可见项的有序列表
+        /// </summary>
+        private List<FluentToolListItem> GetVisibleItems()
+        {
+            var items = new List<FluentToolListItem>();
+
+            foreach (var category in categories)
+            {
+                // 添加分组标题
+                items.Add(category);
+
+                // 如果分组展开, 添加子项
+                if (category.IsExpanded)
+                {
+                    foreach (var item in category.Items)
+                    {
+                        items.Add(item);
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        /// <summary>
+        /// 选中上一项
+        /// </summary>
+        private void SelectPreviousItem()
+        {
+            var visibleItems = GetVisibleItems();
+            if (visibleItems.Count == 0)
+            {
+                return;
+            }
+
+            if (selectedItem == null)
+            {
+                SelectItem(visibleItems[visibleItems.Count - 1]);
+                return;
+            }
+
+            int currentIndex = visibleItems.IndexOf(selectedItem);
+            if (currentIndex > 0)
+            {
+                for (int i = currentIndex - 1; i >= 0; i--)
+                {
+                    if (visibleItems[i].Enabled)
+                    {
+                        SelectItem(visibleItems[i]);
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 选中下一项
+        /// </summary>
+        private void SelectNextItem()
+        {
+            var visibleItems = GetVisibleItems();
+            if (visibleItems.Count == 0)
+            {
+                return;
+            }
+
+            if (selectedItem == null)
+            {
+                SelectFirstItem();
+                return;
+            }
+
+            int currentIndex = visibleItems.IndexOf(selectedItem);
+            if (currentIndex >= 0 && currentIndex < visibleItems.Count - 1)
+            {
+                for (int i = currentIndex + 1; i < visibleItems.Count; i++)
+                {
+                    if (visibleItems[i].Enabled)
+                    {
+                        SelectItem(visibleItems[i]);
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 选中第一项
+        /// </summary>
+        private void SelectFirstItem()
+        {
+            var visibleItems = GetVisibleItems();
+            if (visibleItems.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var item in visibleItems)
+            {
+                if (item.Enabled)
+                {
+                    SelectItem(item);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 选中最后一项
+        /// </summary>
+        private void SelectLastItem()
+        {
+            var visibleItems = GetVisibleItems();
+            if (visibleItems.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = visibleItems.Count - 1; i >= 0; i--)
+            {
+                if (visibleItems[i].Enabled)
+                {
+                    SelectItem(visibleItems[i]);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 折叠当前分组或跳转到父分组
+        /// </summary>
+        private void CollapseCurrentOrSelectParent()
+        {
+            if (selectedItem == null)
+            {
+                return;
+            }
+
+            // 如果选中的是展开的分组, 折叠它
+            if (selectedItem is FluentToolListCategory category && category.IsExpanded)
+            {
+                ToggleCategory(category);
+                return;
+            }
+
+            // 如果选中的是子项, 跳转到父分组
+            if (!(selectedItem is FluentToolListCategory))
+            {
+                var parent = selectedItem.Parent;
+                if (parent != null)
+                {
+                    SelectItem(parent);
+                }
+            }
+            // 如果选中的是已折叠的分组, 跳转到上一个分组
+            else if (selectedItem is FluentToolListCategory collapsedCategory)
+            {
+                int index = categories.IndexOf(collapsedCategory);
+                if (index > 0)
+                {
+                    SelectItem(categories[index - 1]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 展开当前分组或进入子项
+        /// </summary>
+        private void ExpandCurrentOrSelectChild()
+        {
+            if (selectedItem == null)
+            {
+                return;
+            }
+
+            // 如果选中的是折叠的分组, 展开它
+            if (selectedItem is FluentToolListCategory category)
+            {
+                if (!category.IsExpanded)
+                {
+                    ToggleCategory(category);
+                }
+                // 如果已展开且有子项, 选中第一个子项
+                else if (category.Items.Count > 0)
+                {
+                    // 查找第一个可用子项
+                    foreach (var item in category.Items)
+                    {
+                        if (item.Enabled)
+                        {
+                            SelectItem(item);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 选中指定项并确保可见
+        /// </summary>
+        private void SelectItem(FluentToolListItem item)
+        {
+            if (item == null || !item.Enabled)
+            {
+                return;
+            }
+
+            // 先设置选中项
+            var oldItem = selectedItem;
+            selectedItem = item;
+
+            // 触发事件
+            if (oldItem != item)
+            {
+                OnSelectedItemChanged(new FluentToolListItemEventArgs(item));
+            }
+
+            // 确保可见
+            EnsureVisible(item);
+
+            // 重绘
+            Invalidate();
+        }
+
+        #endregion
+
+        #region 重写方法
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            // 句柄创建后延迟更新滚动条
+            BeginInvoke(new Action(() =>
+            {
+                UpdateScrollBar();
+            }));
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+
+            if (Visible && IsHandleCreated)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    UpdateScrollBar();
+                }));
+            }
+        }
+
+        #endregion
+
         #region 绘制方法
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            // 首次绘制时强制更新滚动条
+            if (isFirstPaint)
+            {
+                isFirstPaint = false;
+                // 延迟更新滚动条, 确保布局完成
+                BeginInvoke(new Action(() =>
+                {
+                    UpdateScrollBar();
+                    Invalidate();
+                }));
+            }
+
+            base.OnPaint(e);
+        }
 
         protected override void DrawBackground(Graphics g)
         {
@@ -590,6 +977,8 @@ namespace FluentControls.Controls
         /// </summary>
         private void DrawCategory(Graphics g, FluentToolListCategory category, Rectangle rect)
         {
+            bool isSelected = (category == selectedItem);
+
             // 背景色 - 优先使用自定义颜色
             var bgColor = categoryBackColor ?? GetThemeColor(
                 c => c.BackgroundSecondary,
@@ -598,6 +987,14 @@ namespace FluentControls.Controls
             var textColor = categoryForeColor ?? GetThemeColor(
                 c => c.TextPrimary,
                 SystemColors.ControlText);
+
+            // 如果分组被选中, 使用不同的背景色
+            if (isSelected)
+            {
+                bgColor = GetThemeColor(
+                    c => c.SurfaceHover,
+                    SystemColors.ControlLight);
+            }
 
             // 绘制背景
             int cornerRadius = UseTheme && Theme?.Elevation != null
@@ -608,6 +1005,18 @@ namespace FluentControls.Controls
             using (var brush = new SolidBrush(bgColor))
             {
                 g.FillPath(brush, path);
+            }
+
+            // 绘制键盘焦点框
+            if (isSelected && isFocused)
+            {
+                var focusColor = GetThemeColor(c => c.Primary, SystemColors.Highlight);
+                using (var pen = new Pen(focusColor, 1))
+                {
+                    pen.DashStyle = DashStyle.Dot;
+                    var focusRect = new Rectangle(rect.X + 1, rect.Y + 1, rect.Width - 2, rect.Height - 2);
+                    g.DrawRectangle(pen, focusRect);
+                }
             }
 
             // 绘制展开/折叠图标
@@ -626,7 +1035,7 @@ namespace FluentControls.Controls
                 rect.Width - iconRect.Right - 16,
                 rect.Height);
 
-            // 字体 - 优先使用自定义字体
+            // 字体
             var font = categoryFont ?? GetThemeFont(
                 t => t.Title,
                 new Font(Font, FontStyle.Bold));
@@ -687,18 +1096,18 @@ namespace FluentControls.Controls
             bool isSelected = (item == selectedItem);
             bool isHover = (item == hoverItem);
 
-            // 背景色 - 优先使用自定义颜色
+            // 背景色
             Color bgColor = Color.Transparent;
             if (isSelected)
             {
                 bgColor = selectedItemBackColor ?? GetThemeColor(
-                    c => c.SurfacePressed,
+                    c => c.Primary,
                     SystemColors.Highlight);
             }
             else if (isHover)
             {
                 bgColor = hoverItemBackColor ?? GetThemeColor(
-                    c => c.SurfaceHover,
+                    c => c.PrimaryLight,
                     SystemColors.ControlLight);
             }
             else if (itemBackColor.HasValue)
@@ -720,7 +1129,7 @@ namespace FluentControls.Controls
                 }
             }
 
-            // 文本颜色 - 优先使用自定义颜色
+            // 文本颜色
             Color textColor;
             if (isSelected)
             {
@@ -731,7 +1140,7 @@ namespace FluentControls.Controls
             else if (isHover)
             {
                 textColor = hoverItemForeColor ?? itemForeColor ?? GetThemeColor(
-                    c => c.TextPrimary,
+                    c => c.TextOnPrimary,
                     SystemColors.ControlText);
             }
             else if (item.Enabled)
@@ -747,8 +1156,30 @@ namespace FluentControls.Controls
                     SystemColors.GrayText);
             }
 
+            // 绘制选中指示条
+            if (isSelected)
+            {
+                var indicatorColor = GetThemeColor(c => c.Primary, SystemColors.Highlight);
+                using (var brush = new SolidBrush(indicatorColor))
+                {
+                    g.FillRectangle(brush, rect.Left, rect.Top + 4, 3, rect.Height - 8);
+                }
+            }
+
+            // 绘制键盘焦点框
+            if (isSelected && isFocused)
+            {
+                var focusColor = GetThemeColor(c => c.Primary, SystemColors.Highlight);
+                using (var pen = new Pen(focusColor, 1))
+                {
+                    pen.DashStyle = DashStyle.Dot;
+                    var focusRect = new Rectangle(rect.X + 1, rect.Y + 1, rect.Width - 2, rect.Height - 2);
+                    g.DrawRectangle(pen, focusRect);
+                }
+            }
+
             // 绘制图标(如果有)
-            int contentLeft = rect.Left + 8;
+            int contentLeft = rect.Left + 12;
             if (item.Image != null)
             {
                 var iconRect = new Rectangle(
@@ -775,8 +1206,12 @@ namespace FluentControls.Controls
                 rect.Right - contentLeft - 8,
                 rect.Height);
 
-            // 字体 - 优先使用自定义字体
+            // 字体
             var font = itemFont ?? Font;
+            if (isSelected)
+            {
+                font = new Font(font, FontStyle.Bold);
+            }
 
             using (var brush = new SolidBrush(textColor))
             {
@@ -790,6 +1225,12 @@ namespace FluentControls.Controls
 
                 g.DrawString(item.Name, font, brush, textRect, sf);
             }
+
+            // 释放临时创建的粗体字体
+            if (isSelected && itemFont == null)
+            {
+                font.Dispose();
+            }
         }
 
         #endregion
@@ -798,6 +1239,11 @@ namespace FluentControls.Controls
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
+            if (!Focused && CanFocus)
+            {
+                Focus();
+            }
+
             base.OnMouseDown(e);
 
             var item = GetItemAtPoint(e.Location);
@@ -877,14 +1323,30 @@ namespace FluentControls.Controls
 
             if (scrollBar.Visible)
             {
-                int delta = e.Delta / 120 * scrollBar.SmallChange;
-                int newValue = scrollBar.Value - delta;
-                newValue = Math.Max(scrollBar.Minimum, Math.Min(scrollBar.Maximum - scrollBar.LargeChange + 1, newValue));
+                // 计算滚动增量(一次滚动一个项目高度)
+                int scrollAmount = itemHeight + itemSpacing;
+                int delta = (e.Delta > 0) ? -scrollAmount : scrollAmount;
 
-                if (scrollBar.Value != newValue)
+                // 计算新的滚动位置
+                int newScrollOffset = scrollOffset + delta;
+
+                // 限制范围
+                var visibleRect = GetVisibleRectangle();
+                int maxScroll = Math.Max(0, GetTotalHeight() - visibleRect.Height);
+                newScrollOffset = Math.Max(0, Math.Min(newScrollOffset, maxScroll));
+
+                if (newScrollOffset != scrollOffset)
                 {
-                    scrollBar.Value = newValue;
-                    scrollOffset = newValue;
+                    scrollOffset = newScrollOffset;
+
+                    // 更新滚动条
+                    int scrollValue = Math.Max(scrollBar.Minimum,
+                        Math.Min(newScrollOffset, scrollBar.Maximum - scrollBar.LargeChange));
+                    if (scrollValue >= 0)
+                    {
+                        scrollBar.Value = scrollValue;
+                    }
+
                     Invalidate();
                 }
             }
@@ -968,11 +1430,12 @@ namespace FluentControls.Controls
         /// </summary>
         private void EnsureVisible(FluentToolListItem item)
         {
-            if (item == null || !scrollBar.Visible)
+            if (item == null)
             {
                 return;
             }
 
+            // 获取项目在内容中的绝对位置
             var itemBounds = GetItemBounds(item);
             if (itemBounds == Rectangle.Empty)
             {
@@ -980,22 +1443,59 @@ namespace FluentControls.Controls
             }
 
             var visibleRect = GetVisibleRectangle();
-            int itemTop = itemBounds.Top + scrollOffset;
-            int itemBottom = itemBounds.Bottom + scrollOffset;
-
-            if (itemTop < scrollOffset)
+            if (visibleRect.Height <= 0)
             {
-                // 项目在可见区域上方
-                scrollBar.Value = itemTop;
-                scrollOffset = scrollBar.Value;
-                Invalidate();
+                return;
             }
-            else if (itemBottom > scrollOffset + visibleRect.Height)
+
+            // 项目顶部相对于可见区域顶部的位置
+            int itemTopInView = itemBounds.Top - scrollOffset;
+            // 项目底部相对于可见区域顶部的位置
+            int itemBottomInView = itemBounds.Bottom - scrollOffset;
+
+            int newScrollOffset = scrollOffset;
+
+            // 如果项目顶部在可见区域上方, 向上滚动
+            if (itemTopInView < 0)
             {
-                // 项目在可见区域下方
-                int newValue = itemBottom - visibleRect.Height;
-                scrollBar.Value = Math.Min(newValue, scrollBar.Maximum - scrollBar.LargeChange + 1);
-                scrollOffset = scrollBar.Value;
+                newScrollOffset = itemBounds.Top - itemSpacing;
+            }
+            // 如果项目底部在可见区域下方, 向下滚动
+            else if (itemBottomInView > visibleRect.Height)
+            {
+                newScrollOffset = itemBounds.Bottom - visibleRect.Height + itemSpacing;
+            }
+
+            // 确保滚动值在有效范围内
+            newScrollOffset = Math.Max(0, newScrollOffset);
+
+            int maxScroll = GetTotalHeight() - visibleRect.Height;
+            if (maxScroll > 0)
+            {
+                newScrollOffset = Math.Min(newScrollOffset, maxScroll);
+            }
+            else
+            {
+                newScrollOffset = 0;
+            }
+
+            // 如果需要滚动
+            if (newScrollOffset != scrollOffset)
+            {
+                scrollOffset = newScrollOffset;
+
+                // 更新滚动条位置
+                if (scrollBar.Visible)
+                {
+                    int scrollValue = Math.Max(scrollBar.Minimum,
+                        Math.Min(newScrollOffset, scrollBar.Maximum - scrollBar.LargeChange + 1));
+
+                    if (scrollValue >= 0 && scrollValue <= scrollBar.Maximum)
+                    {
+                        scrollBar.Value = scrollValue;
+                    }
+                }
+
                 Invalidate();
             }
         }
@@ -1005,6 +1505,11 @@ namespace FluentControls.Controls
         /// </summary>
         private Rectangle GetItemBounds(FluentToolListItem item)
         {
+            if (item == null)
+            {
+                return Rectangle.Empty;
+            }
+
             int top = itemSpacing;
             int left = itemSpacing;
             var visibleRect = GetVisibleRectangle();
@@ -1012,6 +1517,7 @@ namespace FluentControls.Controls
 
             foreach (var category in categories)
             {
+                // 检查是否是分组标题
                 if (category == item)
                 {
                     return new Rectangle(left, top, right - left, categoryHeight);
@@ -1019,6 +1525,7 @@ namespace FluentControls.Controls
 
                 top += categoryHeight + itemSpacing;
 
+                // 检查分组内的项目
                 if (category.IsExpanded)
                 {
                     foreach (var childItem in category.Items)
@@ -1034,6 +1541,13 @@ namespace FluentControls.Controls
 
                         top += itemHeight + itemSpacing;
                     }
+                }
+                else if (expandAnimations.ContainsKey(category))
+                {
+                    // 正在动画中, 也需要计算
+                    float progress = expandAnimations[category];
+                    int itemsHeight = category.Items.Count * (itemHeight + itemSpacing);
+                    top += (int)(itemsHeight * progress);
                 }
             }
 
@@ -1097,7 +1611,7 @@ namespace FluentControls.Controls
                 float current = kvp.Value;
                 float target = category.IsExpanded ? 1f : 0f;
 
-                float delta = (target - current) * 0.2f; // 缓动系数
+                float delta = (target - current) * 0.2f;
 
                 if (Math.Abs(delta) < 0.01f)
                 {
@@ -1117,15 +1631,18 @@ namespace FluentControls.Controls
                 expandAnimations.Remove(category);
             }
 
-            if (needsUpdate || completedCategories.Count > 0)
-            {
-                UpdateScrollBar();
-                Invalidate();
-            }
+            // 更新滚动条和重绘
+            UpdateScrollBar();
+            Invalidate();
 
             if (expandAnimations.Count == 0)
             {
                 expandTimer.Stop();
+                // 动画完成后再次确保滚动条正确
+                BeginInvoke(new Action(() =>
+                {
+                    UpdateScrollBar();
+                }));
             }
         }
 
@@ -1139,10 +1656,18 @@ namespace FluentControls.Controls
         private Rectangle GetVisibleRectangle()
         {
             var rect = ClientRectangle;
+
+            // 确保矩形有效
+            if (rect.Width <= 0 || rect.Height <= 0)
+            {
+                rect = new Rectangle(0, 0, Width > 0 ? Width : 200, Height > 0 ? Height : 400);
+            }
+
             if (scrollBar.Visible)
             {
                 rect.Width -= scrollBar.Width;
             }
+
             return rect;
         }
 
@@ -1157,16 +1682,26 @@ namespace FluentControls.Controls
             {
                 total += categoryHeight + itemSpacing;
 
+                // 始终计算展开状态下的高度, 或者正在动画中的高度
                 if (category.IsExpanded || expandAnimations.ContainsKey(category))
                 {
-                    float progress = expandAnimations.ContainsKey(category)
-                        ? expandAnimations[category]
-                        : 1.0f;
+                    float progress = 1.0f;
+                    if (expandAnimations.ContainsKey(category))
+                    {
+                        progress = expandAnimations[category];
+                    }
+                    else if (category.IsExpanded)
+                    {
+                        progress = 1.0f;
+                    }
 
                     int itemsHeight = category.Items.Count * (itemHeight + itemSpacing);
                     total += (int)(itemsHeight * progress);
                 }
             }
+
+            // 添加底部边距
+            total += itemSpacing;
 
             return total;
         }
@@ -1176,20 +1711,46 @@ namespace FluentControls.Controls
         /// </summary>
         private void UpdateScrollBar()
         {
+            if (!IsHandleCreated)
+            {
+                return;
+            }
+
             var visibleRect = GetVisibleRectangle();
+
+            if (visibleRect.Height <= 0)
+            {
+                return;
+            }
+
             int totalHeight = GetTotalHeight();
 
             if (totalHeight > visibleRect.Height)
             {
-                scrollBar.Visible = true;
-                scrollBar.Maximum = totalHeight - visibleRect.Height + scrollBar.LargeChange - 1;
-                scrollBar.LargeChange = visibleRect.Height / 2;
-                scrollBar.SmallChange = itemHeight;
+                // 计算滚动条参数
+                int largeChange = visibleRect.Height;
+                int smallChange = itemHeight + itemSpacing;
+                int maximum = totalHeight;
 
-                if (scrollOffset > scrollBar.Maximum - scrollBar.LargeChange + 1)
+                // 设置滚动条属性
+                scrollBar.Minimum = 0;
+                scrollBar.Maximum = maximum;
+                scrollBar.LargeChange = largeChange;
+                scrollBar.SmallChange = smallChange;
+                scrollBar.Visible = true;
+
+                // 确保当前滚动位置有效
+                int maxScrollOffset = Math.Max(0, totalHeight - visibleRect.Height);
+                if (scrollOffset > maxScrollOffset)
                 {
-                    scrollOffset = Math.Max(0, scrollBar.Maximum - scrollBar.LargeChange + 1);
-                    scrollBar.Value = scrollOffset;
+                    scrollOffset = maxScrollOffset;
+                }
+
+                // 设置滚动条值
+                int scrollValue = Math.Max(0, Math.Min(scrollOffset, maximum - largeChange));
+                if (scrollValue >= 0)
+                {
+                    scrollBar.Value = scrollValue;
                 }
             }
             else
@@ -1226,14 +1787,36 @@ namespace FluentControls.Controls
                 }
             }
 
-            UpdateScrollBar();
-            Invalidate();
+            // 延迟更新滚动条
+            if (IsHandleCreated)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    UpdateScrollBar();
+                    Invalidate();
+                }));
+            }
+            else
+            {
+                isFirstPaint = true;  // 标记需要在首次绘制时更新
+            }
         }
 
         private void OnCategoryItemsChanged(object sender, CollectionChangeEventArgs e)
         {
-            UpdateScrollBar();
-            Invalidate();
+            // 延迟更新滚动条
+            if (IsHandleCreated)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    UpdateScrollBar();
+                    Invalidate();
+                }));
+            }
+            else
+            {
+                isFirstPaint = true;
+            }
         }
 
         #endregion

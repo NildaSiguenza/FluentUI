@@ -31,7 +31,6 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 ```
 
 ## Examples
-![screenshot](./build/WinformDemo_shortcut.png)
 [WinformDemo: ](https://github.com/NildaSiguenza/FluentUI/tree/main/FluentControls.WinformDemo)
 
 ## Updates

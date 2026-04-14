@@ -17,10 +17,14 @@ namespace FluentControls.Controls
         // 显示模式
         private DateTimePickerMode mode = DateTimePickerMode.DateTime;
 
+        // 默认值范围
+        public static readonly DateTime DefaultMinimum = DateTimePicker.MinimumDateTime;
+        public static readonly DateTime DefaultMaximum = DateTimePicker.MaximumDateTime;
+
         // 值相关
         private DateTime currentValue = DateTime.Now;
-        private DateTime minimum = new DateTime(1753, 1, 1, 0, 0, 0);
-        private DateTime maximum = DateTime.MaxValue;
+        private DateTime minimum = DefaultMinimum; 
+        private DateTime maximum = DefaultMaximum;
         private bool includeMilliseconds = false;
 
         // 格式化相关
@@ -69,7 +73,7 @@ namespace FluentControls.Controls
                     ControlStyles.OptimizedDoubleBuffer |
                     ControlStyles.Selectable, true);
 
-            Size = new Size(200, 30);
+            Size = new Size(200, 30); 
 
             InitializeComponents();
             InitializeCountdownTimer();
