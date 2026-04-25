@@ -349,6 +349,103 @@ namespace FluentControls.Animation
         }
 
         /// <summary>
+        /// 通用数值动画
+        /// </summary>
+        /// <param name="control">关联的控件（用于生命周期管理）</param>
+        /// <param name="startValue">起始值</param>
+        /// <param name="endValue">结束值</param>
+        /// <param name="valueSetter">值设置器</param>
+        /// <param name="duration">持续时间（毫秒）</param>
+        /// <param name="easing">缓动函数</param>
+        /// <param name="onComplete">完成回调</param>
+        public static void AnimateValue(Control control, float startValue, float endValue, Action<float> valueSetter, int duration = 300,
+            AnimationState.EasingFunction easing = null, Action onComplete = null)
+        {
+            if (control == null || valueSetter == null)
+            {
+                return;
+            }
+
+            const int frameInterval = 16;
+            int totalSteps = Math.Max(1, duration / frameInterval);
+            int currentStep = 0;
+            var easingFunc = easing ?? Easing.CubicOut;
+
+            Timer valueTimer = new Timer { Interval = frameInterval };
+            valueTimer.Tick += (s, e) =>
+            {
+                if (control.IsDisposed)
+                {
+                    valueTimer.Stop();
+                    valueTimer.Dispose();
+                    return;
+                }
+
+                currentStep++;
+                double progress = Math.Min(1.0, (double)currentStep / totalSteps);
+                double easedProgress = easingFunc(progress);
+
+                float currentValue = startValue + (float)((endValue - startValue) * easedProgress);
+                valueSetter(currentValue);
+
+                if (currentStep >= totalSteps)
+                {
+                    valueSetter(endValue);
+                    valueTimer.Stop();
+                    valueTimer.Dispose();
+                    onComplete?.Invoke();
+                }
+            };
+
+            valueTimer.Start();
+        }
+
+        /// <summary>
+        /// 通用双精度数值动画
+        /// </summary>
+        public static void AnimateValue(Control control, double startValue, double endValue, Action<double> valueSetter, int duration = 300,
+            AnimationState.EasingFunction easing = null, Action onComplete = null)
+        {
+            if (control == null || valueSetter == null)
+            {
+                return;
+            }
+
+            const int frameInterval = 16;
+            int totalSteps = Math.Max(1, duration / frameInterval);
+            int currentStep = 0;
+            var easingFunc = easing ?? Easing.CubicOut;
+
+            Timer valueTimer = new Timer { Interval = frameInterval };
+            valueTimer.Tick += (s, e) =>
+            {
+                if (control.IsDisposed)
+                {
+                    valueTimer.Stop();
+                    valueTimer.Dispose();
+                    return;
+                }
+
+                currentStep++;
+                double progress = Math.Min(1.0, (double)currentStep / totalSteps);
+                double easedProgress = easingFunc(progress);
+
+                double currentValue = startValue + (endValue - startValue) * easedProgress;
+                valueSetter(currentValue);
+
+                if (currentStep >= totalSteps)
+                {
+                    valueSetter(endValue);
+                    valueTimer.Stop();
+                    valueTimer.Dispose();
+                    onComplete?.Invoke();
+                }
+            };
+
+            valueTimer.Start();
+        }
+
+        /// <summary>
         /// 停止控件的所有动画
         /// </summary>
         public static void StopAllAnimations(Control control)

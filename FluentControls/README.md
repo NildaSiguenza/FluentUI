@@ -31,7 +31,7 @@ Design time: Copy the directory https://github.com/NildaSiguenza/FluentUI/tree/m
 ```
 
 ## Examples
-[WinformDemo: ](https://github.com/NildaSiguenza/FluentUI/tree/main/FluentControls.WinformDemo)
+[WinformDemo](https://github.com/NildaSiguenza/FluentUI/tree/main/FluentControls.WinformDemo)
 
 ## Updates
 > FluentControls follows Semantic Versioning.  

@@ -47,6 +47,9 @@
     <Compile Update="Controls\FluentGroupBox.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Controls\FluentIcon.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls\FluentImageList.cs">
       <SubType>Component</SubType>
     </Compile>

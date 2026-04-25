@@ -125,6 +125,49 @@ namespace Infrastructure
         }
 
         /// <summary>
+        /// 获取最近N个元素
+        /// </summary>
+        public T[] GetLast(int count)
+        {
+            lock (lockObj)
+            {
+                if (count <= 0 || this.count == 0)
+                {
+                    return new T[0];
+                }
+
+                int actualCount = Math.Min(count, this.count);
+                T[] result = new T[actualCount];
+
+                int startIndex = this.count - actualCount;
+                for (int i = 0; i < actualCount; i++)
+                {
+                    result[i] = this[(startIndex + i)];
+                }
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// 尝试获取最后一个元素
+        /// </summary>
+        public bool TryGetLast(out T item)
+        {
+            lock (lockObj)
+            {
+                if (count == 0)
+                {
+                    item = default(T);
+                    return false;
+                }
+
+                item = this[count - 1];
+                return true;
+            }
+        }
+
+        /// <summary>
         /// 获取当前所有元素
         /// </summary>
         public T[] ToArray()
